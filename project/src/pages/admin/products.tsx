@@ -1,22 +1,50 @@
-import { useState, useMemo } from 'react';
-import { Search, Plus, Edit, Trash2, ChevronLeft, ChevronRight, CheckSquare, Square } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Search, Plus, Edit, Trash2, ChevronLeft, ChevronRight, CheckSquare, Square, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { products as allProducts, categories, brands } from '@/data';
-import type { Product } from '@/types';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
+interface Product {
+  id: number;
+  name: string;
+  sku: string;
+  category_id: number;
+  brand_id: number;
+  description: string;
+  price: string;
+  warranty: string;
+  status: 'active' | 'draft' | 'archived';
+  created_at: string;
+  updated_at: string;
+  category_name: string;
+  brand_name: string;
+  primary_image: string;
+  images: Array<{
+    id: number;
+    image_url: string;
+    is_primary: number;
+    sort_order: number;
+  }>;
+  image_count: number;
+}
+
+interface Category {
+  id: number;
+  name: string;
+  slug: string;
+}
+
 export function AdminProducts() {
-  const [products, setProducts] = useState<Product[]>(allProducts);
+  const navigate = useNavigate();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -24,68 +52,159 @@ export function AdminProducts() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
-  const [selected, setSelected] = useState<string[]>([]);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [selected, setSelected] = useState<number[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
 
-  const filtered = useMemo(() => {
+  // Fetch products and categories
+  useEffect(() => {
+    fetchProducts();
+    fetchCategories();
+  }, [search, categoryFilter, statusFilter, page]);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/categories/');
+      const data = await response.json();
+      if (data.success) {
+        setCategories(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      let url = `http://localhost:5000/api/products/?page=${page}&limit=${pageSize}`;
+      
+      if (search) {
+        url += `&search=${encodeURIComponent(search)}`;
+      }
+      if (categoryFilter !== 'all') {
+        url += `&categoryId=${categoryFilter}`;
+      }
+      if (statusFilter !== 'all') {
+        url += `&status=${statusFilter}`;
+      }
+
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data.success) {
+        setProducts(data.data);
+        setTotalProducts(data.pagination.total || data.data.length);
+      } else {
+        toast.error('Failed to fetch products');
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      toast.error('Failed to fetch products');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Filter and sort products (client-side filtering for better UX)
+  const filteredAndSortedProducts = useMemo(() => {
     let result = [...products];
-    if (search) {
+    
+    // Client-side search (if needed, but API already handles search)
+    // We keep this as fallback
+    if (search && products.length > 0) {
       const q = search.toLowerCase();
-      result = result.filter((p) => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || p.brandName.toLowerCase().includes(q));
+      result = result.filter((p) => 
+        p.name.toLowerCase().includes(q) || 
+        p.sku?.toLowerCase().includes(q) || 
+        p.brand_name?.toLowerCase().includes(q)
+      );
     }
-    if (categoryFilter !== 'all') {
-      const cat = categories.find((c) => c.slug === categoryFilter);
-      if (cat) result = result.filter((p) => p.categoryId === cat.id);
-    }
-    if (statusFilter !== 'all') result = result.filter((p) => p.status === statusFilter);
+    
+    // Sort
     result.sort((a, b) => {
       let cmp = 0;
-      if (sortField === 'name') cmp = a.name.localeCompare(b.name);
-      else cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      if (sortField === 'name') {
+        cmp = a.name.localeCompare(b.name);
+      } else {
+        cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      }
       return sortDir === 'asc' ? cmp : -cmp;
     });
+    
     return result;
-  }, [products, search, categoryFilter, statusFilter, sortField, sortDir]);
+  }, [products, search, sortField, sortDir]);
 
-  const totalPages = Math.ceil(filtered.length / pageSize);
-  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const totalPages = Math.ceil(totalProducts / pageSize);
+  const paginated = filteredAndSortedProducts;
 
-  const toggleSelect = (id: string) => {
+  const toggleSelect = (id: number) => {
     setSelected((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
   };
+  
   const toggleSelectAll = () => {
     setSelected(selected.length === paginated.length ? [] : paginated.map((p) => p.id));
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteTarget) return;
-    setProducts((prev) => prev.filter((p) => p.id !== deleteTarget.id));
-    toast.success(`Product "${deleteTarget.name}" deleted`);
-    setDeleteTarget(null);
-  };
-
-  const handleBulkDelete = () => {
-    setProducts((prev) => prev.filter((p) => !selected.includes(p.id)));
-    toast.success(`${selected.length} products deleted`);
-    setSelected([]);
-  };
-
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    const form = e.target as HTMLFormElement;
-    const formData = new FormData(form);
-    const name = formData.get('name') as string;
-    if (editingProduct) {
-      setProducts((prev) => prev.map((p) => p.id === editingProduct.id ? { ...p, name } : p));
-      toast.success('Product updated');
-    } else {
-      toast.success('Product added');
+    
+    try {
+      const response = await fetch(`http://localhost:5000/api/products/${deleteTarget.id}`, {
+        method: 'DELETE',
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        toast.success(`Product "${deleteTarget.name}" deleted`);
+        setProducts((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+        setDeleteTarget(null);
+        fetchProducts(); // Refresh the list
+      } else {
+        toast.error(data.message || 'Failed to delete product');
+      }
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      toast.error('Failed to delete product');
     }
-    setDrawerOpen(false);
-    setEditingProduct(null);
   };
+
+  const handleBulkDelete = async () => {
+    try {
+      const promises = selected.map((id) =>
+        fetch(`http://localhost:5000/api/products/${id}`, {
+          method: 'DELETE',
+        })
+      );
+      
+      await Promise.all(promises);
+      toast.success(`${selected.length} products deleted`);
+      setSelected([]);
+      fetchProducts(); // Refresh the list
+    } catch (error) {
+      console.error('Error bulk deleting products:', error);
+      toast.error('Failed to delete products');
+    }
+  };
+
+  const getImageUrl = (imageUrl: string) => {
+    if (imageUrl.startsWith('http')) {
+      return imageUrl;
+    }
+    return `http://localhost:5000${imageUrl}`;
+  };
+
+  if (loading && products.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+          <p className="mt-4 text-muted-foreground">Loading products...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -94,17 +213,37 @@ export function AdminProducts() {
         <div className="flex flex-wrap gap-2 flex-1">
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Search products..." className="pl-9 h-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <Input 
+              placeholder="Search products..." 
+              className="pl-9 h-9" 
+              value={search} 
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }} 
+            />
           </div>
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Category" /></SelectTrigger>
+          <Select value={categoryFilter} onValueChange={(value) => {
+            setCategoryFilter(value);
+            setPage(1);
+          }}>
+            <SelectTrigger className="w-[160px] h-9">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
-              {categories.map((c) => <SelectItem key={c.id} value={c.slug}>{c.name}</SelectItem>)}
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[120px] h-9"><SelectValue placeholder="Status" /></SelectTrigger>
+          <Select value={statusFilter} onValueChange={(value) => {
+            setStatusFilter(value);
+            setPage(1);
+          }}>
+            <SelectTrigger className="w-[120px] h-9">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="active">Active</SelectItem>
@@ -113,7 +252,7 @@ export function AdminProducts() {
             </SelectContent>
           </Select>
         </div>
-        <Button onClick={() => { setEditingProduct(null); setDrawerOpen(true); }}>
+        <Button onClick={() => navigate('/admin/products/add')}>
           <Plus className="w-4 h-4 mr-1.5" /> Add Product
         </Button>
       </div>
@@ -137,7 +276,10 @@ export function AdminProducts() {
               <tr>
                 <th className="p-3 w-10">
                   <button onClick={toggleSelectAll}>
-                    {selected.length === paginated.length && paginated.length > 0 ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4 text-muted-foreground" />}
+                    {selected.length === paginated.length && paginated.length > 0 ? 
+                      <CheckSquare className="w-4 h-4 text-primary" /> : 
+                      <Square className="w-4 h-4 text-muted-foreground" />
+                    }
                   </button>
                 </th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Product</th>
@@ -145,48 +287,84 @@ export function AdminProducts() {
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Brand</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
-                  <button onClick={() => { setSortField('createdAt'); setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); }}>Created</button>
+                  <button onClick={() => { setSortField('createdAt'); setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); }}>
+                    Created
+                  </button>
                 </th>
                 <th className="p-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {paginated.map((product) => (
-                <tr key={product.id} className="border-b hover:bg-muted/30 transition-colors">
-                  <td className="p-3">
-                    <button onClick={() => toggleSelect(product.id)}>
-                      {selected.includes(product.id) ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4 text-muted-foreground" />}
-                    </button>
-                  </td>
-                  <td className="p-3">
-                    <div className="flex items-center gap-3">
-                      <img src={product.gallery[0]} alt={product.name} className="w-10 h-10 rounded-lg object-cover shrink-0" />
-                      <div className="min-w-0">
-                        <div className="font-medium text-sm truncate max-w-[200px]">{product.name}</div>
-                        <div className="text-xs text-muted-foreground">{product.sku}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-3 hidden md:table-cell"><Badge variant="outline" className="text-xs">{product.categoryName}</Badge></td>
-                  <td className="p-3 hidden lg:table-cell text-sm">{product.brandName}</td>
-                  <td className="p-3">
-                    <Badge className={cn('text-xs', product.status === 'active' ? 'bg-green-100 text-green-700' : product.status === 'draft' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700')}>
-                      {product.status}
-                    </Badge>
-                  </td>
-                  <td className="p-3 hidden lg:table-cell text-sm text-muted-foreground">{new Date(product.createdAt).toLocaleDateString('en-IN')}</td>
-                  <td className="p-3">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingProduct(product); setDrawerOpen(true); }}>
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(product)}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+              {paginated.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                    No products found. Click "Add Product" to create one.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                paginated.map((product) => (
+                  <tr key={product.id} className="border-b hover:bg-muted/30 transition-colors">
+                    <td className="p-3">
+                      <button onClick={() => toggleSelect(product.id)}>
+                        {selected.includes(product.id) ? 
+                          <CheckSquare className="w-4 h-4 text-primary" /> : 
+                          <Square className="w-4 h-4 text-muted-foreground" />
+                        }
+                      </button>
+                    </td>
+                    <td className="p-3">
+                      <div className="flex items-center gap-3">
+                        <img 
+                          src={product.primary_image ? getImageUrl(product.primary_image) : '/placeholder-image.jpg'} 
+                          alt={product.name} 
+                          className="w-10 h-10 rounded-lg object-cover shrink-0" 
+                        />
+                        <div className="min-w-0">
+                          <div className="font-medium text-sm truncate max-w-[200px]">{product.name}</div>
+                          <div className="text-xs text-muted-foreground">{product.sku || 'No SKU'}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-3 hidden md:table-cell">
+                      <Badge variant="outline" className="text-xs">{product.category_name}</Badge>
+                    </td>
+                    <td className="p-3 hidden lg:table-cell text-sm">{product.brand_name}</td>
+                    <td className="p-3">
+                      <Badge className={cn(
+                        'text-xs',
+                        product.status === 'active' ? 'bg-green-100 text-green-700' : 
+                        product.status === 'draft' ? 'bg-yellow-100 text-yellow-700' : 
+                        'bg-gray-100 text-gray-700'
+                      )}>
+                        {product.status}
+                      </Badge>
+                    </td>
+                    <td className="p-3 hidden lg:table-cell text-sm text-muted-foreground">
+                      {new Date(product.created_at).toLocaleDateString('en-IN')}
+                    </td>
+                    <td className="p-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8" 
+                          onClick={() => navigate(`/admin/products/edit/${product.id}`)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-destructive hover:text-destructive" 
+                          onClick={() => setDeleteTarget(product)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -194,102 +372,46 @@ export function AdminProducts() {
         {/* Pagination */}
         <div className="flex items-center justify-between p-4 border-t">
           <div className="text-sm text-muted-foreground">
-            Showing {paginated.length} of {filtered.length} products
+            Showing {paginated.length} of {totalProducts} products
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)}>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              disabled={page === 1} 
+              onClick={() => setPage(page - 1)}
+            >
               <ChevronLeft className="w-4 h-4" />
             </Button>
             <span className="text-sm">Page {page} of {totalPages || 1}</span>
-            <Button variant="outline" size="sm" disabled={page === totalPages || totalPages === 0} onClick={() => setPage(page + 1)}>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              disabled={page === totalPages || totalPages === 0} 
+              onClick={() => setPage(page + 1)}
+            >
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
         </div>
       </Card>
 
-      {/* Add/Edit Drawer */}
-      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-[500px] overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>{editingProduct ? 'Edit Product' : 'Add New Product'}</SheetTitle>
-            <SheetDescription>{editingProduct ? 'Update product information' : 'Create a new product in the catalog'}</SheetDescription>
-          </SheetHeader>
-          <form onSubmit={handleSave} className="space-y-4 mt-6">
-            <div className="space-y-1.5">
-              <Label htmlFor="p-name" className="text-xs">Product Name *</Label>
-              <Input id="p-name" name="name" required defaultValue={editingProduct?.name} placeholder="Enter product name" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="p-sku" className="text-xs">SKU</Label>
-              <Input id="p-sku" name="sku" defaultValue={editingProduct?.sku} placeholder="MV-CCT-00001" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="p-category" className="text-xs">Category</Label>
-                <Select defaultValue={editingProduct?.categoryId}>
-                  <SelectTrigger id="p-category"><SelectValue placeholder="Select" /></SelectTrigger>
-                  <SelectContent>
-                    {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="p-brand" className="text-xs">Brand</Label>
-                <Select defaultValue={editingProduct?.brandId}>
-                  <SelectTrigger id="p-brand"><SelectValue placeholder="Select" /></SelectTrigger>
-                  <SelectContent>
-                    {brands.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="p-short" className="text-xs">Short Description</Label>
-              <Input id="p-short" name="shortDescription" defaultValue={editingProduct?.shortDescription} placeholder="Brief product description" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="p-desc" className="text-xs">Full Description</Label>
-              <Textarea id="p-desc" name="description" defaultValue={editingProduct?.description} placeholder="Detailed product description" className="resize-none" rows={4} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="p-price" className="text-xs">Price (INR)</Label>
-                <Input id="p-price" name="price" type="number" defaultValue={editingProduct?.price} placeholder="0" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="p-warranty" className="text-xs">Warranty</Label>
-                <Input id="p-warranty" name="warranty" defaultValue={editingProduct?.warranty} placeholder="2 years" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex items-center space-x-2">
-                <Checkbox id="p-popular" defaultChecked={editingProduct?.isPopular} />
-                <Label htmlFor="p-popular" className="text-xs">Mark as Popular</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox id="p-new" defaultChecked={editingProduct?.isNew} />
-                <Label htmlFor="p-new" className="text-xs">Mark as New</Label>
-              </div>
-            </div>
-            <div className="flex gap-3 pt-4">
-              <Button type="button" variant="outline" className="flex-1" onClick={() => setDrawerOpen(false)}>Cancel</Button>
-              <Button type="submit" className="flex-1">{editingProduct ? 'Save Changes' : 'Add Product'}</Button>
-            </div>
-          </form>
-        </SheetContent>
-      </Sheet>
-
       {/* Delete confirmation */}
       <Dialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle>Delete Product</DialogTitle>
-            <DialogDescription>Are you sure you want to delete "{deleteTarget?.name}"? This action cannot be undone.</DialogDescription>
+            <DialogDescription>
+              Are you sure you want to delete "{deleteTarget?.name}"? This action cannot be undone.
+            </DialogDescription>
           </DialogHeader>
           <div className="flex gap-3 pt-4">
-            <Button variant="outline" className="flex-1" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-            <Button variant="destructive" className="flex-1" onClick={handleDelete}>Delete</Button>
+            <Button variant="outline" className="flex-1" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" className="flex-1" onClick={handleDelete}>
+              Delete
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -14,6 +14,7 @@ import { AboutPage } from '@/pages/about';
 import { NotFoundPage } from '@/pages/not-found';
 import { AdminDashboard } from '@/pages/admin/dashboard';
 import { AdminProducts } from '@/pages/admin/products';
+import { ProductForm } from '@/pages/admin/product-form';
 import { AdminCategories } from '@/pages/admin/categories';
 import { CategoryForm } from '@/pages/admin/categories-form';
 import { AdminBrands } from '@/pages/admin/brands';
@@ -45,7 +46,9 @@ export default function App() {
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
             <Route path="products" element={<AdminProducts />} />
-            
+            <Route path="products/add" element={<ProductForm />} />
+            <Route path="products/edit/:id" element={<ProductForm />} />
+
               {/* Categories Routes */}
             <Route path="categories" element={<AdminCategories />} />
              <Route path="categories/add" element={<CategoryForm />} />
