@@ -1,150 +1,148 @@
-import { useState } from 'react';
+// src/components/admin/AdminCategories.jsx
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { categories as initialCategories } from '@/data';
-import * as Icons from 'lucide-react';
 import { toast } from 'sonner';
+import axios from 'axios';
 
+const API_URL = 'http://localhost:5000/api';
 
 export function AdminCategories() {
-  const [categories, setCategories] = useState(initialCategories);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [editing, setEditing] = useState<typeof initialCategories[0] | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<typeof initialCategories[0] | null>(null);
+  const navigate = useNavigate();
+  const [categories, setCategories] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    const form = e.target as HTMLFormElement;
-    const formData = new FormData(form);
-    const name = formData.get('name') as string;
-    const icon = formData.get('icon') as string;
-    const description = formData.get('description') as string;
-    if (editing) {
-      setCategories((prev) => prev.map((c) => c.id === editing.id ? { ...c, name, description } : c));
-      toast.success('Category updated');
-    } else {
-      const newCat = {
-        id: `c${Date.now()}`,
-        name,
-        slug: name.toLowerCase().replace(/\s+/g, '-'),
-        icon: icon || 'FolderTree',
-        color: '#0F4C81',
-        description,
-        productCount: 0,
-        featured: false,
-        specFields: [],
-      };
-      setCategories((prev) => [...prev, newCat]);
-      toast.success('Category added');
+  // Fetch categories from API
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      setIsLoading(true);
+      const response = await axios.get(`${API_URL}/categories`);
+      if (response.data.success) {
+        setCategories(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      toast.error('Failed to load categories');
+    } finally {
+      setIsLoading(false);
     }
-    setDrawerOpen(false);
-    setEditing(null);
   };
 
-  const handleDelete = () => {
-    if (!deleteTarget) return;
-    setCategories((prev) => prev.filter((c) => c.id !== deleteTarget.id));
-    toast.success('Category deleted');
-    setDeleteTarget(null);
+  const handleAddCategory = () => {
+    navigate('/admin/categories/add');
   };
+
+  const handleEditCategory = (category) => {
+    navigate(`/admin/categories/add/${category.id}`);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    
+    try {
+      const response = await axios.delete(`${API_URL}/categories/${deleteTarget.id}`);
+      if (response.data.success) {
+        toast.success('Category deleted successfully');
+        setCategories(categories.filter(c => c.id !== deleteTarget.id));
+        setDeleteTarget(null);
+      }
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      toast.error('Failed to delete category');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading categories...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold">Category Management</h2>
-          <p className="text-sm text-muted-foreground">Manage product categories and their specifications</p>
+          <p className="text-sm text-muted-foreground">Manage product categories</p>
         </div>
-        <Button onClick={() => { setEditing(null); setDrawerOpen(true); }}>
+        <Button onClick={handleAddCategory}>
           <Plus className="w-4 h-4 mr-1.5" /> Add Category
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {categories.map((cat) => {
-          const Icon = (Icons as any)[cat.icon] || Icons.FolderTree;
-          return (
+      {categories.length === 0 ? (
+        <Card className="p-12 text-center">
+          <p className="text-muted-foreground">No categories found</p>
+          <Button onClick={handleAddCategory} className="mt-4">
+            <Plus className="w-4 h-4 mr-1.5" /> Add Your First Category
+          </Button>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {categories.map((cat) => (
             <Card key={cat.id} className="p-5 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-3">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${cat.color}15` }}>
-                  <Icon className="w-6 h-6" style={{ color: cat.color }} />
+                <div className="flex-1">
+                  <h3 className="font-semibold mb-1">{cat.name}</h3>
+                  <p className="text-xs text-muted-foreground line-clamp-2">{cat.description || 'No description'}</p>
                 </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditing(cat); setDrawerOpen(true); }}>
+                <div className="flex gap-1 ml-2">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8" 
+                    onClick={() => handleEditCategory(cat)}
+                  >
                     <Edit className="w-3.5 h-3.5" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(cat)}>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 text-destructive hover:text-destructive" 
+                    onClick={() => setDeleteTarget(cat)}
+                  >
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
                 </div>
               </div>
-              <h3 className="font-semibold mb-1">{cat.name}</h3>
-              <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{cat.description}</p>
-              <div className="flex items-center justify-between">
-                <Badge variant="secondary" className="text-xs">{cat.productCount} products</Badge>
-                <Badge variant="outline" className="text-xs">{cat.specFields.length} specs</Badge>
-              </div>
+              {/* <Badge variant="secondary" className="text-xs">
+                ID: {cat.id}
+              </Badge> */}
             </Card>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
 
-      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-[450px] overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>{editing ? 'Edit Category' : 'Add Category'}</SheetTitle>
-            <SheetDescription>{editing ? 'Update category information' : 'Create a new product category'}</SheetDescription>
-          </SheetHeader>
-          <form onSubmit={handleSave} className="space-y-4 mt-6">
-            <div className="space-y-1.5">
-              <Label htmlFor="cat-name" className="text-xs">Category Name *</Label>
-              <Input id="cat-name" name="name" required defaultValue={editing?.name} placeholder="e.g. CCTV & Surveillance" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="cat-icon" className="text-xs">Icon (Lucide icon name)</Label>
-              <Select name="icon" defaultValue={editing?.icon || 'FolderTree'}>
-                <SelectTrigger id="cat-icon"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {['FolderTree', 'Cctv', 'Sun', 'BatteryCharging', 'Network', 'Zap', 'Flame', 'Fingerprint', 'DoorOpen', 'Shield', 'Camera'].map((ic) => (
-                    <SelectItem key={ic} value={ic}>{ic}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="cat-desc" className="text-xs">Description</Label>
-              <Textarea id="cat-desc" name="description" defaultValue={editing?.description} placeholder="Category description" className="resize-none" rows={3} />
-            </div>
-            <div className="flex items-center space-x-2">
-              <Switch id="cat-featured" defaultChecked={editing?.featured} />
-              <Label htmlFor="cat-featured" className="text-xs">Featured Category</Label>
-            </div>
-            <div className="flex gap-3 pt-4">
-              <Button type="button" variant="outline" className="flex-1" onClick={() => setDrawerOpen(false)}>Cancel</Button>
-              <Button type="submit" className="flex-1">{editing ? 'Save' : 'Add Category'}</Button>
-            </div>
-          </form>
-        </SheetContent>
-      </Sheet>
-
+      {/* Delete Confirmation Dialog */}
       <Dialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle>Delete Category</DialogTitle>
-            <DialogDescription>Are you sure you want to delete "{deleteTarget?.name}"? Products in this category will be uncategorized.</DialogDescription>
+            <DialogDescription>
+              Are you sure you want to delete "{deleteTarget?.name}"?
+            </DialogDescription>
           </DialogHeader>
           <div className="flex gap-3 pt-4">
-            <Button variant="outline" className="flex-1" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-            <Button variant="destructive" className="flex-1" onClick={handleDelete}>Delete</Button>
+            <Button variant="outline" className="flex-1" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" className="flex-1" onClick={handleDelete}>
+              Delete
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

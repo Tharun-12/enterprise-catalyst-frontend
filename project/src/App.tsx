@@ -15,11 +15,13 @@ import { NotFoundPage } from '@/pages/not-found';
 import { AdminDashboard } from '@/pages/admin/dashboard';
 import { AdminProducts } from '@/pages/admin/products';
 import { AdminCategories } from '@/pages/admin/categories';
+import { CategoryForm } from '@/pages/admin/categories-form';
 import { AdminBrands } from '@/pages/admin/brands';
 import { AdminSpecifications } from '@/pages/admin/specifications';
 import { AdminLeads } from '@/pages/admin/leads';
 import { AdminInquiries } from '@/pages/admin/inquiries';
 import { AdminSettings } from '@/pages/admin/settings';
+import { BrandForm } from './pages/admin/brand-form';
 
 export default function App() {
   return (
@@ -43,8 +45,16 @@ export default function App() {
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
             <Route path="products" element={<AdminProducts />} />
+            
+              {/* Categories Routes */}
             <Route path="categories" element={<AdminCategories />} />
+             <Route path="categories/add" element={<CategoryForm />} />
+            <Route path="categories/add/:id" element={<CategoryForm />} />
+              {/* Brands Routes */}
             <Route path="brands" element={<AdminBrands />} />
+            <Route path="brands/add" element={<BrandForm />} />
+            <Route path="brands/add/:id" element={<BrandForm />} />
+
             <Route path="specifications" element={<AdminSpecifications />} />
             <Route path="leads" element={<AdminLeads />} />
             <Route path="inquiries" element={<AdminInquiries />} />
