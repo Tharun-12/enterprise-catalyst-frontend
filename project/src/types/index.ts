@@ -3,6 +3,7 @@ export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'closed';
 export type InquiryStatus = 'new' | 'in-review' | 'responded' | 'closed';
 
 export interface Brand {
+  [x: string]: string;
   id: string;
   name: string;
   slug: string;
@@ -102,6 +103,9 @@ export interface Inquiry {
 }
 
 export interface Testimonial {
+  quote: string;
+  location: string;
+  image: string;
   id: string;
   name: string;
   role: string;
