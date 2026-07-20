@@ -165,9 +165,9 @@ export function CategoryForm() {
               required
               disabled={isLoading}
             />
-            <p className="text-xs text-muted-foreground">
+            {/* <p className="text-xs text-muted-foreground">
               This will be used as the display name for your category
-            </p>
+            </p> */}
           </div>
 
           {/* Category Description */}
@@ -184,9 +184,9 @@ export function CategoryForm() {
               className="w-full min-h-[120px] resize-none"
               disabled={isLoading}
             />
-            <p className="text-xs text-muted-foreground">
+            {/* <p className="text-xs text-muted-foreground">
               Provide a brief description of this category (optional)
-            </p>
+            </p> */}
           </div>
 
           {/* Action Buttons */}
