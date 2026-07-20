@@ -195,7 +195,7 @@ export function LoginPage() {
                                 variant="link" 
                                 className="px-0 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline decoration-2 underline-offset-2 h-auto"
                                 type="button"
-                                onClick={() => toast.info('Password reset link will be sent to your email')}
+                                onClick={() => navigate('/customer/forgot-password')}
                             >
                                 Forgot password?
                             </Button>

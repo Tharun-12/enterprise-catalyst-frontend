@@ -13,6 +13,9 @@ import { ContactPage } from '@/pages/contact';
 import { AboutPage } from '@/pages/about';
 import { NotFoundPage } from '@/pages/not-found';
 import { AdminLogin } from '@/pages/admin/login';
+import { ForgotPassword } from '@/pages/admin/forgot-password';
+import { VerifyOTP } from '@/pages/admin/verify-otp';
+import { ResetPassword } from '@/pages/admin/reset-password';
 import { AdminDashboard } from '@/pages/admin/dashboard';
 import { AdminProducts } from '@/pages/admin/products';
 import { ProductForm } from '@/pages/admin/product-form';
@@ -27,6 +30,9 @@ import { BrandForm } from '@/pages/admin/brand-form';
 
 import { RegisterPage } from '@/pages/auth/Register';
 import { LoginPage } from '@/pages/auth/Login';
+import { CustomerForgotPassword } from '@/pages/auth/CustomerForgotPassword';
+import { CustomerVerifyOTP } from '@/pages/auth/CustomerVerifyOTP';
+import { CustomerResetPassword } from '@/pages/auth/CustomerResetPassword';
 
 // Protected Route component - checks if admin exists in localStorage
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -49,6 +55,9 @@ export default function App() {
             {/* Auth routes */}
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/customer/forgot-password" element={<CustomerForgotPassword />} />
+          <Route path="/customer/verify-otp" element={<CustomerVerifyOTP />} />
+          <Route path="/customer/reset-password" element={<CustomerResetPassword />} />
 
           {/* Customer routes */}
           <Route element={<CustomerLayout />}>
@@ -65,6 +74,9 @@ export default function App() {
 
           {/* Admin routes */}
           <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin/forgot-password" element={<ForgotPassword />} />
+          <Route path="/admin/verify-otp" element={<VerifyOTP />} />
+          <Route path="/admin/reset-password" element={<ResetPassword />} />
 
           <Route path="/admin" element={
             <ProtectedRoute>
