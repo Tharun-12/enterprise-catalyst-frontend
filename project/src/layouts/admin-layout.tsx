@@ -1,8 +1,8 @@
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import {
   LayoutDashboard, Package, FolderTree, Award, Settings2, Heart,
-  MessageSquare, Settings, Menu, ChevronLeft, Building2, Bell, Search
+  MessageSquare, Settings, Menu, ChevronLeft, Building2, Bell, Search, LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ADMIN_NAV } from '@/constants';
+import { useSettings } from '@/hooks/use-settings';
 
 const iconMap: Record<string, any> = {
   LayoutDashboard, Package, FolderTree, Award, Settings2, Heart,
@@ -20,18 +21,40 @@ export function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { settings } = useSettings();
+
+  const handleLogout = () => {
+    localStorage.removeItem('adminAuth');
+    navigate('/admin/login');
+  };
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className={cn('flex items-center gap-3 px-4 h-16 border-b border-white/10 shrink-0', collapsed && 'justify-center')}>
-        <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-primary font-bold text-sm shrink-0">
-          MVB
-        </div>
+        {settings?.logo_url ? (
+          <img 
+            src={`http://localhost:5000${settings.logo_url}`} 
+            alt={settings.short_name || 'Logo'}
+            className={cn(
+              'object-contain',
+              collapsed ? 'w-10 h-10' : 'w-12 h-12'
+            )}
+          />
+        ) : (
+          <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-primary font-bold text-sm shrink-0">
+            {settings?.name?.charAt(0) || 'MVB'}
+          </div>
+        )}
         {!collapsed && (
           <div className="overflow-hidden">
-            <div className="font-bold text-white text-sm leading-tight">MVB Admin</div>
-            <div className="text-[10px] text-white/60 leading-tight">Enterprise Dashboard</div>
+            <div className="font-bold text-white text-sm leading-tight">
+              {settings?.name || 'MVB Admin'}
+            </div>
+            <div className="text-[10px] text-white/60 leading-tight">
+              Enterprise Dashboard
+            </div>
           </div>
         )}
       </div>
@@ -62,8 +85,8 @@ export function AdminLayout() {
         })}
       </nav>
 
-      {/* Bottom */}
-      <div className={cn('border-t border-white/10 p-4', collapsed && 'px-2')}>
+      {/* Bottom - Updated with Logout button */}
+      <div className={cn('border-t border-white/10 p-4 space-y-1', collapsed && 'px-2')}>
         <Link
           to="/"
           className={cn(
@@ -74,6 +97,19 @@ export function AdminLayout() {
           <Building2 className="w-5 h-5 shrink-0" />
           {!collapsed && <span>Customer Site</span>}
         </Link>
+        
+        {/* Logout Button */}
+        <button
+          onClick={handleLogout}
+          className={cn(
+            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition-all w-full',
+            collapsed && 'justify-center'
+          )}
+          title={collapsed ? 'Logout' : undefined}
+        >
+          <LogOut className="w-5 h-5 shrink-0" />
+          {!collapsed && <span>Logout</span>}
+        </button>
       </div>
     </div>
   );

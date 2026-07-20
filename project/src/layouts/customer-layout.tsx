@@ -1,28 +1,81 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { Menu, Search, Heart, GitCompare, ChevronDown, Building2, Phone, Mail } from 'lucide-react';
+import { Menu, Search, Heart, GitCompare, ChevronDown, Building2, Phone, Mail, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu';
 import { NAV_LINKS, COMPANY } from '@/constants';
 import { useApp } from '@/hooks/use-app';
 import { categories, products } from '@/data';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import { useSettings } from '@/hooks/use-settings';
+
+interface UserSession {
+  userId: number;
+  name: string;
+  email: string;
+  mobile: string;
+  loggedIn: boolean;
+  loginTime: string;
+}
 
 export function CustomerHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showResults, setShowResults] = useState(false);
+  const [user, setUser] = useState<UserSession | null>(null);
   const { wishlist, compareList } = useApp();
   const navigate = useNavigate();
+  const { settings } = useSettings();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', onScroll);
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  const loadUserSession = () => {
+    const session = localStorage.getItem('userSession');
+    if (session) {
+      try {
+        setUser(JSON.parse(session));
+      } catch {
+        setUser(null);
+      }
+    } else {
+      setUser(null);
+    }
+  };
+
+  useEffect(() => {
+    loadUserSession();
+    window.addEventListener('authChange', loadUserSession);
+    window.addEventListener('storage', loadUserSession);
+    return () => {
+      window.removeEventListener('authChange', loadUserSession);
+      window.removeEventListener('storage', loadUserSession);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('userSession');
+    localStorage.removeItem('rememberMe');
+    setUser(null);
+    window.dispatchEvent(new Event('authChange'));
+    toast.success('Logged out successfully');
+    navigate('/');
+  };
 
   const searchResults = searchQuery
     ? products
@@ -50,17 +103,17 @@ export function CustomerHeader() {
       <div className="bg-primary text-primary-foreground text-xs hidden md:block">
         <div className="container mx-auto px-4 flex items-center justify-between h-9">
           <div className="flex items-center gap-4">
-            <a href={`tel:${COMPANY.phone}`} className="flex items-center gap-1.5 hover:text-accent transition-colors">
+            <a href={`tel:${settings?.phone || COMPANY.phone}`} className="flex items-center gap-1.5 hover:text-accent transition-colors">
               <Phone className="w-3 h-3" />
-              {COMPANY.phone}
+              {settings?.phone || COMPANY.phone}
             </a>
-            <a href={`mailto:${COMPANY.email}`} className="flex items-center gap-1.5 hover:text-accent transition-colors">
+            <a href={`mailto:${settings?.email || COMPANY.email}`} className="flex items-center gap-1.5 hover:text-accent transition-colors">
               <Mail className="w-3 h-3" />
-              {COMPANY.email}
+              {settings?.email || COMPANY.email}
             </a>
           </div>
           <div className="flex items-center gap-4">
-            <span>{COMPANY.workingHours}</span>
+            <span>{settings?.working_hours || COMPANY.workingHours}</span>
             <Link to="/admin" className="flex items-center gap-1.5 hover:text-accent transition-colors font-medium">
               <Building2 className="w-3 h-3" />
               Admin Portal
@@ -78,18 +131,29 @@ export function CustomerHeader() {
       >
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16 lg:h-18">
-            {/* Logo */}
             <Link to="/" className="flex items-center gap-2.5 shrink-0">
-              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg">
-                MVB
-              </div>
+              {settings?.logo_url ? (
+                <img 
+                  src={`http://localhost:5000${settings.logo_url}`} 
+                  alt={settings.short_name || 'Logo'}
+                  className="w-10 h-10 object-contain"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg">
+                  {settings?.short_name?.charAt(0) || 'MVB'}
+                </div>
+              )}
               <div className="hidden sm:block">
-                <div className="font-bold text-foreground text-base leading-tight">MV Business Solutions</div>
-                <div className="text-[10px] text-muted-foreground leading-tight">Enterprise E-Catalog Platform</div>
+                <div className="font-bold text-foreground text-base leading-tight">
+                  {settings?.name || 'MV Business Solutions'}
+                </div>
+                {/* <div className="text-[10px] text-muted-foreground leading-tight">
+                  {settings?.description?.substring(0, 40) || 'Enterprise E-Catalog Platform'}
+                  {settings?.description && settings.description.length > 40 ? '...' : ''}
+                </div> */}
               </div>
             </Link>
 
-            {/* Search */}
             <form onSubmit={handleSearch} className="hidden lg:flex flex-1 max-w-md mx-8 relative">
               <div className="relative w-full">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -124,7 +188,6 @@ export function CustomerHeader() {
               </div>
             </form>
 
-            {/* Actions */}
             <div className="flex items-center gap-1 sm:gap-2">
               <Link to="/compare">
                 <Button variant="ghost" size="sm" className="relative">
@@ -149,7 +212,50 @@ export function CustomerHeader() {
                 </Button>
               </Link>
 
-              {/* Mobile menu */}
+              {user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="hidden md:flex items-center gap-1.5 border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                    >
+                      <User className="w-4 h-4" />
+                      <span className="max-w-[100px] truncate">{user.name}</span>
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>
+                      <div className="flex flex-col">
+                        <span className="font-semibold truncate">{user.name}</span>
+                        <span className="text-xs text-muted-foreground truncate">{user.email}</span>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate('/profile')}>
+                      <User className="w-4 h-4 mr-2" />
+                      My Profile
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Link to="/register">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="hidden md:flex items-center gap-1.5 border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                  >
+                    <User className="w-4 h-4" />
+                    <span>Register / Login</span>
+                  </Button>
+                </Link>
+              )}
+
               <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
                 <SheetTrigger asChild>
                   <Button variant="ghost" size="icon" className="lg:hidden">
@@ -159,14 +265,58 @@ export function CustomerHeader() {
                 <SheetContent side="right" className="w-[300px] sm:w-[350px]">
                   <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
                   <div className="flex items-center gap-2.5 mb-6 pt-2">
-                    <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold">
-                      MVB
-                    </div>
+                    {settings?.logo_url ? (
+                      <img 
+                        src={`http://localhost:5000${settings.logo_url}`} 
+                        alt={settings.short_name || 'Logo'}
+                        className="w-10 h-10 object-contain"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold">
+                        {settings?.short_name?.charAt(0) || 'MVB'}
+                      </div>
+                    )}
                     <div>
-                      <div className="font-bold text-sm">MV Business Solutions</div>
-                      <div className="text-[10px] text-muted-foreground">Enterprise E-Catalog</div>
+                      <div className="font-bold text-sm">
+                        {settings?.short_name || 'MV Business Solutions'}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        Enterprise E-Catalog
+                      </div>
                     </div>
                   </div>
+
+                  {user ? (
+                    <div className="mb-2">
+                      <button
+                        onClick={() => { setMobileOpen(false); navigate('/profile'); }}
+                        className="w-full flex items-center gap-2 px-4 py-3 rounded-lg bg-primary/10 mb-1 hover:bg-primary/20 transition-colors"
+                      >
+                        <User className="w-4 h-4 text-primary shrink-0" />
+                        <div className="flex-1 min-w-0 text-left">
+                          <div className="text-sm font-semibold text-primary truncate">{user.name}</div>
+                          <div className="text-xs text-muted-foreground truncate">{user.email}</div>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => { setMobileOpen(false); handleLogout(); }}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Logout
+                      </button>
+                    </div>
+                  ) : (
+                    <Link
+                      to="/register"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center gap-2 px-4 py-3 mb-2 rounded-lg bg-primary/10 text-primary font-medium hover:bg-primary/20 transition-colors"
+                    >
+                      <User className="w-4 h-4" />
+                      Register / Login
+                    </Link>
+                  )}
+
                   <form onSubmit={handleSearch} className="mb-4">
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -198,7 +348,6 @@ export function CustomerHeader() {
             </div>
           </div>
 
-          {/* Desktop nav */}
           <nav className="hidden lg:flex items-center justify-center gap-1 h-12 border-t">
             {NAV_LINKS.map((link) => (
               <Link
@@ -237,28 +386,39 @@ export function CustomerHeader() {
 }
 
 export function CustomerFooter() {
+  const { settings } = useSettings();
+
   return (
     <footer className="bg-foreground text-background mt-20">
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold">
-                MVB
-              </div>
+              {settings?.logo_url ? (
+                <img 
+                  src={`http://localhost:5000${settings.logo_url}`} 
+                  alt={settings.short_name || 'Logo'}
+                  className="w-10 h-10 object-contain"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold">
+                  {settings?.short_name?.charAt(0) || 'MVB'}
+                </div>
+              )}
               <div>
-                <div className="font-bold">MV Business Solutions</div>
+                <div className="font-bold">{settings?.short_name || 'MV Business Solutions'}</div>
                 <div className="text-xs opacity-60">Enterprise E-Catalog</div>
               </div>
             </div>
             <p className="text-sm opacity-70 leading-relaxed mb-4">
-              {COMPANY.description}
+              {settings?.description || COMPANY.description}
             </p>
+
             <div className="flex gap-3">
-              {['linkedin', 'twitter', 'facebook', 'youtube'].map((s) => (
+              {(['linkedin', 'twitter', 'facebook', 'youtube'] as const).map((s) => (
                 <a
                   key={s}
-                  href={COMPANY.social[s as keyof typeof COMPANY.social]}
+                  href={settings?.[s as keyof typeof settings] as string || COMPANY.social[s]}
                   className="w-9 h-9 rounded-lg bg-white/10 hover:bg-primary flex items-center justify-center transition-colors"
                   aria-label={s}
                 >
@@ -299,19 +459,23 @@ export function CustomerFooter() {
             <ul className="space-y-3 text-sm opacity-70">
               <li className="flex items-start gap-2">
                 <span className="shrink-0 mt-0.5">📍</span>
-                <span>{COMPANY.address}</span>
+                <span>{settings?.address || COMPANY.address}</span>
               </li>
               <li className="flex items-center gap-2">
                 <span>📞</span>
-                <a href={`tel:${COMPANY.phone}`} className="hover:opacity-100 hover:text-accent transition-colors">{COMPANY.phone}</a>
+                <a href={`tel:${settings?.phone || COMPANY.phone}`} className="hover:opacity-100 hover:text-accent transition-colors">
+                  {settings?.phone || COMPANY.phone}
+                </a>
               </li>
               <li className="flex items-center gap-2">
                 <span>✉️</span>
-                <a href={`mailto:${COMPANY.email}`} className="hover:opacity-100 hover:text-accent transition-colors">{COMPANY.email}</a>
+                <a href={`mailto:${settings?.email || COMPANY.email}`} className="hover:opacity-100 hover:text-accent transition-colors">
+                  {settings?.email || COMPANY.email}
+                </a>
               </li>
               <li className="flex items-center gap-2">
                 <span>🕐</span>
-                <span>{COMPANY.workingHours}</span>
+                <span>{settings?.working_hours || COMPANY.workingHours}</span>
               </li>
             </ul>
           </div>
@@ -319,7 +483,7 @@ export function CustomerFooter() {
 
         <div className="border-t border-white/10 mt-10 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-xs opacity-60">
-            © {new Date().getFullYear()} {COMPANY.name}. All rights reserved. | GSTIN: {COMPANY.gst}
+            © {new Date().getFullYear()} {settings?.name || COMPANY.name}. All rights reserved. | GSTIN: {settings?.gstin || COMPANY.gst}
           </p>
           <div className="flex gap-4 text-xs opacity-60">
             <Link to="/about" className="hover:opacity-100">Privacy Policy</Link>
@@ -333,9 +497,11 @@ export function CustomerFooter() {
 }
 
 export function WhatsAppButton() {
+  const { settings } = useSettings();
+  
   return (
     <a
-      href={`https://wa.me/${COMPANY.whatsapp.replace(/\s/g, '')}`}
+      href={`https://wa.me/${(settings?.whatsapp || COMPANY.whatsapp).replace(/\s/g, '')}`}
       target="_blank"
       rel="noopener noreferrer"
       className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-[#25D366] text-white shadow-lg hover:scale-110 transition-transform flex items-center justify-center"

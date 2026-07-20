@@ -78,7 +78,7 @@ export const NAV_LINKS = [
 ];
 
 export const ADMIN_NAV = [
-  { label: 'Dashboard', path: '/admin', icon: 'LayoutDashboard' },
+  { label: 'Dashboard', path: '/admin/dashboard', icon: 'LayoutDashboard' },
   { label: 'Products', path: '/admin/products', icon: 'Package' },
   { label: 'Categories', path: '/admin/categories', icon: 'FolderTree' },
   { label: 'Brands', path: '/admin/brands', icon: 'Award' },
