@@ -61,6 +61,7 @@ export default function App() {
 
           {/* Customer routes */}
           <Route element={<CustomerLayout />}>
+          
             <Route path="/" element={<HomePage />} />
             <Route path="/categories" element={<CategoriesPage />} />
             <Route path="/products" element={<ProductsPage />} />
@@ -108,7 +109,5 @@ export default function App() {
     </AppProvider>
   );
 }
-
-
 
 
