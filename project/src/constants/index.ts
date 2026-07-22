@@ -79,9 +79,10 @@ export const NAV_LINKS = [
 
 export const ADMIN_NAV = [
   { label: 'Dashboard', path: '/admin/dashboard', icon: 'LayoutDashboard' },
-  { label: 'Products', path: '/admin/products', icon: 'Package' },
   { label: 'Categories', path: '/admin/categories', icon: 'FolderTree' },
   { label: 'Brands', path: '/admin/brands', icon: 'Award' },
+  //  { label: 'Variants', path: '/admin/variants', icon: 'ListChecks' },
+  { label: 'Products', path: '/admin/products', icon: 'Package' },
   { label: 'Specifications', path: '/admin/specifications', icon: 'Settings2' },
   { label: 'Wishlist Leads', path: '/admin/leads', icon: 'Heart' },
   { label: 'Inquiries', path: '/admin/inquiries', icon: 'MessageSquare' },

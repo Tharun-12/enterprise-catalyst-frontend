@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Heart, GitCompare, Download, FileText, Check, Star, ChevronRight,
@@ -19,16 +19,129 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useApp } from '@/hooks/use-app';
-import { getProductBySlug, getRelatedProducts, getBrandById } from '@/data';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { PageBreadcrumb as Breadcrumb } from '@/layouts/customer-layout-wrapper';
 
+// API response types
+interface Category {
+  id: number;
+  category_name: string;
+}
+
+interface Brand {
+  id: number;
+  name: string;
+  description: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface Variant {
+  id: number;
+  product_id: number;
+  color_name: string;
+  color_hex: string;
+  price: string;
+  stock: number;
+  image_url: string;
+}
+
+interface Product {
+  id: number;
+  product_name: string;
+  product_code: string;
+  product_category_id: number;
+  product_brand: string;
+  product_details_pdf: string;
+  price: string;
+  dimensions: string;
+  specifications: string;
+  weight: string;
+  discount: string;
+  product_description: string;
+  warranty: string;
+  created_at: string;
+  updated_at: string;
+  category_name?: string;
+  variants?: Variant[];
+}
+
+// Transform API product to match expected format
+const transformProduct = (product: Product, categories: Category[], brands: Brand[]) => {
+  const category = categories.find(c => c.id === product.product_category_id);
+  const brand = brands.find(b => b.name === product.product_brand);
+  const primaryVariant = product.variants?.[0];
+  
+  // Get all images from variants
+  const galleryImages = product.variants?.map(v => 
+    v.image_url ? `http://localhost:5000${v.image_url}` : null
+  ).filter(Boolean) as string[] || [];
+  
+  const defaultImage = 'https://via.placeholder.com/400x400';
+  const gallery = galleryImages.length > 0 ? galleryImages : [defaultImage];
+  
+  return {
+    id: String(product.id),
+    name: product.product_name,
+    slug: product.product_name.toLowerCase().replace(/\s+/g, '-'),
+    price: parseFloat(product.price),
+    originalPrice: parseFloat(product.price) * (1 + parseFloat(product.discount || '0') / 100),
+    discount: parseFloat(product.discount || '0'),
+    rating: 4.5,
+    reviewCount: 0,
+    isPopular: false,
+    isNew: false,
+    brandId: String(brand?.id || product.product_brand || 'Unknown'),
+    brandName: brand?.name || product.product_brand || 'Unknown',
+    brandDescription: brand?.description || '',
+    categoryId: product.product_category_id,
+    categoryName: category?.category_name || product.category_name || 'Uncategorized',
+    shortDescription: product.product_description?.substring(0, 150) || '',
+    description: product.product_description || '',
+    gallery: gallery,
+    sku: product.product_code,
+    warranty: product.warranty || 'Standard warranty',
+    specGroups: [
+      {
+        groupName: 'Specifications',
+        fields: [
+          { key: 'dimensions', label: 'Dimensions', value: product.dimensions || 'N/A' },
+          { key: 'weight', label: 'Weight', value: product.weight ? `${product.weight} kg` : 'N/A' },
+          { key: 'specifications', label: 'Specifications', value: product.specifications || 'N/A' },
+          { key: 'warranty', label: 'Warranty', value: product.warranty || 'Standard' },
+        ]
+      }
+    ],
+    features: product.specifications?.split(',').map(s => s.trim()).filter(Boolean) || ['Premium quality', 'Enterprise grade'],
+    downloads: product.product_details_pdf ? [
+      { name: 'Product Details', size: 'PDF', url: product.product_details_pdf }
+    ] : [],
+    status: 'active' as const,
+    createdAt: product.created_at,
+    variants: product.variants || [],
+    // Additional fields
+    productCode: product.product_code,
+    brand: brand?.name || product.product_brand || 'Unknown',
+    category: category?.category_name || product.category_name || 'Uncategorized',
+    image: gallery[0] || defaultImage,
+    images: gallery,
+    stock: product.variants?.reduce((sum, v) => sum + v.stock, 0) || 0,
+    hasVariants: (product.variants?.length || 0) > 0,
+    discountPercentage: parseFloat(product.discount || '0'),
+    regularPrice: parseFloat(product.price),
+    salePrice: parseFloat(product.price) * (1 - parseFloat(product.discount || '0') / 100),
+  };
+};
+
 export function ProductDetailsPage() {
   const { slug } = useParams();
-  const navigate = useNavigate();
-  void navigate;
-  const product = slug ? getProductBySlug(slug) : undefined;
+  const [productData, setProductData] = useState<Product | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeImage, setActiveImage] = useState(0);
   const [zoomed, setZoomed] = useState(false);
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
@@ -36,16 +149,107 @@ export function ProductDetailsPage() {
   const [inquiryOpen, setInquiryOpen] = useState(false);
   const { addToWishlist, removeFromWishlist, isInWishlist, addToCompare, removeFromCompare, isInCompare, addInquiry } = useApp();
 
-  const relatedProducts = useMemo(() => (product ? getRelatedProducts(product) : []), [product]);
-  const brand = product ? getBrandById(product.brandId) : undefined;
+  // Fetch data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-  if (!product) {
+        // Fetch categories
+        const categoriesRes = await fetch('http://localhost:5000/api/categories/');
+        const categoriesData = await categoriesRes.json();
+        
+        if (!categoriesData.success) {
+          throw new Error('Failed to fetch categories');
+        }
+        setCategories(categoriesData.data);
+
+        // Fetch brands
+        const brandsRes = await fetch('http://localhost:5000/api/brands/');
+        const brandsData = await brandsRes.json();
+        
+        if (!brandsData.success) {
+          throw new Error('Failed to fetch brands');
+        }
+        setBrands(brandsData.data);
+
+        // Fetch all products with variants
+        const productsRes = await fetch('http://localhost:5000/api/products/products-with-variants');
+        const productsData = await productsRes.json();
+        
+        if (Array.isArray(productsData)) {
+          setAllProducts(productsData);
+          
+          // Find the current product by slug
+          const foundProduct = productsData.find((p: Product) => 
+            p.product_name.toLowerCase().replace(/\s+/g, '-') === slug
+          );
+          
+          if (foundProduct) {
+            setProductData(foundProduct);
+          } else {
+            setError('Product not found');
+          }
+        } else {
+          throw new Error('Invalid products data format');
+        }
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        setError('Failed to load product details. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (slug) {
+      fetchData();
+    }
+  }, [slug]);
+
+  const product = useMemo(() => {
+    if (!productData) return null;
+    return transformProduct(productData, categories, brands);
+  }, [productData, categories, brands]);
+
+  const relatedProducts = useMemo(() => {
+    if (!product || allProducts.length === 0) return [];
+    
+    return allProducts
+      .filter(p => 
+        p.product_category_id === product.categoryId && 
+        p.id !== parseInt(product.id)
+      )
+      .slice(0, 4)
+      .map(p => transformProduct(p, categories, brands));
+  }, [product, allProducts, categories, brands]);
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="animate-pulse">
+          <div className="h-8 w-64 bg-gray-200 dark:bg-gray-700 rounded mb-8"></div>
+          <div className="grid lg:grid-cols-2 gap-8">
+            <div className="aspect-square bg-gray-200 dark:bg-gray-700 rounded-2xl"></div>
+            <div className="space-y-4">
+              <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+              <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              <div className="h-12 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !product) {
     return (
       <div className="container mx-auto px-4 py-8">
         <EmptyState
           icon={<Package className="w-8 h-8" />}
           title="Product not found"
-          description="The product you're looking for doesn't exist or has been removed."
+          description={error || "The product you're looking for doesn't exist or has been removed."}
           action={<Button asChild><Link to="/products">Browse Products</Link></Button>}
         />
       </div>
@@ -119,7 +323,7 @@ export function ProductDetailsPage() {
             onMouseMove={handleMouseMove}
           >
             <img
-              src={product.gallery[activeImage]}
+              src={product.gallery[activeImage] || 'https://via.placeholder.com/400x400'}
               alt={product.name}
               className="w-full h-full object-cover transition-transform duration-300"
               style={zoomed ? { transform: `scale(2)`, transformOrigin: `${zoomPos.x}% ${zoomPos.y}%` } : undefined}
@@ -179,9 +383,22 @@ export function ProductDetailsPage() {
 
           <p className="text-muted-foreground leading-relaxed mb-6">{product.shortDescription}</p>
 
+          {/* Price */}
+          <div className="mb-6">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl font-bold">₹{product.price.toLocaleString()}</span>
+              {product.discount > 0 && (
+                <>
+                  <span className="text-lg text-muted-foreground line-through">₹{product.originalPrice.toLocaleString()}</span>
+                  <Badge variant="destructive" className="text-sm">{product.discount}% OFF</Badge>
+                </>
+              )}
+            </div>
+          </div>
+
           {/* Key specs preview */}
           <div className="grid grid-cols-2 gap-3 mb-6">
-            {product.specGroups[1]?.fields.slice(0, 4).map((field) => (
+            {product.specGroups[0]?.fields.slice(0, 4).map((field) => (
               <div key={field.key} className="bg-muted/40 rounded-lg p-3">
                 <div className="text-xs text-muted-foreground mb-0.5">{field.label}</div>
                 <div className="text-sm font-semibold">{field.value}</div>
@@ -192,7 +409,7 @@ export function ProductDetailsPage() {
           {/* Trust badges */}
           <div className="flex flex-wrap gap-4 mb-6 text-sm">
             <div className="flex items-center gap-1.5 text-muted-foreground">
-              <ShieldCheck className="w-4 h-4 text-green-600" /> {product.warranty} warranty
+              <ShieldCheck className="w-4 h-4 text-green-600" /> {product.warranty || 'Standard warranty'}
             </div>
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <Truck className="w-4 h-4 text-primary" /> Pan-India delivery
@@ -239,7 +456,7 @@ export function ProductDetailsPage() {
         </div>
       </div>
 
-      {/* Tabs: Description, Specifications, Features, Downloads */}
+      {/* Rest of the component remains the same... */}
       <Tabs defaultValue="description" className="mb-12">
         <TabsList className="w-full justify-start flex-wrap h-auto p-1 gap-1">
           <TabsTrigger value="description">Description</TabsTrigger>
@@ -252,12 +469,16 @@ export function ProductDetailsPage() {
           <Card className="p-6">
             <h2 className="text-xl font-bold mb-4">Product Description</h2>
             <p className="text-muted-foreground leading-relaxed mb-4">{product.description}</p>
-            <p className="text-muted-foreground leading-relaxed">
-              This product is part of the {product.categoryName} category and is manufactured by {product.brandName}, a {brand?.country}-based company known for {brand?.description.toLowerCase()}. The {product.name} is designed to meet enterprise-grade requirements with robust construction, advanced technology, and comprehensive support.
-            </p>
+            {product.brandDescription && (
+              <div className="mt-4 p-4 bg-muted/30 rounded-lg">
+                <h3 className="font-semibold text-sm mb-1">About {product.brandName}</h3>
+                <p className="text-sm text-muted-foreground">{product.brandDescription}</p>
+              </div>
+            )}
           </Card>
         </TabsContent>
 
+        {/* Rest of the tabs remain the same */}
         <TabsContent value="specifications" className="mt-6">
           <Card className="p-6">
             <h2 className="text-xl font-bold mb-6">Technical Specifications</h2>
@@ -312,7 +533,7 @@ export function ProductDetailsPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-sm">{dl.name}</div>
-                    <div className="text-xs text-muted-foreground">PDF · {dl.size}</div>
+                    <div className="text-xs text-muted-foreground">{dl.size}</div>
                   </div>
                   <Button size="icon" variant="outline" onClick={() => toast.info('Download started (demo)')}>
                     <Download className="w-4 h-4" />
@@ -320,39 +541,9 @@ export function ProductDetailsPage() {
                 </div>
               ))}
             </div>
-            <div className="mt-6 p-4 rounded-xl bg-accent/10 border border-accent/20 flex items-center gap-3">
-              <Download className="w-5 h-5 text-accent shrink-0" />
-              <div className="flex-1">
-                <div className="font-semibold text-sm">Download Complete Brochure</div>
-                <div className="text-xs text-muted-foreground">Get all product documents in one package</div>
-              </div>
-              <Button size="sm" variant="outline" onClick={() => toast.info('Brochure download started (demo)')}>
-                Download All
-              </Button>
-            </div>
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* Brand Info */}
-      {brand && (
-        <Card className="p-6 mb-12 bg-muted/30">
-          <div className="flex flex-col sm:flex-row items-center gap-6">
-            <div className="w-24 h-24 rounded-2xl bg-card flex items-center justify-center shrink-0 shadow-sm">
-              <span className="font-bold text-xl text-primary">{brand.logoText}</span>
-            </div>
-            <div className="flex-1 text-center sm:text-left">
-              <h3 className="font-bold text-lg mb-1">About {brand.name}</h3>
-              <p className="text-sm text-muted-foreground mb-2">{brand.description}</p>
-              <div className="flex items-center gap-4 text-xs text-muted-foreground justify-center sm:justify-start">
-                <span>Country: {brand.country}</span>
-                <span>·</span>
-                <span>Website: {brand.website}</span>
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
 
       {/* Related Products */}
       {relatedProducts.length > 0 && (

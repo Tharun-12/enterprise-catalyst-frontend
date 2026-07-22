@@ -1,4 +1,3 @@
-
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,6 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, X, Filter } from 'lucide-react';
-import { categories, brands } from '@/data';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -22,13 +20,43 @@ interface FilterPanelProps {
   filters: FilterState;
   onFilterChange: (filters: FilterState) => void;
   resultCount: number;
+  brands: Brand[]; // From API
+  categories: Category[]; // From API
 }
 
-export function FilterPanel({ filters, onFilterChange, resultCount }: FilterPanelProps) {
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+interface Brand {
+  id: number;
+  name: string;
+  description: string;
+  created_at: string;
+  updated_at: string;
+}
 
-  const currentCategory = categories.find((c) => c.slug === filters.category);
-  const categorySpecFields = currentCategory?.specFields || [];
+interface Category {
+  id: number;
+  category_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export function FilterPanel({ 
+  filters, 
+  onFilterChange, 
+  resultCount, 
+  brands,
+  categories 
+}: FilterPanelProps) {
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    brands: true
+  });
+
+  const currentCategory = categories.find((c) => 
+    c.category_name.toLowerCase().replace(/\s+/g, '-') === filters.category
+  );
+
+  // Get unique brand names from products for filtering
+  // Since we don't have spec fields from API yet, we'll use a simpler approach
+  const categorySpecFields: any[] = []; // Empty for now
 
   const toggleSection = (key: string) => {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -84,33 +112,36 @@ export function FilterPanel({ filters, onFilterChange, resultCount }: FilterPane
       <ScrollArea className="h-[calc(100vh-280px)] min-h-[400px]">
         <div className="p-4 space-y-1">
           {/* Brands */}
-          <Collapsible open={openSections['brands'] ?? true} onOpenChange={() => toggleSection('brands')}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full py-2 group">
-              <span className="font-medium text-sm">Brands</span>
-              <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', openSections['brands'] ?? true ? '' : 'rotate-[-90deg]')} />
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="space-y-2 pt-1 pb-3">
-                {brands.map((brand) => (
-                  <div key={brand.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`brand-${brand.id}`}
-                      checked={filters.brands.includes(brand.id)}
-                      onCheckedChange={() => toggleBrand(brand.id)}
-                    />
-                    <Label htmlFor={`brand-${brand.id}`} className="text-sm font-normal cursor-pointer flex-1 flex items-center justify-between">
-                      <span>{brand.name}</span>
-                      <span className="text-xs text-muted-foreground">{brand.productCount}</span>
-                    </Label>
+          {brands.length > 0 && (
+            <>
+              <Collapsible open={openSections['brands'] ?? true} onOpenChange={() => toggleSection('brands')}>
+                <CollapsibleTrigger className="flex items-center justify-between w-full py-2 group">
+                  <span className="font-medium text-sm">Brands</span>
+                  <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', openSections['brands'] ?? true ? '' : 'rotate-[-90deg]')} />
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="space-y-2 pt-1 pb-3">
+                    {brands.map((brand) => (
+                      <div key={brand.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`brand-${brand.id}`}
+                          checked={filters.brands.includes(String(brand.id))}
+                          onCheckedChange={() => toggleBrand(String(brand.id))}
+                        />
+                        <Label htmlFor={`brand-${brand.id}`} className="text-sm font-normal cursor-pointer flex-1">
+                          {brand.name}
+                        </Label>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
+                </CollapsibleContent>
+              </Collapsible>
 
-          <Separator />
+              <Separator />
+            </>
+          )}
 
-          {/* Dynamic spec filters */}
+          {/* Dynamic spec filters - currently disabled until spec fields are available from API */}
           {categorySpecFields.map((field) => (
             <Collapsible key={field.key} open={openSections[field.key] ?? true} onOpenChange={() => toggleSection(field.key)}>
               <CollapsibleTrigger className="flex items-center justify-between w-full py-2">
@@ -119,7 +150,7 @@ export function FilterPanel({ filters, onFilterChange, resultCount }: FilterPane
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <div className="space-y-2 pt-1 pb-3">
-                  {field.options?.map((option) => (
+                  {field.options?.map((option: string) => (
                     <div key={option} className="flex items-center space-x-2">
                       <Checkbox
                         id={`spec-${field.key}-${option}`}

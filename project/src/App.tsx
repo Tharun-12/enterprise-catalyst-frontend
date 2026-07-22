@@ -20,7 +20,7 @@ import { AdminDashboard } from '@/pages/admin/dashboard';
 import { AdminProducts } from '@/pages/admin/products';
 import { ProductForm } from '@/pages/admin/product-form';
 import { AdminCategories } from '@/pages/admin/categories';
-import { CategoryForm } from '@/pages/admin/categories-form';
+// import { CategoryForm } from '@/pages/admin/categories-form';
 import { AdminBrands } from '@/pages/admin/brands';
 import { AdminSpecifications } from '@/pages/admin/specifications';
 import { AdminLeads } from '@/pages/admin/leads';
@@ -89,11 +89,14 @@ export default function App() {
             <Route path="products/add" element={<ProductForm />} />
             <Route path="products/edit/:id" element={<ProductForm />} />
             <Route path="categories" element={<AdminCategories />} />
-            <Route path="categories/add" element={<CategoryForm />} />
-            <Route path="categories/add/:id" element={<CategoryForm />} />
+            {/* <Route path="categories/add" element={<CategoryForm />} />
+            <Route path="categories/add/:id" element={<CategoryForm />} /> */}
             <Route path="brands" element={<AdminBrands />} />
             <Route path="brands/add" element={<BrandForm />} />
             <Route path="brands/add/:id" element={<BrandForm />} />
+
+
+
             <Route path="specifications" element={<AdminSpecifications />} />
             <Route path="leads" element={<AdminLeads />} />
             <Route path="inquiries" element={<AdminInquiries />} />

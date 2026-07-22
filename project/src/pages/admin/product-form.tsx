@@ -1,504 +1,977 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Upload, X } from 'lucide-react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from 'sonner';
+import axios from 'axios';
+import { Pencil, Trash2, X, Plus, FileText, ExternalLink } from 'lucide-react';
+import './product-form.css';
 
+const API_URL = 'http://localhost:5000';
+
+// Type definitions
 interface Category {
   id: number;
-  name: string;
-  description: string;
+  category_name: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface Brand {
   id: number;
   name: string;
-  description: string;
+  description?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
-interface ProductImage {
-  id: number;
-  image_url: string;
-  is_primary: number;
-  sort_order: number;
-}
-
-interface ProductFormData {
-  name: string;
-  sku: string;
-  categoryId: string;
-  brandId: string;
-  description: string;
+interface FormData {
+  product_name: string;
+  product_code: string;
+  product_category_id: string | number;
+  product_brand: string;
   price: string;
+  dimensions: string;
+  specifications: string;
+  weight: string;
+  discount: string;
+  product_description: string;
   warranty: string;
-  images: File[];
+  product_details_pdf: File | null;
+  existing_pdf?: string;
 }
 
-export function ProductForm() {
+interface Variant {
+  id?: number;
+  color_name: string;
+  color_hex: string;
+  price: string;
+  stock: string;
+  images: File[];
+  existingImages?: string[];
+  _isNew?: boolean; // Flag to track if this is a new variant
+}
+
+const ProductForm = () => {
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const isEditMode = !!id;
 
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-  const [existingImages, setExistingImages] = useState<ProductImage[]>([]);
-  const [imagesToDelete, setImagesToDelete] = useState<number[]>([]);
-
-  const [formData, setFormData] = useState<ProductFormData>({
-    name: '',
-    sku: '',
-    categoryId: '',
-    brandId: '',
-    description: '',
+  // State for form data
+  const [formData, setFormData] = useState<FormData>({
+    product_name: '',
+    product_code: '',
+    product_category_id: '',
+    product_brand: '',
     price: '',
+    dimensions: '',
+    specifications: '',
+    weight: '',
+    discount: '0',
+    product_description: '',
     warranty: '',
-    images: [],
+    product_details_pdf: null,
+    existing_pdf: '',
   });
 
-  // Fetch categories and brands
+  // State for variants
+  const [variants, setVariants] = useState<Variant[]>([]);
+  const [currentVariant, setCurrentVariant] = useState<Variant>({
+    color_name: '',
+    color_hex: '#000000',
+    price: '',
+    stock: '100',
+    images: [],
+    existingImages: [],
+  });
+  const [editingVariantIndex, setEditingVariantIndex] = useState<number | null>(null);
+
+  // State for dropdown data
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
+  const [success, setSuccess] = useState<string>('');
+
+  // State to track if images are selected
+  const [selectedFileNames, setSelectedFileNames] = useState<string>('');
+
+  // Guard against double-submits
+  const isSubmittingRef = useRef<boolean>(false);
+
+  // Fetch categories and brands on component mount
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        // Fetch categories
-        const categoriesResponse = await fetch('http://localhost:5000/api/categories/');
-        const categoriesData = await categoriesResponse.json();
-        if (categoriesData.success) {
-          setCategories(categoriesData.data);
-        }
-
-        // Fetch brands
-        const brandsResponse = await fetch('http://localhost:5000/api/brands/');
-        const brandsData = await brandsResponse.json();
-        if (brandsData.success) {
-          setBrands(brandsData.data);
-        }
-
-        // If edit mode, fetch product data
-        if (isEditMode) {
-          const productResponse = await fetch(`http://localhost:5000/api/products/${id}`);
-          const productData = await productResponse.json();
-          if (productData.success) {
-            const product = productData.data;
-            setFormData({
-              name: product.name,
-              sku: product.sku || '',
-              categoryId: String(product.category_id),
-              brandId: String(product.brand_id),
-              description: product.description || '',
-              price: String(product.price),
-              warranty: product.warranty || '',
-              images: [],
-            });
-            
-            // Load existing images
-            if (product.images && product.images.length > 0) {
-              setExistingImages(product.images);
-              const existingPreviews = product.images.map((img: any) => 
-                `http://localhost:5000${img.image_url}`
-              );
-              setImagePreviews(existingPreviews);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        toast.error('Failed to load data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [isEditMode, id]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-
-    // Validate file size (max 5MB per file)
-    const validFiles = files.filter((file) => {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error(`${file.name} is too large (max 5MB)`);
-        return false;
-      }
-      return true;
-    });
-
-    if (validFiles.length === 0) return;
-
-    // Create preview URLs
-    const previews = validFiles.map((file) => URL.createObjectURL(file));
-    setImagePreviews((prev) => [...prev, ...previews]);
-
-    setFormData((prev) => ({
-      ...prev,
-      images: [...prev.images, ...validFiles],
-    }));
-
-    // Reset input
-    e.target.value = '';
-  };
-
-  const removeImage = async (index: number) => {
-    // Check if this is an existing image (from database)
-    if (isEditMode && index < existingImages.length) {
-      const imageToDelete = existingImages[index];
-      if (imageToDelete) {
-        // Delete from database
-        try {
-          const response = await fetch(
-            `http://localhost:5000/api/products/${id}/images/${imageToDelete.id}`,
-            {
-              method: 'DELETE',
-            }
-          );
-          
-          const result = await response.json();
-          
-          if (result.success) {
-            toast.success('Image deleted successfully');
-            // Remove from existing images
-            setExistingImages(prev => prev.filter((_, i) => i !== index));
-            // Remove from previews
-            setImagePreviews(prev => prev.filter((_, i) => i !== index));
-          } else {
-            toast.error(result.message || 'Failed to delete image');
-          }
-        } catch (error) {
-          console.error('Error deleting image:', error);
-          toast.error('Failed to delete image');
-        }
-      }
-    } else {
-      // Remove new image (not yet saved to database)
-      const adjustedIndex = index - existingImages.length;
-      setImagePreviews((prev) => prev.filter((_, i) => i !== index));
-      setFormData((prev) => ({
-        ...prev,
-        images: prev.images.filter((_, i) => i !== adjustedIndex),
-      }));
+    fetchCategories();
+    fetchBrands();
+    if (isEditMode) {
+      fetchProductData();
     }
-  };
+  }, [id]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validation
-    if (!formData.name.trim()) {
-      toast.error('Product name is required');
-      return;
-    }
-    if (!formData.categoryId) {
-      toast.error('Please select a category');
-      return;
-    }
-    if (!formData.brandId) {
-      toast.error('Please select a brand');
-      return;
-    }
-    if (!formData.price || parseFloat(formData.price) <= 0) {
-      toast.error('Please enter a valid price');
-      return;
-    }
-
+  // Fetch product data for edit mode
+  const fetchProductData = async () => {
     try {
-      setSubmitting(true);
+      setLoading(true);
+      setError('');
 
-      // Prepare form data for API submission
-      const submitData = new FormData();
-      submitData.append('name', formData.name);
-      submitData.append('sku', formData.sku);
-      submitData.append('categoryId', formData.categoryId);
-      submitData.append('brandId', formData.brandId);
-      submitData.append('description', formData.description);
-      submitData.append('price', formData.price);
-      submitData.append('warranty', formData.warranty);
+      // Fetch product details
+      const productResponse = await axios.get(`${API_URL}/api/products/${id}`);
+      const productData = productResponse.data;
 
-      // Append images
-      formData.images.forEach((image) => {
-        submitData.append('images', image);
+      console.log('Product data:', productData);
+
+      // Populate form data
+      setFormData({
+        product_name: productData.product_name || '',
+        product_code: productData.product_code || '',
+        product_category_id: productData.product_category_id || '',
+        product_brand: productData.product_brand || '',
+        price: productData.price || '',
+        dimensions: productData.dimensions || '',
+        specifications: productData.specifications || '',
+        weight: productData.weight || '',
+        discount: productData.discount || '0',
+        product_description: productData.product_description || '',
+        warranty: productData.warranty || '',
+        product_details_pdf: null,
+        existing_pdf: productData.product_details_pdf || '',
       });
 
-      // Send deleted image IDs
-      if (imagesToDelete.length > 0) {
-        submitData.append('deletedImages', JSON.stringify(imagesToDelete));
+      // Fetch variants
+      try {
+        const variantsResponse = await axios.get(`${API_URL}/api/products/variants/${id}`);
+        const variantsData = variantsResponse.data;
+
+        console.log('Variants data:', variantsData);
+
+        if (Array.isArray(variantsData) && variantsData.length > 0) {
+          const formattedVariants = variantsData.map((v: any) => ({
+            id: v.id,
+            color_name: v.color_name || '',
+            color_hex: v.color_hex || '#000000',
+            price: String(v.price) || '',
+            stock: String(v.stock) || '100',
+            images: [],
+            existingImages: v.image_url ? [v.image_url] : [],
+            _isNew: false,
+          }));
+          setVariants(formattedVariants);
+        }
+      } catch (variantError) {
+        console.error('Error fetching variants:', variantError);
       }
 
-      const url = isEditMode 
-        ? `http://localhost:5000/api/products/${id}`
-        : 'http://localhost:5000/api/products';
-      
-      const method = isEditMode ? 'PUT' : 'POST';
+    } catch (error) {
+      console.error('Error fetching product:', error);
+      setError('Failed to load product data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      const response = await fetch(url, {
-        method,
-        body: submitData,
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        toast.success(isEditMode ? 'Product updated successfully!' : 'Product created successfully!');
-        navigate('/admin/products');
+  // Fetch categories
+  const fetchCategories = async (): Promise<void> => {
+    try {
+      console.log('Fetching categories...');
+      const response = await axios.get(`${API_URL}/api/categories/`);
+      if (response.data.success) {
+        console.log('Categories loaded:', response.data.data.length);
+        setCategories(response.data.data);
       } else {
-        toast.error(result.message || 'Failed to save product');
+        console.warn('Categories fetch returned success:false', response.data);
       }
     } catch (error) {
-      console.error('Error saving product:', error);
-      toast.error('Failed to save product');
-    } finally {
-      setSubmitting(false);
+      console.error('Error fetching categories:', error);
     }
   };
 
-  if (loading) {
+  // Fetch brands
+  const fetchBrands = async (): Promise<void> => {
+    try {
+      console.log('Fetching brands...');
+      const response = await axios.get(`${API_URL}/api/brands/`);
+      if (response.data.success) {
+        console.log('Brands loaded:', response.data.data.length);
+        setBrands(response.data.data);
+      } else {
+        console.warn('Brands fetch returned success:false', response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching brands:', error);
+    }
+  };
+
+  // Handle form input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>): void => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  // Handle file input change
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const file = e.target.files?.[0] || null;
+    console.log('Product PDF selected:', file ? file.name : 'none');
+    setFormData((prev) => ({
+      ...prev,
+      product_details_pdf: file,
+    }));
+  };
+
+  // Handle variant input changes
+  const handleVariantChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const { name, value } = e.target;
+    setCurrentVariant((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  // Handle variant image upload
+  const handleVariantImages = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const files = Array.from(e.target.files || []);
+    console.log('Variant images selected:', files.map((f) => f.name));
+    setCurrentVariant((prev) => ({
+      ...prev,
+      images: files,
+    }));
+
+    if (files.length > 0) {
+      setSelectedFileNames(files.map((f) => f.name).join(', '));
+    } else {
+      setSelectedFileNames('');
+    }
+  };
+
+  // Add or update variant
+  const handleAddOrUpdateVariant = (): void => {
+    console.log('handleAddOrUpdateVariant called with:', currentVariant);
+
+    if (!currentVariant.color_name || !currentVariant.price) {
+      setError('Please fill in color name and price for the variant');
+      return;
+    }
+
+    if (isNaN(parseFloat(currentVariant.price))) {
+      setError('Variant price must be a valid number');
+      return;
+    }
+
+    if (editingVariantIndex !== null) {
+      // Update existing variant - keep the ID
+      const updatedVariants = [...variants];
+      updatedVariants[editingVariantIndex] = { 
+        ...currentVariant, 
+        id: variants[editingVariantIndex].id,
+        _isNew: false
+      };
+      setVariants(updatedVariants);
+      setEditingVariantIndex(null);
+      setSuccess('Variant updated successfully');
+    } else {
+      // Add new variant
+      setVariants((prev) => [...prev, { ...currentVariant, _isNew: true }]);
+      setSuccess('Variant added successfully');
+    }
+
+    // Reset current variant form
+    setCurrentVariant({
+      color_name: '',
+      color_hex: '#000000',
+      price: '',
+      stock: '100',
+      images: [],
+      existingImages: [],
+    });
+    setSelectedFileNames('');
+    setError('');
+  };
+
+  // Edit variant - populate form with variant data
+  const handleEditVariant = (index: number): void => {
+    const variant = variants[index];
+    setCurrentVariant({
+      ...variant,
+      images: [],
+    });
+    setEditingVariantIndex(index);
+    setSelectedFileNames('');
+    // Scroll to variant form
+    document.querySelector('.variant-form')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Cancel editing
+  const cancelEdit = (): void => {
+    setEditingVariantIndex(null);
+    setCurrentVariant({
+      color_name: '',
+      color_hex: '#000000',
+      price: '',
+      stock: '100',
+      images: [],
+      existingImages: [],
+    });
+    setSelectedFileNames('');
+    setError('');
+  };
+
+  // Remove variant from list
+  const removeVariant = (index: number): void => {
+    console.log('Removing variant at index', index);
+    const newVariants = variants.filter((_, i) => i !== index);
+    setVariants(newVariants);
+    if (editingVariantIndex === index) {
+      setEditingVariantIndex(null);
+      setCurrentVariant({
+        color_name: '',
+        color_hex: '#000000',
+        price: '',
+        stock: '100',
+        images: [],
+        existingImages: [],
+      });
+    }
+  };
+
+  // Get image URL for display
+  const getImageUrl = (imagePath: string): string => {
+    if (!imagePath) return '';
+    if (imagePath.startsWith('http')) return imagePath;
+    const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+    return `${API_URL}${cleanPath}`;
+  };
+
+  // Get PDF URL
+  const getPdfUrl = (pdfPath: string): string => {
+    if (!pdfPath) return '';
+    if (pdfPath.startsWith('http')) return pdfPath;
+    return `${API_URL}/uploads/pdfs/${pdfPath}`;
+  };
+
+  // Submit a single variant with POST
+  const submitVariant = async (productId: number, variant: Variant) => {
+    const fd = new FormData();
+
+    fd.append("product_id", String(productId));
+    fd.append("color_name", variant.color_name);
+    fd.append("color_hex", variant.color_hex);
+    fd.append("price", variant.price);
+    fd.append("stock", variant.stock);
+
+    if (variant.images && variant.images.length > 0) {
+      variant.images.forEach((img) => {
+        fd.append("images", img);
+      });
+    }
+
+    const response = await axios.post(`${API_URL}/api/products/variants`, fd, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    
+    return response;
+  };
+
+  // Update existing variant with PUT
+  const updateVariant = async (variantId: number, variant: Variant, keepImage: boolean = true) => {
+    const fd = new FormData();
+
+    fd.append("color_name", variant.color_name);
+    fd.append("color_hex", variant.color_hex);
+    fd.append("price", variant.price);
+    fd.append("stock", variant.stock);
+    fd.append("keep_image", String(keepImage));
+
+    if (variant.images && variant.images.length > 0) {
+      variant.images.forEach((img) => {
+        fd.append("images", img);
+      });
+    }
+
+    const response = await axios.put(`${API_URL}/api/products/variants/${variantId}`, fd, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    
+    return response;
+  };
+
+  // Delete variant
+  const deleteVariant = async (variantId: number) => {
+    return axios.delete(`${API_URL}/api/products/variants/${variantId}`);
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
+    e.preventDefault();
+
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+
+    setLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      console.log("========== PRODUCT SUBMIT ==========");
+      console.log("Mode:", isEditMode ? "Edit" : "Create");
+      console.log("Variants:", variants);
+
+      let productId: number;
+
+      if (isEditMode) {
+        // Update Product
+        const productFormData = new FormData();
+
+        if (formData.product_name) productFormData.append("product_name", formData.product_name);
+        if (formData.product_code) productFormData.append("product_code", formData.product_code);
+        if (formData.product_category_id) productFormData.append("product_category_id", String(formData.product_category_id));
+        if (formData.product_brand) productFormData.append("product_brand", formData.product_brand);
+        if (formData.price) productFormData.append("price", formData.price);
+        if (formData.dimensions) productFormData.append("dimensions", formData.dimensions);
+        if (formData.specifications) productFormData.append("specifications", formData.specifications);
+        if (formData.weight) productFormData.append("weight", formData.weight);
+        if (formData.discount) productFormData.append("discount", formData.discount);
+        if (formData.product_description) productFormData.append("product_description", formData.product_description);
+        if (formData.warranty) productFormData.append("warranty", formData.warranty);
+        if (formData.existing_pdf) productFormData.append("existing_pdf", formData.existing_pdf);
+        
+        if (formData.product_details_pdf) {
+          productFormData.append("product_details_pdf", formData.product_details_pdf);
+        }
+
+        console.log("Updating product...");
+
+        const productResponse = await axios.put(
+          `${API_URL}/api/products/${id}`,
+          productFormData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+
+        console.log("Product Update Response:", productResponse.data);
+
+        if (productResponse.status !== 200 && !productResponse.data.message) {
+          throw new Error("Product update failed");
+        }
+
+        productId = parseInt(id!);
+        setSuccess("Product updated successfully.");
+
+        // Get existing variants from database
+        const existingVariantsResponse = await axios.get(`${API_URL}/api/products/variants/${productId}`);
+        const existingVariants = existingVariantsResponse.data;
+        console.log("Existing variants in DB:", existingVariants);
+
+        // Track which variants to keep
+        const existingIds = existingVariants.map((v: any) => v.id);
+        const currentIds = variants.filter(v => v.id).map(v => v.id);
+
+        console.log("Existing IDs:", existingIds);
+        console.log("Current IDs:", currentIds);
+
+        // Delete variants that are in DB but not in current list
+        for (const existingId of existingIds) {
+          if (!currentIds.includes(existingId)) {
+            console.log(`Deleting variant ${existingId}`);
+            await deleteVariant(existingId);
+          }
+        }
+
+        // Update or create variants
+        for (const variant of variants) {
+          if (variant.id) {
+            // Update existing variant
+            console.log(`Updating variant ${variant.id}`);
+            const keepImage = !(variant.images && variant.images.length > 0);
+            await updateVariant(variant.id, variant, keepImage);
+          } else {
+            // Create new variant
+            console.log("Creating new variant");
+            await submitVariant(productId, variant);
+          }
+        }
+
+      } else {
+        // Create Product
+        const productFormData = new FormData();
+
+        Object.entries(formData).forEach(([key, value]) => {
+          if (value !== null && value !== "" && key !== 'existing_pdf') {
+            productFormData.append(key, value as any);
+          }
+        });
+
+        console.log("Creating product...");
+
+        const productResponse = await axios.post(
+          `${API_URL}/api/products`,
+          productFormData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+
+        console.log("Product Response:", productResponse.data);
+
+        if (!productResponse.data.success) {
+          throw new Error("Product creation failed");
+        }
+
+        productId = productResponse.data.id;
+
+        if (!productId) {
+          throw new Error("Product id missing from response");
+        }
+
+        setSuccess("Product added successfully.");
+
+        // Upload Variants
+        if (variants.length > 0) {
+          console.log("Uploading variants...");
+          for (let i = 0; i < variants.length; i++) {
+            const variant = variants[i];
+            await submitVariant(productId, variant);
+          }
+        }
+      }
+
+      // Navigate to products page after success
+      setTimeout(() => {
+        navigate('/admin/products');
+      }, 1500);
+
+    } catch (err: any) {
+      console.error("Error in handleSubmit:", err);
+      if (axios.isAxiosError(err)) {
+        console.log("Response data:", err.response?.data);
+        console.log("Status:", err.response?.status);
+        setError(
+          err.response?.data?.error ||
+            err.response?.data?.message ||
+            "Request Failed"
+        );
+      } else {
+        setError(err.message || "An unexpected error occurred");
+      }
+    } finally {
+      setLoading(false);
+      isSubmittingRef.current = false;
+    }
+  };
+
+  if (loading && isEditMode) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading...</p>
+      <div className="product-form-container">
+        <div className="loading-container">
+          <div className="spinner"></div>
+          <p>Loading product data...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate('/admin/products')}
-          className="h-9 w-9"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {isEditMode ? 'Edit Product' : 'Add New Product'}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {isEditMode ? 'Update product information' : 'Create a new product in the catalog'}
-          </p>
-        </div>
-      </div>
+    <div className="product-form-container">
+      <h2>{isEditMode ? 'Edit Product' : 'Add New Product'}</h2>
 
-      <form onSubmit={handleSubmit}>
-        <Card className="p-6">
-          <div className="grid gap-6">
-            {/* Product Name */}
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm font-medium">
-                Product Name <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="name"
-                name="name"
-                value={formData.name}
+      {error && <div className="alert alert-error">{error}</div>}
+      {success && <div className="alert alert-success">{success}</div>}
+
+      <form onSubmit={handleSubmit} className="product-form">
+        {/* Product Details Section */}
+        <div className="form-section">
+          <h3>Product Details</h3>
+
+          <div className="form-grid">
+            <div className="form-group">
+              <label htmlFor="product_name">Product Name *</label>
+              <input
+                type="text"
+                id="product_name"
+                name="product_name"
+                value={formData.product_name}
                 onChange={handleInputChange}
-                placeholder="Enter product name"
                 required
+                placeholder="Enter product name"
               />
             </div>
 
-            {/* SKU */}
-            <div className="space-y-2">
-              <Label htmlFor="sku" className="text-sm font-medium">SKU</Label>
-              <Input
-                id="sku"
-                name="sku"
-                value={formData.sku}
+            <div className="form-group">
+              <label htmlFor="product_code">Product Code *</label>
+              <input
+                type="text"
+                id="product_code"
+                name="product_code"
+                value={formData.product_code}
                 onChange={handleInputChange}
-                placeholder="Enter SKU (e.g., PROD-001)"
+                required
+                placeholder="Enter product code"
               />
             </div>
 
-            {/* Category and Brand */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="categoryId" className="text-sm font-medium">
-                  Category <span className="text-destructive">*</span>
-                </Label>
-                <Select
-                  value={formData.categoryId}
-                  onValueChange={(value) => handleSelectChange('categoryId', value)}
-                >
-                  <SelectTrigger id="categoryId">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={String(category.id)}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="brandId" className="text-sm font-medium">
-                  Brand <span className="text-destructive">*</span>
-                </Label>
-                <Select
-                  value={formData.brandId}
-                  onValueChange={(value) => handleSelectChange('brandId', value)}
-                >
-                  <SelectTrigger id="brandId">
-                    <SelectValue placeholder="Select brand" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {brands.map((brand) => (
-                      <SelectItem key={brand.id} value={String(brand.id)}>
-                        {brand.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Full Description */}
-            <div className="space-y-2">
-              <Label htmlFor="description" className="text-sm font-medium">
-                Description
-              </Label>
-              <Textarea
-                id="description"
-                name="description"
-                value={formData.description}
+            <div className="form-group">
+              <label htmlFor="product_category_id">Category *</label>
+              <select
+                id="product_category_id"
+                name="product_category_id"
+                value={String(formData.product_category_id)}
                 onChange={handleInputChange}
-                placeholder="Detailed product description"
-                className="min-h-[120px] resize-y"
+                required
+              >
+                <option value="">Select Category</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.category_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="product_brand">Brand</label>
+              <select
+                id="product_brand"
+                name="product_brand"
+                value={formData.product_brand}
+                onChange={handleInputChange}
+              >
+                <option value="">Select Brand</option>
+                {brands.map((brand) => (
+                  <option key={brand.id} value={brand.name}>
+                    {brand.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="price">Price *</label>
+              <input
+                type="number"
+                id="price"
+                name="price"
+                value={formData.price}
+                onChange={handleInputChange}
+                required
+                step="0.01"
+                placeholder="0.00"
               />
             </div>
 
-            {/* Price and Warranty */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="price" className="text-sm font-medium">
-                  Price (INR) <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="price"
-                  name="price"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.price}
-                  onChange={handleInputChange}
-                  placeholder="0.00"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="warranty" className="text-sm font-medium">
-                  Warranty
-                </Label>
-                <Input
-                  id="warranty"
-                  name="warranty"
-                  value={formData.warranty}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 2 years, 12 months"
-                />
-              </div>
+            <div className="form-group">
+              <label htmlFor="discount">Discount (%)</label>
+              <input
+                type="number"
+                id="discount"
+                name="discount"
+                value={formData.discount}
+                onChange={handleInputChange}
+                step="0.01"
+                min="0"
+                max="100"
+                placeholder="0"
+              />
             </div>
 
-            {/* Image Upload */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Product Images</Label>
-              <div className="flex items-center gap-4">
-                <label className="inline-flex items-center gap-2 px-4 py-2 border rounded-md cursor-pointer hover:bg-accent transition-colors">
-                  <Upload className="h-4 w-4" />
-                  Upload Images
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
-                </label>
-                <span className="text-xs text-muted-foreground">
-                  Max 5MB per image
-                </span>
-              </div>
+            <div className="form-group">
+              <label htmlFor="weight">Weight</label>
+              <input
+                type="number"
+                id="weight"
+                name="weight"
+                value={formData.weight}
+                onChange={handleInputChange}
+                step="0.01"
+                placeholder="0.00"
+              />
+            </div>
 
-              {/* Image Previews */}
-              {imagePreviews.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-4">
-                  {imagePreviews.map((preview, index) => (
-                    <div key={index} className="relative group">
-                      <div className="aspect-square rounded-lg overflow-hidden border bg-muted">
-                        <img
-                          src={preview}
-                          alt={`Product ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute -top-2 -right-2 p-1 rounded-full bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 transition-colors"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                      {isEditMode && index < existingImages.length && (
-                        <div className="absolute bottom-2 left-2 bg-primary/80 text-white text-xs px-2 py-0.5 rounded">
-                          Saved
-                        </div>
-                      )}
-                    </div>
-                  ))}
+            <div className="form-group">
+              <label htmlFor="dimensions">Dimensions</label>
+              <input
+                type="text"
+                id="dimensions"
+                name="dimensions"
+                value={formData.dimensions}
+                onChange={handleInputChange}
+                placeholder="e.g., 10x20x30 cm"
+              />
+            </div>
+
+            <div className="form-group full-width">
+              <label htmlFor="product_description">Product Description</label>
+              <textarea
+                id="product_description"
+                name="product_description"
+                value={formData.product_description}
+                onChange={handleInputChange}
+                rows={4}
+                placeholder="Enter product description"
+              />
+            </div>
+
+            <div className="form-group full-width">
+              <label htmlFor="specifications">Specifications</label>
+              <textarea
+                id="specifications"
+                name="specifications"
+                value={formData.specifications}
+                onChange={handleInputChange}
+                rows={4}
+                placeholder="Enter product specifications"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="warranty">Warranty</label>
+              <input
+                type="text"
+                id="warranty"
+                name="warranty"
+                value={formData.warranty}
+                onChange={handleInputChange}
+                placeholder="e.g., 1 Year"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="product_details_pdf">Product PDF</label>
+              <input
+                type="file"
+                id="product_details_pdf"
+                name="product_details_pdf"
+                onChange={handleFileChange}
+                accept=".pdf"
+              />
+              <small className="file-hint">Upload product details PDF (max 5MB)</small>
+              {isEditMode && formData.existing_pdf && (
+                <div className="file-existing-container">
+                  <FileText className="file-icon" size={16} />
+                  <span className="file-existing">
+                    Current PDF: {formData.existing_pdf}
+                    {formData.product_details_pdf && (
+                      <span className="file-will-replace"> (will be replaced)</span>
+                    )}
+                  </span>
+                  <a 
+                    href={getPdfUrl(formData.existing_pdf)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="file-link"
+                  >
+                    <ExternalLink size={14} /> View PDF
+                  </a>
                 </div>
               )}
             </div>
+          </div>
+        </div>
 
-            {/* Form Actions */}
-            <div className="flex items-center gap-3 pt-4 border-t">
-              <Button
+        {/* Variants Section */}
+        <div className="form-section">
+          <h3>Product Variants</h3>
+
+          <div className="variant-form">
+            <div className="variant-form-grid">
+              <div className="form-group">
+                <label>Color Name *</label>
+                <input
+                  type="text"
+                  name="color_name"
+                  value={currentVariant.color_name}
+                  onChange={handleVariantChange}
+                  placeholder="e.g., Black"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Color Hex</label>
+                <input
+                  type="color"
+                  name="color_hex"
+                  value={currentVariant.color_hex}
+                  onChange={handleVariantChange}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Variant Price *</label>
+                <input
+                  type="number"
+                  name="price"
+                  value={currentVariant.price}
+                  onChange={handleVariantChange}
+                  step="0.01"
+                  placeholder="0.00"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Stock</label>
+                <input
+                  type="number"
+                  name="stock"
+                  value={currentVariant.stock}
+                  onChange={handleVariantChange}
+                  placeholder="100"
+                />
+              </div>
+
+              <div className="form-group full-width">
+                <label>Variant Images</label>
+                <input
+                  type="file"
+                  name="images"
+                  onChange={handleVariantImages}
+                  accept="image/*"
+                  multiple
+                />
+                {selectedFileNames && (
+                  <small className="file-selected">{selectedFileNames}</small>
+                )}
+                {currentVariant.existingImages && currentVariant.existingImages.length > 0 && (
+                  <div className="current-images-container">
+                    <small className="file-existing">Current images:</small>
+                    <div className="current-images-grid">
+                      {currentVariant.existingImages.map((img, idx) => (
+                        <div key={idx} className="current-image-item">
+                          <img 
+                            src={getImageUrl(img)} 
+                            alt={`Variant ${idx + 1}`}
+                            className="current-image-thumb"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <small className="file-hint">Upload images for this variant (only first image will be stored)</small>
+              </div>
+            </div>
+
+            <div className="variant-actions">
+              <button
                 type="button"
-                variant="outline"
-                onClick={() => navigate('/admin/products')}
-                className="flex-1"
+                onClick={handleAddOrUpdateVariant}
+                className="btn btn-secondary"
               >
-                Cancel
-              </Button>
-              <Button type="submit" className="flex-1" disabled={submitting}>
-                {submitting ? (
+                {editingVariantIndex !== null ? (
                   <>
-                    <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
-                    {isEditMode ? 'Updating...' : 'Creating...'}
+                    <Pencil className="icon-sm" /> Update Variant
                   </>
                 ) : (
-                  isEditMode ? 'Update Product' : 'Create Product'
+                  <>
+                    <Plus className="icon-sm" /> Add Variant
+                  </>
                 )}
-              </Button>
+              </button>
+              {editingVariantIndex !== null && (
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  className="btn btn-outline"
+                >
+                  <X className="icon-sm" /> Cancel
+                </button>
+              )}
             </div>
           </div>
-        </Card>
+
+          {/* Variants List */}
+          {variants.length > 0 && (
+            <div className="variants-list">
+              <h4>Added Variants ({variants.length})</h4>
+              <div className="variants-grid">
+                {variants.map((variant, index) => (
+                  <div key={index} className={`variant-card ${editingVariantIndex === index ? 'editing' : ''}`}>
+                    <div className="variant-color" style={{ backgroundColor: variant.color_hex }}></div>
+                    <div className="variant-info">
+                      <strong>{variant.color_name}</strong>
+                      <span>Price: ₹{parseFloat(variant.price).toLocaleString('en-IN')}</span>
+                      <span>Stock: {variant.stock}</span>
+                      {variant.existingImages && variant.existingImages.length > 0 && (
+                        <div className="variant-images-preview">
+                          <span className="image-count">Images: {variant.existingImages.length}</span>
+                          <div className="mini-images">
+                            {variant.existingImages.slice(0, 2).map((img, idx) => (
+                              <img 
+                                key={idx}
+                                src={getImageUrl(img)} 
+                                alt={`${variant.color_name} ${idx + 1}`}
+                                className="mini-image"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
+                                }}
+                              />
+                            ))}
+                            {variant.existingImages.length > 2 && (
+                              <span className="more-images">+{variant.existingImages.length - 2}</span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {variant.images.length > 0 && (
+                        <span className="new-images">New Images: {variant.images.length}</span>
+                      )}
+                      {variant._isNew && (
+                        <span className="badge-new">New</span>
+                      )}
+                    </div>
+                    <div className="variant-actions-buttons">
+                      <button
+                        type="button"
+                        onClick={() => handleEditVariant(index)}
+                        className="btn btn-edit"
+                        title="Edit variant"
+                      >
+                        <Pencil className="icon-sm" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeVariant(index)}
+                        className="btn btn-danger"
+                        title="Remove variant"
+                      >
+                        <Trash2 className="icon-sm" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Submit Button */}
+        <div className="form-actions">
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={loading}
+          >
+            {loading ? (isEditMode ? 'Updating Product...' : 'Adding Product...') : (isEditMode ? 'Update Product' : 'Add Product')}
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/admin/products')}
+            className="btn btn-secondary"
+          >
+            Cancel
+          </button>
+        </div>
       </form>
     </div>
   );
-}
+};
+
+export { ProductForm };

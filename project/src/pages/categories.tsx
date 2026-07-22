@@ -9,18 +9,19 @@ import * as Icons from 'lucide-react';
 import { PageBreadcrumb as Breadcrumb } from '@/layouts/customer-layout-wrapper';
 import { useState, useEffect } from 'react';
 
-// Category interface based on your API response
+// Category interface based on your API response - FIXED to match actual API
 interface Category {
   id: number;
-  name: string;
-  description: string;
+  category_name: string;  // Changed from 'name' to 'category_name'
   created_at: string;
   updated_at: string;
+  // Note: description is not in your API response
 }
 
 // Define a color mapping for categories
 const categoryColors: Record<string, string> = {
-  'Artificial Intelligence': '#6C63FF',
+  'Artifical Intelligence': '#6C63FF',  // Fixed spelling to match API
+  'Artificial Intelligence': '#6C63FF', // Keep both for safety
   'Data Cabling': '#00B4D8',
   'Data Infrastructure': '#2D9CDB',
   'Data Physical Security': '#F2994A',
@@ -30,7 +31,8 @@ const categoryColors: Record<string, string> = {
 
 // Define icon mapping for categories
 const categoryIcons: Record<string, keyof typeof Icons> = {
-  'Artificial Intelligence': 'Brain',
+  'Artifical Intelligence': 'Brain',  // Fixed spelling to match API
+  'Artificial Intelligence': 'Brain', // Keep both for safety
   'Data Cabling': 'Network',
   'Data Infrastructure': 'Server',
   'Data Physical Security': 'Shield',
@@ -40,6 +42,7 @@ const categoryIcons: Record<string, keyof typeof Icons> = {
 
 // Placeholder images for categories
 const categoryImages: Record<string, string> = {
+  'Artifical Intelligence': 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&h=400&fit=crop',  // Fixed spelling
   'Artificial Intelligence': 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&h=400&fit=crop',
   'Data Cabling': 'https://images.unsplash.com/photo-1581091226033-d5c48150dbaa?w=800&h=400&fit=crop',
   'Data Infrastructure': 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&h=400&fit=crop',
@@ -48,8 +51,9 @@ const categoryImages: Record<string, string> = {
   'Default': 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=400&fit=crop'
 };
 
-// Function to create slug from name
+// Function to create slug from name with fallback
 const createSlug = (name: string): string => {
+  if (!name) return 'uncategorized';
   return name.toLowerCase().replace(/\s+/g, '-');
 };
 
@@ -70,7 +74,6 @@ export function CategoriesPage() {
         
         const data = await response.json();
         
-        // Check if the response has the expected structure
         if (data && data.success && Array.isArray(data.data)) {
           setCategories(data.data);
         } else {
@@ -169,14 +172,17 @@ export function CategoriesPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {categories.map((cat, i) => {
+          // Use category_name from API response
+          const categoryName = cat.category_name;
+          
           // Get category color or default
-          const color = categoryColors[cat.name] || categoryColors.Default;
+          const color = categoryColors[categoryName] || categoryColors.Default;
           // Get icon name or default
-          const iconName = categoryIcons[cat.name] || categoryIcons.Default;
+          const iconName = categoryIcons[categoryName] || categoryIcons.Default;
           const Icon = (Icons as any)[iconName] || Icons.Package;
           // Get image or default
-          const imageUrl = categoryImages[cat.name] || categoryImages.Default;
-          const slug = createSlug(cat.name);
+          const imageUrl = categoryImages[categoryName] || categoryImages.Default;
+          const slug = createSlug(categoryName);
 
           return (
             <motion.div
@@ -200,31 +206,30 @@ export function CategoriesPage() {
                     <Icon className="w-16 h-16 text-white drop-shadow-lg" />
                   </div>
                   <div className="absolute top-3 right-3">
-                    <Badge className="bg-white/90 text-foreground border-0 shadow-sm backdrop-blur-sm">
+                    {/* <Badge className="bg-white/90 text-foreground border-0 shadow-sm backdrop-blur-sm">
                       {cat.id ? `${cat.id} Products` : 'Products'}
-                    </Badge>
+                    </Badge> */}
                   </div>
                 </div>
                 <div className="p-5 flex flex-col flex-1">
-                  <h3 className="font-bold text-lg mb-2 line-clamp-1">{cat.name}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed mb-4 flex-1 line-clamp-3">
-                    {cat.description || 'No description available'}
-                  </p>
+                  <h3 className="font-bold text-lg mb-2 line-clamp-1">{categoryName}</h3>
+                  {/* <p className="text-sm text-muted-foreground leading-relaxed mb-4 flex-1 line-clamp-3">
+                    No description available
+                  </p> */}
                   
-                  <Button 
-                    asChild 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
-                    style={{ 
-                      borderColor: color,
-                      color: color,
-                    } as React.CSSProperties}
-                  >
-                    <Link to={`/products?category=${slug}`}>
+                  <Link to={`/products?category=${slug}`} className="w-full">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
+                      style={{ 
+                        borderColor: color,
+                        color: color,
+                      } as React.CSSProperties}
+                    >
                       Browse Products <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-                    </Link>
-                  </Button>
+                    </Button>
+                  </Link>
                 </div>
               </Card>
             </motion.div>

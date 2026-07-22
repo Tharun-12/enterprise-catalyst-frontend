@@ -8,30 +8,34 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
 
+// Updated interface to match API response
 interface Product {
   id: number;
-  name: string;
-  sku: string;
-  category_id: number;
-  brand_id: number;
-  description: string;
+  product_name: string;
+  product_code: string;
+  product_category_id: number;
+  product_brand: string;
+  product_description: string;
   price: string;
   warranty: string;
-  status: 'active' | 'draft' | 'archived';
   created_at: string;
   updated_at: string;
   category_name: string;
-  brand_name: string;
-  primary_image: string;
-  images: Array<{
+  product_details_pdf: string;
+  dimensions: string;
+  specifications: string;
+  weight: string;
+  discount: string;
+  variants?: Array<{
     id: number;
+    product_id: number;
+    color_name: string;
+    color_hex: string;
+    price: string;
+    stock: number;
     image_url: string;
-    is_primary: number;
-    sort_order: number;
   }>;
-  image_count: number;
 }
 
 interface Category {
@@ -40,14 +44,17 @@ interface Category {
   slug: string;
 }
 
-export function AdminProducts() {
+interface AdminProductsProps {
+  onEditProduct?: (productId: number) => void;
+}
+
+export function AdminProducts({ onEditProduct }: AdminProductsProps) {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
   const [sortField, setSortField] = useState<'name' | 'createdAt'>('createdAt');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
@@ -60,7 +67,7 @@ export function AdminProducts() {
   useEffect(() => {
     fetchProducts();
     fetchCategories();
-  }, [search, categoryFilter, statusFilter, page]);
+  }, [search, categoryFilter, page]);
 
   const fetchCategories = async () => {
     try {
@@ -77,7 +84,8 @@ export function AdminProducts() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      let url = `http://localhost:5000/api/products/?page=${page}&limit=${pageSize}`;
+      
+      let url = `http://localhost:5000/api/products/products-with-variants?page=${page}&limit=${pageSize}`;
       
       if (search) {
         url += `&search=${encodeURIComponent(search)}`;
@@ -85,17 +93,18 @@ export function AdminProducts() {
       if (categoryFilter !== 'all') {
         url += `&categoryId=${categoryFilter}`;
       }
-      if (statusFilter !== 'all') {
-        url += `&status=${statusFilter}`;
-      }
 
       const response = await fetch(url);
       const data = await response.json();
       
-      if (data.success) {
+      if (Array.isArray(data)) {
+        setProducts(data);
+        setTotalProducts(data.length);
+      } else if (data.success && Array.isArray(data.data)) {
         setProducts(data.data);
-        setTotalProducts(data.pagination.total || data.data.length);
+        setTotalProducts(data.pagination?.total || data.data.length);
       } else {
+        console.error('Unexpected API response format:', data);
         toast.error('Failed to fetch products');
       }
     } catch (error) {
@@ -106,26 +115,29 @@ export function AdminProducts() {
     }
   };
 
-  // Filter and sort products (client-side filtering for better UX)
+  // Filter and sort products
   const filteredAndSortedProducts = useMemo(() => {
     let result = [...products];
     
-    // Client-side search (if needed, but API already handles search)
-    // We keep this as fallback
     if (search && products.length > 0) {
       const q = search.toLowerCase();
       result = result.filter((p) => 
-        p.name.toLowerCase().includes(q) || 
-        p.sku?.toLowerCase().includes(q) || 
-        p.brand_name?.toLowerCase().includes(q)
+        p.product_name.toLowerCase().includes(q) || 
+        p.product_code?.toLowerCase().includes(q) || 
+        p.product_brand?.toLowerCase().includes(q)
       );
     }
     
-    // Sort
+    if (categoryFilter !== 'all') {
+      result = result.filter((p) => 
+        p.product_category_id === parseInt(categoryFilter)
+      );
+    }
+    
     result.sort((a, b) => {
       let cmp = 0;
       if (sortField === 'name') {
-        cmp = a.name.localeCompare(b.name);
+        cmp = a.product_name.localeCompare(b.product_name);
       } else {
         cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
       }
@@ -133,7 +145,7 @@ export function AdminProducts() {
     });
     
     return result;
-  }, [products, search, sortField, sortDir]);
+  }, [products, search, categoryFilter, sortField, sortDir]);
 
   const totalPages = Math.ceil(totalProducts / pageSize);
   const paginated = filteredAndSortedProducts;
@@ -157,10 +169,10 @@ export function AdminProducts() {
       const data = await response.json();
       
       if (data.success) {
-        toast.success(`Product "${deleteTarget.name}" deleted`);
+        toast.success(`Product "${deleteTarget.product_name}" deleted`);
         setProducts((prev) => prev.filter((p) => p.id !== deleteTarget.id));
         setDeleteTarget(null);
-        fetchProducts(); // Refresh the list
+        fetchProducts();
       } else {
         toast.error(data.message || 'Failed to delete product');
       }
@@ -181,18 +193,38 @@ export function AdminProducts() {
       await Promise.all(promises);
       toast.success(`${selected.length} products deleted`);
       setSelected([]);
-      fetchProducts(); // Refresh the list
+      fetchProducts();
     } catch (error) {
       console.error('Error bulk deleting products:', error);
       toast.error('Failed to delete products');
     }
   };
 
+  const getProductImage = (product: Product) => {
+    if (product.variants && product.variants.length > 0) {
+      return product.variants[0].image_url;
+    }
+    return '/placeholder-image.jpg';
+  };
+
   const getImageUrl = (imageUrl: string) => {
+    if (!imageUrl || imageUrl === '/placeholder-image.jpg') {
+      return '/placeholder-image.jpg';
+    }
     if (imageUrl.startsWith('http')) {
       return imageUrl;
     }
-    return `http://localhost:5000${imageUrl}`;
+    const normalizedUrl = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+    return `http://localhost:5000${normalizedUrl}`;
+  };
+
+  const handleEditClick = (productId: number) => {
+    if (onEditProduct) {
+      onEditProduct(productId);
+    } else {
+      // Navigate to edit page with product ID
+      navigate(`/admin/products/edit/${productId}`);
+    }
   };
 
   if (loading && products.length === 0) {
@@ -237,20 +269,6 @@ export function AdminProducts() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={statusFilter} onValueChange={(value) => {
-            setStatusFilter(value);
-            setPage(1);
-          }}>
-            <SelectTrigger className="w-[120px] h-9">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="archived">Archived</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
         <Button onClick={() => navigate('/admin/products/add')}>
           <Plus className="w-4 h-4 mr-1.5" /> Add Product
@@ -285,12 +303,8 @@ export function AdminProducts() {
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Product</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Category</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Brand</th>
-                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
-                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
-                  <button onClick={() => { setSortField('createdAt'); setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); }}>
-                    Created
-                  </button>
-                </th>
+                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Price</th>
+                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Created</th>
                 <th className="p-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
@@ -314,30 +328,33 @@ export function AdminProducts() {
                     </td>
                     <td className="p-3">
                       <div className="flex items-center gap-3">
-                        <img 
-                          src={product.primary_image ? getImageUrl(product.primary_image) : '/placeholder-image.jpg'} 
-                          alt={product.name} 
-                          className="w-10 h-10 rounded-lg object-cover shrink-0" 
-                        />
+                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden shrink-0">
+                          <img 
+                            src={getImageUrl(getProductImage(product))} 
+                            alt={product.product_name} 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
+                            }}
+                          />
+                        </div>
                         <div className="min-w-0">
-                          <div className="font-medium text-sm truncate max-w-[200px]">{product.name}</div>
-                          <div className="text-xs text-muted-foreground">{product.sku || 'No SKU'}</div>
+                          <div className="font-medium text-sm truncate max-w-[200px]">{product.product_name}</div>
+                          <div className="text-xs text-muted-foreground">{product.product_code || 'No SKU'}</div>
                         </div>
                       </div>
                     </td>
                     <td className="p-3 hidden md:table-cell">
                       <Badge variant="outline" className="text-xs">{product.category_name}</Badge>
                     </td>
-                    <td className="p-3 hidden lg:table-cell text-sm">{product.brand_name}</td>
+                    <td className="p-3 hidden lg:table-cell text-sm">{product.product_brand}</td>
                     <td className="p-3">
-                      <Badge className={cn(
-                        'text-xs',
-                        product.status === 'active' ? 'bg-green-100 text-green-700' : 
-                        product.status === 'draft' ? 'bg-yellow-100 text-yellow-700' : 
-                        'bg-gray-100 text-gray-700'
-                      )}>
-                        {product.status}
-                      </Badge>
+                      <div className="flex flex-col">
+                        <span className="font-medium">₹{parseFloat(product.price).toLocaleString('en-IN')}</span>
+                        {parseFloat(product.discount) > 0 && (
+                          <span className="text-xs text-green-600">-{product.discount}%</span>
+                        )}
+                      </div>
                     </td>
                     <td className="p-3 hidden lg:table-cell text-sm text-muted-foreground">
                       {new Date(product.created_at).toLocaleDateString('en-IN')}
@@ -348,7 +365,7 @@ export function AdminProducts() {
                           variant="ghost" 
                           size="icon" 
                           className="h-8 w-8" 
-                          onClick={() => navigate(`/admin/products/edit/${product.id}`)}
+                          onClick={() => handleEditClick(product.id)}
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
@@ -402,7 +419,7 @@ export function AdminProducts() {
           <DialogHeader>
             <DialogTitle>Delete Product</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{deleteTarget?.name}"? This action cannot be undone.
+              Are you sure you want to delete "{deleteTarget?.product_name}"? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-3 pt-4">
