@@ -382,6 +382,7 @@ import { FeaturedCategoriesSection } from "@/components/HomeCompo/FeaturedCatego
 import { FeaturedProductsSection } from "@/components/HomeCompo/FeaturedProductsSection";
 import { HeroSection } from "@/components/HomeCompo/HeroSection";
 import { ContactInfoSection } from "@/components/HomeCompo/infrosection";
+import ProductsSection from "@/components/HomeCompo/produtcssection";
 import { ServicesSection } from "@/components/HomeCompo/ServicesSection";
 import { TestimonialsSection } from "@/components/HomeCompo/TestimonialsSection";
 import { TrustedBrandsSection } from "@/components/HomeCompo/TrustedBrandsSection";
@@ -397,6 +398,7 @@ export function HomePage() {
       <FeaturedProductsSection />
       <TrustedBrandsSection />
       <WhyChooseUsSection />
+      <ProductsSection />
       <CTASection />
       <TestimonialsSection />
       <ContactInfoSection />

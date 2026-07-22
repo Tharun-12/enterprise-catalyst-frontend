@@ -1,7 +1,10 @@
 import { Outlet, Link } from 'react-router-dom';
-import { CustomerHeader, CustomerFooter, WhatsAppButton } from '@/layouts/customer-layout';
+// import { CustomerHeader, CustomerFooter, WhatsAppButton } from '@/layouts/customer-layout';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 import { Fragment } from 'react';
+import { CustomerHeader } from '@/components/customer/CustomerHeader';
+import { CustomerFooter } from '@/components/customer/CustomerFooter';
+import { WhatsAppButton } from '@/components/customer/WhatsAppButton';
 
 export function CustomerLayout() {
   return (
@@ -38,3 +41,5 @@ export function PageBreadcrumb({ items }: { items: { label: string; path?: strin
     </Breadcrumb>
   );
 }
+
+
