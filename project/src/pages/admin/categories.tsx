@@ -15,6 +15,7 @@ export function AdminCategories() {
   const navigate = useNavigate();
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   // Fetch categories from API
@@ -28,10 +29,12 @@ export function AdminCategories() {
       const response = await axios.get(`${API_URL}/categories`);
       if (response.data.success) {
         setCategories(response.data.data);
+      } else {
+        toast.error('Failed to load categories');
       }
     } catch (error) {
       console.error('Error fetching categories:', error);
-      toast.error('Failed to load categories');
+      toast.error('Failed to load categories. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -49,16 +52,28 @@ export function AdminCategories() {
     if (!deleteTarget) return;
     
     try {
+      setIsDeleting(true);
       const response = await axios.delete(`${API_URL}/categories/${deleteTarget.id}`);
+      
       if (response.data.success) {
         toast.success('Category deleted successfully');
-        setCategories(categories.filter(c => c.id !== deleteTarget.id));
+        // Update state only after successful deletion
+        setCategories(prevCategories => prevCategories.filter(c => c.id !== deleteTarget.id));
         setDeleteTarget(null);
+      } else {
+        toast.error(response.data.message || 'Failed to delete category');
       }
     } catch (error) {
       console.error('Error deleting category:', error);
-      toast.error('Failed to delete category');
+      const errorMessage = error.response?.data?.message || 'Failed to delete category';
+      toast.error(errorMessage);
+    } finally {
+      setIsDeleting(false);
     }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteTarget(null);
   };
 
   if (isLoading) {
@@ -98,7 +113,9 @@ export function AdminCategories() {
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
                   <h3 className="font-semibold mb-1">{cat.name}</h3>
-                  <p className="text-xs text-muted-foreground line-clamp-2">{cat.description || 'No description'}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-2">
+                    {cat.description || 'No description'}
+                  </p>
                 </div>
                 <div className="flex gap-1 ml-2">
                   <Button 
@@ -106,6 +123,7 @@ export function AdminCategories() {
                     size="icon" 
                     className="h-8 w-8" 
                     onClick={() => handleEditCategory(cat)}
+                    aria-label={`Edit ${cat.name}`}
                   >
                     <Edit className="w-3.5 h-3.5" />
                   </Button>
@@ -114,34 +132,52 @@ export function AdminCategories() {
                     size="icon" 
                     className="h-8 w-8 text-destructive hover:text-destructive" 
                     onClick={() => setDeleteTarget(cat)}
+                    aria-label={`Delete ${cat.name}`}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
                 </div>
               </div>
-              {/* <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-xs">
                 ID: {cat.id}
-              </Badge> */}
+              </Badge>
             </Card>
           ))}
         </div>
       )}
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && handleCancelDelete()}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle>Delete Category</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{deleteTarget?.name}"?
+              Are you sure you want to delete "{deleteTarget?.name}"? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-3 pt-4">
-            <Button variant="outline" className="flex-1" onClick={() => setDeleteTarget(null)}>
+            <Button 
+              variant="outline" 
+              className="flex-1" 
+              onClick={handleCancelDelete}
+              disabled={isDeleting}
+            >
               Cancel
             </Button>
-            <Button variant="destructive" className="flex-1" onClick={handleDelete}>
-              Delete
+            <Button 
+              variant="destructive" 
+              className="flex-1" 
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></span>
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
             </Button>
           </div>
         </DialogContent>
