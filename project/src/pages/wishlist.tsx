@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom';
-import { Heart, ArrowRight, Trash2, Loader2 } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Heart, ArrowRight, Trash2, Loader2, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { PageBreadcrumb as Breadcrumb } from '@/layouts/customer-layout-wrapper';
 import { cn } from '@/lib/utils';
+import axios from 'axios';
 
 interface WishlistProduct {
   id: number;
@@ -37,11 +38,13 @@ interface WishlistProduct {
 }
 
 export function WishlistPage() {
+  const navigate = useNavigate();
   const { wishlist, wishlistProducts, removeFromWishlist, clearWishlist, loadingWishlist, fetchWishlist } = useApp();
   const [userId, setUserId] = useState<number | null>(null);
   const [initialLoad, setInitialLoad] = useState(true);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [isClearing, setIsClearing] = useState(false);
+  const [isGeneratingQuotation, setIsGeneratingQuotation] = useState(false);
 
   // Get user ID and fetch wishlist - only once on mount
   useEffect(() => {
@@ -152,6 +155,53 @@ export function WishlistPage() {
     }
   }, [clearWishlist, userId, fetchWishlist, displayProducts, removeFromWishlist, isClearing]);
 
+  // Handle Generate Quotation
+  const handleGenerateQuotation = useCallback(async () => {
+    if (displayProducts.length === 0) {
+      toast.error('Your wishlist is empty. Add products to generate a quotation.');
+      return;
+    }
+    
+    // Check if user is logged in
+    const session = localStorage.getItem('userSession');
+    if (!session) {
+      toast.error('Please login to generate a quotation');
+      navigate('/login');
+      return;
+    }
+
+    // Show a prompt for remarks
+    const remarks = window.prompt('Enter any remarks for the quotation (optional):', '');
+    if (remarks === null) {
+      return; // User cancelled
+    }
+
+    setIsGeneratingQuotation(true);
+
+    try {
+      const response = await axios.post('http://localhost:5000/api/quotations/generate', {
+        user_id: userId,
+        remarks: remarks.trim() || ''
+      });
+
+      if (response.data.success) {
+        toast.success('Quotation generated successfully!');
+        // Refresh wishlist after generating quotation
+        if (userId) {
+          await fetchWishlist(userId);
+        }
+        // Navigate to quotations page
+        navigate('/wishlist/quotation');
+      }
+    } catch (error: any) {
+      console.error('Error generating quotation:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to generate quotation';
+      toast.error(errorMessage);
+    } finally {
+      setIsGeneratingQuotation(false);
+    }
+  }, [displayProducts.length, userId, fetchWishlist, navigate]);
+
   // Show loading spinner only during initial load
   if (initialLoad) {
     return (
@@ -182,25 +232,39 @@ export function WishlistPage() {
     <div className="container mx-auto px-4 py-8">
       <Breadcrumb items={[{ label: 'Home', path: '/' }, { label: 'Wishlist' }]} />
 
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold">My Wishlist</h1>
           <p className="text-sm text-muted-foreground mt-1">{displayProducts.length} products saved</p>
         </div>
-        <Button 
-          variant="destructive" 
-          size="sm"
-          onClick={handleClearAll}
-          disabled={isClearing || displayProducts.length === 0}
-          className="flex items-center gap-2"
-        >
-          {isClearing ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Trash2 className="w-4 h-4" />
-          )}
-          Clear All
-        </Button>
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <Button 
+            onClick={handleGenerateQuotation}
+            disabled={displayProducts.length === 0 || isGeneratingQuotation}
+            className="flex items-center gap-2 flex-1 sm:flex-none bg-primary hover:bg-primary/90"
+          >
+            {isGeneratingQuotation ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <FileText className="w-4 h-4" />
+            )}
+            Request For Quotation
+          </Button>
+          <Button 
+            variant="destructive" 
+            size="sm"
+            onClick={handleClearAll}
+            disabled={isClearing || displayProducts.length === 0}
+            className="flex items-center gap-2 flex-1 sm:flex-none"
+          >
+            {isClearing ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Trash2 className="w-4 h-4" />
+            )}
+            Clear All
+          </Button>
+        </div>
       </div>
 
       {/* Wishlist items - Card style like product cards */}

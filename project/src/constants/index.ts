@@ -85,6 +85,7 @@ export const ADMIN_NAV = [
   { label: 'Products', path: '/admin/products', icon: 'Package' },
   // { label: 'Specifications', path: '/admin/specifications', icon: 'Settings2' },
   { label: 'Wishlist Leads', path: '/admin/leads', icon: 'Heart' },
+    { label: 'Quotations', path: '/admin/quotations', icon: 'FileText' }, 
   { label: 'Inquiries', path: '/admin/inquiries', icon: 'MessageSquare' },
   { label: 'Settings', path: '/admin/settings', icon: 'Settings' },
 ];

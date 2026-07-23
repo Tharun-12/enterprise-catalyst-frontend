@@ -9,6 +9,7 @@ import { ProductsPage } from '@/pages/products';
 import { ProductDetailsPage } from '@/pages/product-details';
 import { ComparePage } from '@/pages/compare';
 import { WishlistPage } from '@/pages/wishlist';
+import { QuotationPage } from '@/pages/quotation';
 import { ContactPage } from '@/pages/contact';
 import { AboutPage } from '@/pages/about';
 import { NotFoundPage } from '@/pages/not-found';
@@ -24,6 +25,7 @@ import { AdminCategories } from '@/pages/admin/categories';
 import { AdminBrands } from '@/pages/admin/brands';
 import { AdminSpecifications } from '@/pages/admin/specifications';
 import { AdminLeads } from '@/pages/admin/leads';
+import { AdminQuotations } from '@/pages/admin/quotation';
 import { AdminInquiries } from '@/pages/admin/inquiries';
 import { AdminSettings } from '@/pages/admin/settings';
 import { BrandForm } from '@/pages/admin/brand-form';
@@ -68,6 +70,7 @@ export default function App() {
             <Route path="/products/:slug" element={<ProductDetailsPage />} />
             <Route path="/compare" element={<ComparePage />} />
             <Route path="/wishlist" element={<WishlistPage />} />
+            <Route path="/wishlist/quotation" element={<QuotationPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="*" element={<NotFoundPage />} />
@@ -100,6 +103,7 @@ export default function App() {
 
             <Route path="specifications" element={<AdminSpecifications />} />
             <Route path="leads" element={<AdminLeads />} />
+            <Route path="quotations" element={<AdminQuotations />} />
             <Route path="inquiries" element={<AdminInquiries />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>
