@@ -5,7 +5,6 @@ import { Plus, Edit, Trash2, Loader2, X, Check } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-// import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import axios, { AxiosError } from 'axios';
@@ -291,7 +290,7 @@ export function AdminCategories() {
           {categories.map((cat: Category) => (
             <Card 
               key={cat.id} 
-              className={`group p-4 hover:shadow-lg transition-all duration-200 border ${
+              className={`p-4 hover:shadow-lg transition-all duration-200 border ${
                 editingId === cat.id 
                   ? 'border-yellow-400 bg-yellow-50/50' 
                   : 'border-gray-200 hover:border-blue-300'
@@ -302,15 +301,13 @@ export function AdminCategories() {
                   <h3 className="font-semibold text-gray-900 truncate">
                     {cat.category_name}
                   </h3>
-                  {/* <Badge variant="secondary" className="mt-1 text-xs bg-gray-100 text-gray-600">
-                    ID: {cat.id}
-                  </Badge> */}
                 </div>
-                <div className="flex gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Removed group-hover:opacity-0 and added always visible */}
+                <div className="flex gap-1 ml-2 flex-shrink-0">
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-8 w-8 hover:bg-blue-50 hover:text-blue-600" 
+                    className="h-8 w-8 hover:bg-blue-50 hover:text-blue-600 transition-colors" 
                     onClick={() => startEditing(cat)}
                     aria-label={`Edit ${cat.category_name}`}
                     disabled={editingId !== null}
@@ -320,7 +317,7 @@ export function AdminCategories() {
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-8 w-8 hover:bg-red-50 hover:text-red-600" 
+                    className="h-8 w-8 hover:bg-red-50 hover:text-red-600 transition-colors" 
                     onClick={() => setDeleteTarget(cat)}
                     aria-label={`Delete ${cat.category_name}`}
                     disabled={editingId !== null}
@@ -331,14 +328,18 @@ export function AdminCategories() {
               </div>
               <div className="mt-2 pt-2 border-t border-gray-100">
                 <p className="text-xs text-gray-400">
-                  Created: {new Date(cat.created_at).toLocaleDateString()}
+                  Created: {new Date(cat.created_at).toLocaleDateString('en-IN', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                  })}
                 </p>
               </div>
               {editingId === cat.id && (
                 <div className="mt-2 pt-2 border-t border-yellow-200">
-                  {/* <p className="text-xs text-yellow-600 font-medium">
+                  <p className="text-xs text-yellow-600 font-medium">
                     ✏️ Editing in progress...
-                  </p> */}
+                  </p>
                 </div>
               )}
             </Card>

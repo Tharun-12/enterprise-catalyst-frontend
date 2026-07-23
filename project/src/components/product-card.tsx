@@ -7,33 +7,80 @@ import { useApp } from '@/hooks/use-app';
 import type { Product } from '@/types';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useState } from 'react';
 
 interface ProductCardProps {
   product: Product;
 }
 
 export function ProductCard({ product }: ProductCardProps) {
-  const { compareList, addToWishlist, removeFromWishlist, addToCompare, removeFromCompare, isInWishlist, isInCompare } = useApp();
+  const { 
+    compareList, 
+    addToWishlist, 
+    removeFromWishlist, 
+    addToCompare, 
+    removeFromCompare, 
+    isInWishlist, 
+    isInCompare,
+    loadingWishlist 
+  } = useApp();
+  
+  const [isLoading, setIsLoading] = useState(false);
 
   const inWishlist = isInWishlist(product.id);
   const inCompare = isInCompare(product.id);
   const compareFull = compareList.length >= 4;
 
-  const handleWishlist = (e: React.MouseEvent) => {
+  // Get user ID from localStorage
+  const getUserId = () => {
+    const session = localStorage.getItem('userSession');
+    if (session) {
+      try {
+        const user = JSON.parse(session);
+        return user.userId;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  };
+
+  const handleWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (inWishlist) {
-      removeFromWishlist(product.id);
-      toast.success('Removed from wishlist');
-    } else {
-      addToWishlist(product.id);
-      toast.success('Added to wishlist! Fill in your details to get a quote.');
+    
+    if (isLoading) return;
+    
+    setIsLoading(true);
+    const userId = getUserId();
+    
+    try {
+      if (inWishlist) {
+        await removeFromWishlist(product.id, userId || undefined);
+      } else {
+        await addToWishlist(product.id, userId || undefined);
+        // If user is not logged in, show a prompt
+        if (!userId) {
+          toast.info('Please login to sync your wishlist across devices', {
+            action: {
+              label: 'Login',
+              onClick: () => window.location.href = '/login'
+            }
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling wishlist:', error);
+      toast.error('Failed to update wishlist');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleCompare = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
     if (inCompare) {
       removeFromCompare(product.id);
       toast.success('Removed from comparison');
@@ -120,16 +167,28 @@ export function ProductCard({ product }: ProductCardProps) {
           <Button
             size="icon"
             variant="outline"
-            className={cn('h-9 w-9 shrink-0', inWishlist && 'border-accent text-accent bg-accent/10')}
+            className={cn(
+              'h-9 w-9 shrink-0 transition-all duration-200',
+              inWishlist && 'border-accent text-accent bg-accent/10 hover:bg-accent/20',
+              isLoading && 'opacity-50 cursor-not-allowed'
+            )}
             onClick={handleWishlist}
+            disabled={isLoading || loadingWishlist}
             title={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
           >
-            <Heart className={cn('w-4 h-4', inWishlist && 'fill-accent')} />
+            {isLoading ? (
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Heart className={cn('w-4 h-4 transition-all', inWishlist && 'fill-accent')} />
+            )}
           </Button>
           <Button
             size="icon"
             variant="outline"
-            className={cn('h-9 w-9 shrink-0', inCompare && 'border-secondary text-secondary bg-secondary/10')}
+            className={cn(
+              'h-9 w-9 shrink-0 transition-all duration-200',
+              inCompare && 'border-secondary text-secondary bg-secondary/10 hover:bg-secondary/20'
+            )}
             onClick={handleCompare}
             title={inCompare ? 'Remove from comparison' : 'Add to comparison'}
           >

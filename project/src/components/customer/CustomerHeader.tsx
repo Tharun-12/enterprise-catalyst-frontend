@@ -381,7 +381,6 @@
 //   );
 // }
 
-
 import { Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Menu, Search, Heart, GitCompare, ChevronDown, Building2, Phone, Mail, User, LogOut } from 'lucide-react';
@@ -399,13 +398,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { NAV_LINKS, COMPANY } from '@/constants';
 import { useApp } from '@/hooks/use-app';
-import { categories, products } from '@/data';
+import { products } from '@/data';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useSettings } from '@/hooks/use-settings';
 
-
-import logo from '@/asstes/mvblogo.png'; 
+import logo from '@/asstes/mvblogo.png';
 
 interface UserSession {
   userId: number;
@@ -416,15 +414,46 @@ interface UserSession {
   loginTime: string;
 }
 
+interface Category {
+  id: number;
+  category_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export function CustomerHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showResults, setShowResults] = useState(false);
   const [user, setUser] = useState<UserSession | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
   const { wishlist, compareList } = useApp();
   const navigate = useNavigate();
   const { settings } = useSettings();
+
+  // Fetch categories from API
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/categories/');
+        const result = await response.json();
+        
+        if (result.success) {
+          setCategories(result.data);
+        } else {
+          console.error('Failed to fetch categories:', result.message);
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -462,6 +491,11 @@ export function CustomerHeader() {
     window.dispatchEvent(new Event('authChange'));
     toast.success('Logged out successfully');
     navigate('/');
+  };
+
+  // Get product count for a category (you may want to fetch this from API)
+  const getProductCount = (categoryName: string) => {
+    return products.filter(p => p.categoryName === categoryName).length;
   };
 
   const searchResults = searchQuery
@@ -519,7 +553,6 @@ export function CustomerHeader() {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16 lg:h-18">
             <Link to="/" className="flex items-center gap-2.5 shrink-0">
-              {/* Use imported logo or fallback to settings logo or default */}
               {settings?.logo_url ? (
                 <img 
                   src={`http://localhost:5000${settings.logo_url}`} 
@@ -540,7 +573,6 @@ export function CustomerHeader() {
               </div>
             </Link>
 
-            {/* Rest of the component remains the same */}
             <form onSubmit={handleSearch} className="hidden lg:flex flex-1 max-w-md mx-8 relative">
               <div className="relative w-full">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -575,7 +607,6 @@ export function CustomerHeader() {
               </div>
             </form>
 
-            {/* The rest of your existing code remains the same */}
             <div className="flex items-center gap-1 sm:gap-2">
               <Link to="/compare">
                 <Button variant="ghost" size="sm" className="relative">
@@ -738,6 +769,7 @@ export function CustomerHeader() {
             </div>
           </div>
 
+          {/* Navigation with dynamic categories */}
           <nav className="hidden lg:flex items-center justify-center gap-1 h-12 border-t">
             {NAV_LINKS.map((link) => (
               <Link
@@ -753,19 +785,32 @@ export function CustomerHeader() {
                 All Categories <ChevronDown className="w-3.5 h-3.5" />
               </button>
               <div className="absolute top-full left-0 mt-0 w-64 bg-card border rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pt-2">
-                {categories.map((cat) => (
-                  <Link
-                    key={cat.id}
-                    to={`/products?category=${cat.slug}`}
-                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted transition-colors text-sm"
-                  >
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />
-                    <div className="flex-1">
-                      <div className="font-medium">{cat.name}</div>
-                      <div className="text-xs text-muted-foreground">{cat.productCount} products</div>
-                    </div>
-                  </Link>
-                ))}
+                {isLoadingCategories ? (
+                  <div className="px-4 py-3 text-sm text-muted-foreground">
+                    Loading categories...
+                  </div>
+                ) : categories.length > 0 ? (
+                  categories.map((cat) => {
+                    const productCount = getProductCount(cat.category_name);
+                    return (
+                      <Link
+                        key={cat.id}
+                        to={`/products?category=${encodeURIComponent(cat.category_name)}`}
+                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted transition-colors text-sm"
+                      >
+                        <div className="w-2 h-2 rounded-full bg-gradient-to-r from-pink-500 to-orange-500" />
+                        <div className="flex-1">
+                          <div className="font-medium">{cat.category_name}</div>
+                          {/* <div className="text-xs text-muted-foreground">{productCount} products</div> */}
+                        </div>
+                      </Link>
+                    );
+                  })
+                ) : (
+                  <div className="px-4 py-3 text-sm text-muted-foreground">
+                    No categories found
+                  </div>
+                )}
               </div>
             </div>
           </nav>

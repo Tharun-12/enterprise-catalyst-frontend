@@ -120,7 +120,6 @@ const transformProduct = (product: Product, categories: Category[], brands: Bran
     status: 'active' as const,
     createdAt: product.created_at,
     variants: product.variants || [],
-    // Additional fields
     productCode: product.product_code,
     brand: brand?.name || product.product_brand || 'Unknown',
     category: category?.category_name || product.category_name || 'Uncategorized',
@@ -224,6 +223,69 @@ export function ProductDetailsPage() {
       .map(p => transformProduct(p, categories, brands));
   }, [product, allProducts, categories, brands]);
 
+  // Get current user ID
+  const getUserId = () => {
+    const session = localStorage.getItem('userSession');
+    if (session) {
+      try {
+        const user = JSON.parse(session);
+        return user.userId;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  };
+
+  const handleWishlist = async () => {
+    if (!product) return;
+    const userId = getUserId();
+    
+    if (isInWishlist(product.id)) {
+      await removeFromWishlist(product.id, userId || undefined);
+    } else {
+      await addToWishlist(product.id, userId || undefined);
+      if (!userId) {
+        // Show login prompt if not logged in
+        setWishlistOpen(true);
+      }
+    }
+  };
+
+  const handleCompare = () => {
+    if (!product) return;
+    if (isInCompare(product.id)) {
+      removeFromCompare(product.id);
+    } else {
+      addToCompare(product.id);
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setZoomPos({ x, y });
+  };
+
+  const handleInquiry = (e: React.FormEvent) => {
+    e.preventDefault();
+    const form = e.target as HTMLFormElement;
+    const formData = new FormData(form);
+    addInquiry({
+      name: formData.get('name') as string,
+      phone: formData.get('phone') as string,
+      email: formData.get('email') as string,
+      company: formData.get('company') as string,
+      productId: product!.id,
+      productName: product!.name,
+      message: formData.get('message') as string,
+    });
+    toast.success('Inquiry submitted! Our team will contact you soon.');
+    setInquiryOpen(false);
+    form.reset();
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -258,51 +320,6 @@ export function ProductDetailsPage() {
 
   const inWishlist = isInWishlist(product.id);
   const inCompare = isInCompare(product.id);
-
-  const handleWishlist = () => {
-    if (inWishlist) {
-      removeFromWishlist(product.id);
-      toast.success('Removed from wishlist');
-    } else {
-      addToWishlist(product.id);
-      setWishlistOpen(true);
-    }
-  };
-
-  const handleCompare = () => {
-    if (inCompare) {
-      removeFromCompare(product.id);
-      toast.success('Removed from comparison');
-    } else {
-      addToCompare(product.id);
-      toast.success('Added to comparison');
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    setZoomPos({ x, y });
-  };
-
-  const handleInquiry = (e: React.FormEvent) => {
-    e.preventDefault();
-    const form = e.target as HTMLFormElement;
-    const formData = new FormData(form);
-    addInquiry({
-      name: formData.get('name') as string,
-      phone: formData.get('phone') as string,
-      email: formData.get('email') as string,
-      company: formData.get('company') as string,
-      productId: product.id,
-      productName: product.name,
-      message: formData.get('message') as string,
-    });
-    toast.success('Inquiry submitted! Our team will contact you soon.');
-    setInquiryOpen(false);
-    form.reset();
-  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -456,7 +473,7 @@ export function ProductDetailsPage() {
         </div>
       </div>
 
-      {/* Rest of the component remains the same... */}
+      {/* Tabs */}
       <Tabs defaultValue="description" className="mb-12">
         <TabsList className="w-full justify-start flex-wrap h-auto p-1 gap-1">
           <TabsTrigger value="description">Description</TabsTrigger>
@@ -478,7 +495,6 @@ export function ProductDetailsPage() {
           </Card>
         </TabsContent>
 
-        {/* Rest of the tabs remain the same */}
         <TabsContent value="specifications" className="mt-6">
           <Card className="p-6">
             <h2 className="text-xl font-bold mb-6">Technical Specifications</h2>
