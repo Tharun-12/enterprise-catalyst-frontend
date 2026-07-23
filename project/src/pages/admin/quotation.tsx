@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, Phone, Mail, Building, Eye, FileText, Download, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Search, Phone, Mail, Building, Eye, FileText, Download, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,8 +18,24 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import axios from 'axios';
 
-// Types for quotations - Updated to match API
+// Types for quotations
 type QuotationStatus = 'Pending' | 'Approved' | 'Rejected' | 'Sent';
+
+// API Response Types
+interface ApiQuotationDetail {
+    id: number;
+    quotation_id: number;
+    product_id: number;
+    product_name: string;
+    product_code: string;
+    brand: string;
+    quantity: number;
+    price: string;
+    discount: string;
+    final_price: string;
+    subtotal: string;
+    created_at: string;
+}
 
 interface ApiQuotation {
     id: number;
@@ -36,14 +52,20 @@ interface ApiQuotation {
     remarks: string;
     created_at: string;
     updated_at: string;
+    details: ApiQuotationDetail[];
 }
 
+// Frontend Types
 interface QuotationItem {
-    id: string;
+    id: number;
     productName: string;
+    productCode: string;
+    brand: string;
     quantity: number;
     price: number;
-    total: number;
+    discount: number;
+    finalPrice: number;
+    subtotal: number;
 }
 
 interface Quotation {
@@ -55,13 +77,14 @@ interface Quotation {
     company: string;
     status: QuotationStatus;
     items: QuotationItem[];
+    totalItems: number;
     totalAmount: number;
+    totalDiscount: number;
+    grandTotal: number;
     createdAt: string;
     updatedAt: string;
     validUntil: string;
     notes?: string;
-    totalDiscount?: string;
-    grandTotal?: string;
 }
 
 const statusColors: Record<QuotationStatus, string> = {
@@ -85,6 +108,7 @@ export function AdminQuotations() {
     const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
     const [loading, setLoading] = useState(true);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [expandedQuotation, setExpandedQuotation] = useState<string | null>(null);
 
     // Fetch quotations data
     useEffect(() => {
@@ -99,16 +123,27 @@ export function AdminQuotations() {
             customerName: item.customer_name,
             customerEmail: item.customer_email,
             customerPhone: item.customer_mobile,
-            company: 'N/A', // Company not available in API
+            company: 'N/A',
             status: mapStatus(item.status),
-            items: [], // Items not available in the current API response
-            totalAmount: parseFloat(item.grand_total) || parseFloat(item.total_amount) || 0,
+            items: item.details?.map((detail) => ({
+                id: detail.id,
+                productName: detail.product_name,
+                productCode: detail.product_code,
+                brand: detail.brand,
+                quantity: detail.quantity,
+                price: parseFloat(detail.price),
+                discount: parseFloat(detail.discount),
+                finalPrice: parseFloat(detail.final_price),
+                subtotal: parseFloat(detail.subtotal),
+            })) || [],
+            totalItems: item.total_items || item.details?.length || 0,
+            totalAmount: parseFloat(item.total_amount) || 0,
+            totalDiscount: parseFloat(item.total_discount) || 0,
+            grandTotal: parseFloat(item.grand_total) || parseFloat(item.total_amount) || 0,
             createdAt: item.created_at,
             updatedAt: item.updated_at,
-            validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+            validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
             notes: item.remarks || '',
-            totalDiscount: item.total_discount,
-            grandTotal: item.grand_total,
         }));
     };
 
@@ -131,75 +166,18 @@ export function AdminQuotations() {
             if (response.data.success && response.data.data) {
                 const transformedData = transformApiData(response.data.data);
                 setQuotations(transformedData);
+                toast.success(`Loaded ${transformedData.length} quotations`);
             } else {
-                // Fallback to sample data if API fails
-                setQuotations(getSampleQuotations());
+                toast.error('Failed to load quotations');
+                setQuotations([]);
             }
         } catch (error) {
             console.error('Error fetching quotations:', error);
-            toast.error('Failed to load quotations. Using sample data.');
-            // Fallback to sample data
-            setQuotations(getSampleQuotations());
+            toast.error('Failed to load quotations');
+            setQuotations([]);
         } finally {
             setLoading(false);
         }
-    };
-
-    // Sample data for demonstration
-    const getSampleQuotations = (): Quotation[] => {
-        return [
-            {
-                id: '1',
-                quotationNumber: 'QT-2024-001',
-                customerName: 'Rajesh Kumar',
-                customerEmail: 'rajesh@example.com',
-                customerPhone: '+91 98765 43210',
-                company: 'Tech Solutions Pvt Ltd',
-                status: 'Pending',
-                items: [
-                    { id: '1', productName: 'Industrial Pump A-100', quantity: 2, price: 15000, total: 30000 },
-                    { id: '2', productName: 'Control Valve V-200', quantity: 1, price: 25000, total: 25000 },
-                ],
-                totalAmount: 55000,
-                createdAt: '2024-12-15T10:30:00Z',
-                updatedAt: '2024-12-15T10:30:00Z',
-                validUntil: '2025-01-15',
-                notes: 'Customer needs delivery within 2 weeks',
-            },
-            {
-                id: '2',
-                quotationNumber: 'QT-2024-002',
-                customerName: 'Priya Sharma',
-                customerEmail: 'priya@example.com',
-                customerPhone: '+91 87654 32109',
-                company: 'Green Energy Systems',
-                status: 'Sent',
-                items: [
-                    { id: '3', productName: 'Solar Panel SP-300', quantity: 10, price: 8000, total: 80000 },
-                ],
-                totalAmount: 80000,
-                createdAt: '2024-12-14T14:20:00Z',
-                updatedAt: '2024-12-14T16:45:00Z',
-                validUntil: '2025-01-10',
-            },
-            {
-                id: '3',
-                quotationNumber: 'QT-2024-003',
-                customerName: 'Amit Patel',
-                customerEmail: 'amit@example.com',
-                customerPhone: '+91 76543 21098',
-                company: 'Industrial Machinery Co',
-                status: 'Approved',
-                items: [
-                    { id: '4', productName: 'Conveyor Belt CB-500', quantity: 3, price: 12000, total: 36000 },
-                    { id: '5', productName: 'Motor Drive MD-100', quantity: 2, price: 18000, total: 36000 },
-                ],
-                totalAmount: 72000,
-                createdAt: '2024-12-12T09:15:00Z',
-                updatedAt: '2024-12-13T11:30:00Z',
-                validUntil: '2025-01-05',
-            },
-        ];
     };
 
     const filtered = useMemo(() => {
@@ -233,6 +211,8 @@ export function AdminQuotations() {
         } catch (error) {
             console.error('Error updating status:', error);
             toast.error('Failed to update status');
+            // Revert the change
+            fetchQuotations();
         }
     };
 
@@ -246,6 +226,10 @@ export function AdminQuotations() {
         // In a real app, generate and download PDF
     };
 
+    const toggleExpand = (id: string) => {
+        setExpandedQuotation(expandedQuotation === id ? null : id);
+    };
+
     // Helper function to safely get initials
     const getInitials = (name: string) => {
         if (!name) return '?';
@@ -256,6 +240,22 @@ export function AdminQuotations() {
             .toUpperCase()
             .slice(0, 2);
     };
+
+    // Calculate summary statistics
+    const stats = useMemo(() => {
+        const counts = {
+            Pending: 0,
+            Sent: 0,
+            Approved: 0,
+            Rejected: 0
+        };
+        quotations.forEach(q => {
+            if (q.status in counts) {
+                counts[q.status]++;
+            }
+        });
+        return counts;
+    }, [quotations]);
 
     if (loading) {
         return (
@@ -297,7 +297,7 @@ export function AdminQuotations() {
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {(['Pending', 'Sent', 'Approved', 'Rejected'] as QuotationStatus[]).map((status) => {
-                    const count = quotations.filter((q) => q.status === status).length;
+                    const count = stats[status] || 0;
                     return (
                         <Card key={status} className="p-4">
                             <div className="flex items-center justify-between">
@@ -367,63 +367,154 @@ export function AdminQuotations() {
                                 </tr>
                             ) : (
                                 filtered.map((quotation) => (
-                                    <tr
-                                        key={quotation.id}
-                                        className="border-b hover:bg-muted/30 transition-colors"
-                                    >
-                                        <td className="p-3">
-                                            <div>
-                                                <div className="font-medium text-sm">{quotation.quotationNumber}</div>
-                                                <div className="text-xs text-muted-foreground">{quotation.company}</div>
-                                            </div>
-                                        </td>
-                                        <td className="p-3 hidden md:table-cell">
-                                            <div className="flex items-center gap-3">
-                                                <Avatar className="w-8 h-8">
-                                                    <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-                                                        {getInitials(quotation.customerName)}
-                                                    </AvatarFallback>
-                                                </Avatar>
+                                    <>
+                                        <tr
+                                            key={quotation.id}
+                                            className="border-b hover:bg-muted/30 transition-colors"
+                                        >
+                                            <td className="p-3">
                                                 <div>
-                                                    <div className="text-sm font-medium">{quotation.customerName}</div>
-                                                    <div className="text-xs text-muted-foreground">{quotation.customerEmail}</div>
+                                                    <div className="font-medium text-sm">{quotation.quotationNumber}</div>
+                                                    <div className="text-xs text-muted-foreground">{quotation.company}</div>
                                                 </div>
-                                            </div>
-                                        </td>
-                                        <td className="p-3">
-                                            <Badge className={cn('text-xs flex items-center gap-1 w-fit', statusColors[quotation.status])}>
-                                                {statusIcons[quotation.status]}
-                                                {quotation.status}
-                                            </Badge>
-                                        </td>
-                                        <td className="p-3 hidden lg:table-cell">
-                                            <div className="text-sm font-medium">₹{quotation.totalAmount.toLocaleString()}</div>
-                                            <div className="text-xs text-muted-foreground">{quotation.items?.length || 0} items</div>
-                                        </td>
-                                        <td className="p-3 hidden lg:table-cell text-sm text-muted-foreground">
-                                            {new Date(quotation.createdAt).toLocaleDateString('en-IN')}
-                                        </td>
-                                        <td className="p-3 text-right">
-                                            <div className="flex items-center justify-end gap-1">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8"
-                                                    onClick={() => handleViewQuotation(quotation)}
-                                                >
-                                                    <Eye className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8"
-                                                    onClick={() => handleDownloadPDF(quotation)}
-                                                >
-                                                    <Download className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                            </td>
+                                            <td className="p-3 hidden md:table-cell">
+                                                <div className="flex items-center gap-3">
+                                                    <Avatar className="w-8 h-8">
+                                                        <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                                                            {getInitials(quotation.customerName)}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <div>
+                                                        <div className="text-sm font-medium">{quotation.customerName}</div>
+                                                        <div className="text-xs text-muted-foreground">{quotation.customerEmail}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="p-3">
+                                                <Badge className={cn('text-xs flex items-center gap-1 w-fit', statusColors[quotation.status])}>
+                                                    {statusIcons[quotation.status]}
+                                                    {quotation.status}
+                                                </Badge>
+                                            </td>
+                                            <td className="p-3 hidden lg:table-cell">
+                                                <div className="text-sm font-medium">₹{quotation.grandTotal.toLocaleString()}</div>
+                                                <div className="text-xs text-muted-foreground">{quotation.totalItems} items</div>
+                                            </td>
+                                            <td className="p-3 hidden lg:table-cell text-sm text-muted-foreground">
+                                                {new Date(quotation.createdAt).toLocaleDateString('en-IN')}
+                                            </td>
+                                            <td className="p-3 text-right">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8"
+                                                        onClick={() => handleViewQuotation(quotation)}
+                                                        title="View Details"
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8"
+                                                        onClick={() => toggleExpand(quotation.id)}
+                                                        title={expandedQuotation === quotation.id ? "Hide Products" : "Show Products"}
+                                                    >
+                                                        {expandedQuotation === quotation.id ? (
+                                                            <ChevronUp className="h-4 w-4" />
+                                                        ) : (
+                                                            <ChevronDown className="h-4 w-4" />
+                                                        )}
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8"
+                                                        onClick={() => handleDownloadPDF(quotation)}
+                                                        title="Download PDF"
+                                                    >
+                                                        <Download className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {/* Expanded Products Row */}
+                                        {expandedQuotation === quotation.id && (
+                                            <tr>
+                                                <td colSpan={6} className="p-0">
+                                                    <div className="bg-muted/10 p-4 border-b">
+                                                        <div className="text-sm font-semibold mb-3">Products</div>
+                                                        <div className="space-y-2">
+                                                            {quotation.items.length > 0 ? (
+                                                                quotation.items.map((item) => (
+                                                                    <div key={item.id} className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm">
+                                                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                                                            <div className="flex-1">
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <span className="font-medium text-sm">{item.productName}</span>
+                                                                                    <Badge variant="outline" className="text-xs">
+                                                                                        {item.brand}
+                                                                                    </Badge>
+                                                                                </div>
+                                                                                <div className="text-xs text-muted-foreground mt-1">
+                                                                                    <span>Code: {item.productCode}</span>
+                                                                                    <span className="mx-2">|</span>
+                                                                                    <span>Qty: {item.quantity}</span>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div className="flex flex-wrap items-center gap-4 text-sm">
+                                                                                <div>
+                                                                                    <p className="text-muted-foreground text-xs">Price</p>
+                                                                                    <p className="font-medium">₹{item.price.toFixed(2)}</p>
+                                                                                </div>
+                                                                                {item.discount > 0 && (
+                                                                                    <div>
+                                                                                        <p className="text-muted-foreground text-xs">Discount</p>
+                                                                                        <p className="font-medium text-green-600">-₹{item.discount.toFixed(2)}</p>
+                                                                                    </div>
+                                                                                )}
+                                                                                <div>
+                                                                                    <p className="text-muted-foreground text-xs">Final Price</p>
+                                                                                    <p className="font-medium text-primary">₹{item.finalPrice.toFixed(2)}</p>
+                                                                                </div>
+                                                                                <div>
+                                                                                    <p className="text-muted-foreground text-xs">Subtotal</p>
+                                                                                    <p className="font-semibold">₹{item.subtotal.toFixed(2)}</p>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                ))
+                                                            ) : (
+                                                                <div className="text-sm text-muted-foreground">No products available</div>
+                                                            )}
+                                                            {/* Summary */}
+                                                            <div className="mt-4 pt-3 border-t grid grid-cols-2 md:grid-cols-4 gap-2">
+                                                                <div>
+                                                                    <p className="text-xs text-muted-foreground">Total Items</p>
+                                                                    <p className="font-medium">{quotation.totalItems}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs text-muted-foreground">Total Amount</p>
+                                                                    <p className="font-medium">₹{quotation.totalAmount.toFixed(2)}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs text-muted-foreground">Total Discount</p>
+                                                                    <p className="font-medium text-green-600">-₹{quotation.totalDiscount.toFixed(2)}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs text-muted-foreground">Grand Total</p>
+                                                                    <p className="font-bold text-primary">₹{quotation.grandTotal.toFixed(2)}</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </>
                                 ))
                             )}
                         </tbody>
@@ -433,7 +524,7 @@ export function AdminQuotations() {
 
             {/* Quotation Detail Modal */}
             <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
-                <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+                <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
                     {selectedQuotation && (
                         <>
                             <DialogHeader>
@@ -477,33 +568,50 @@ export function AdminQuotations() {
 
                                 {/* Items */}
                                 <div className="p-4 rounded-lg bg-muted/30">
-                                    <div className="text-xs text-muted-foreground mb-2 font-semibold">Items</div>
+                                    <div className="text-xs text-muted-foreground mb-2 font-semibold">Products</div>
                                     <div className="space-y-2">
                                         {selectedQuotation.items && selectedQuotation.items.length > 0 ? (
                                             <>
                                                 {selectedQuotation.items.map((item) => (
-                                                    <div key={item.id} className="flex items-center justify-between text-sm py-1 border-b last:border-0">
-                                                        <span>{item.productName}</span>
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="text-muted-foreground">{item.quantity} × ₹{item.price.toLocaleString()}</span>
-                                                            <span className="font-medium">₹{item.total.toLocaleString()}</span>
+                                                    <div key={item.id} className="flex flex-col sm:flex-row sm:items-center justify-between text-sm py-2 border-b last:border-0 gap-2">
+                                                        <div>
+                                                            <div className="font-medium">{item.productName}</div>
+                                                            <div className="text-xs text-muted-foreground">
+                                                                {item.brand} | {item.productCode}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-3 flex-wrap">
+                                                            <span className="text-muted-foreground text-xs">
+                                                                {item.quantity} × ₹{item.price.toFixed(2)}
+                                                            </span>
+                                                            {item.discount > 0 && (
+                                                                <span className="text-green-600 text-xs">
+                                                                    -₹{item.discount.toFixed(2)}
+                                                                </span>
+                                                            )}
+                                                            <span className="font-medium">₹{item.subtotal.toFixed(2)}</span>
                                                         </div>
                                                     </div>
                                                 ))}
-                                                <div className="flex items-center justify-between pt-2 border-t font-semibold">
-                                                    <span>Total</span>
-                                                    <span>₹{selectedQuotation.totalAmount.toLocaleString()}</span>
+                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-2 border-t gap-2">
+                                                    <div className="space-y-1">
+                                                        <div className="flex items-center gap-4 text-sm">
+                                                            <span>Total Items: <span className="font-medium">{selectedQuotation.totalItems}</span></span>
+                                                            <span>Total Amount: <span className="font-medium">₹{selectedQuotation.totalAmount.toFixed(2)}</span></span>
+                                                        </div>
+                                                        <div className="text-sm">
+                                                            Total Discount: <span className="font-medium text-green-600">-₹{selectedQuotation.totalDiscount.toFixed(2)}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="text-xs text-muted-foreground">Grand Total</div>
+                                                        <div className="text-xl font-bold text-primary">₹{selectedQuotation.grandTotal.toFixed(2)}</div>
+                                                    </div>
                                                 </div>
                                             </>
                                         ) : (
                                             <div className="text-sm text-muted-foreground">
-                                                No items available. Grand Total: ₹{selectedQuotation.totalAmount.toLocaleString()}
-                                                {selectedQuotation.totalDiscount && (
-                                                    <div className="text-xs mt-1">Discount: ₹{parseFloat(selectedQuotation.totalDiscount).toLocaleString()}</div>
-                                                )}
-                                                {selectedQuotation.grandTotal && (
-                                                    <div className="text-xs mt-1 font-medium">Grand Total: ₹{parseFloat(selectedQuotation.grandTotal).toLocaleString()}</div>
-                                                )}
+                                                No products available
                                             </div>
                                         )}
                                     </div>
@@ -521,31 +629,6 @@ export function AdminQuotations() {
                                     <div>Valid Until: {new Date(selectedQuotation.validUntil).toLocaleDateString('en-IN')}</div>
                                 </div>
 
-                                {/* Status Update Actions */}
-                                <DialogFooter className="flex-col sm:flex-row gap-2">
-                                    <div className="flex gap-2 w-full sm:w-auto">
-                                        {(['Pending', 'Sent', 'Approved', 'Rejected'] as QuotationStatus[]).map((status) => (
-                                            <Button
-                                                key={status}
-                                                variant={selectedQuotation.status === status ? 'default' : 'outline'}
-                                                size="sm"
-                                                className="flex-1"
-                                                onClick={() => updateStatus(selectedQuotation, status)}
-                                            >
-                                                {statusIcons[status]}
-                                                <span className="ml-1 capitalize">{status}</span>
-                                            </Button>
-                                        ))}
-                                    </div>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => handleDownloadPDF(selectedQuotation)}
-                                    >
-                                        <Download className="w-4 h-4 mr-2" />
-                                        Download PDF
-                                    </Button>
-                                </DialogFooter>
                             </div>
                         </>
                     )}

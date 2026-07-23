@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Eye, Download, Printer, Mail, Calendar, Package, Loader2 } from 'lucide-react';
+import { ArrowLeft, Eye, Download, Printer, Mail, Calendar, Package, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,21 @@ import axios from 'axios';
 import { toast } from 'sonner';
 
 type QuotationStatus = 'Pending' | 'Approved' | 'Rejected';
+
+interface QuotationDetail {
+  id: number;
+  quotation_id: number;
+  product_id: number;
+  product_name: string;
+  product_code: string;
+  brand: string;
+  quantity: number;
+  price: string;
+  discount: string;
+  final_price: string;
+  subtotal: string;
+  created_at: string;
+}
 
 interface Quotation {
   id: number;
@@ -26,6 +41,7 @@ interface Quotation {
   remarks: string;
   created_at: string;
   updated_at: string;
+  details: QuotationDetail[];
 }
 
 interface StatusColor {
@@ -45,6 +61,7 @@ export function QuotationPage() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [userId, setUserId] = useState<number | null>(null);
+  const [expandedQuotation, setExpandedQuotation] = useState<number | null>(null);
 
   // Get user ID from localStorage
   useEffect(() => {
@@ -84,19 +101,41 @@ export function QuotationPage() {
     }
   };
 
+  const toggleExpand = (id: number) => {
+    setExpandedQuotation(expandedQuotation === id ? null : id);
+  };
+
   const handleViewQuotation = (id: number): void => {
-    console.log('View quotation:', id);
-    // Navigate to quotation detail or open modal
-    toast.info('Quotation details view coming soon');
+    const quotation = quotations.find(q => q.id === id);
+    if (quotation) {
+      console.log('Quotation Details:', quotation);
+      console.log('Products:', quotation.details);
+      
+      // You can navigate to a detail page or open a modal
+      navigate(`/quotations/${id}`);
+    }
   };
 
   const handleDownload = (id: number): void => {
-    console.log('Download quotation:', id);
-    toast.success('Quotation downloaded successfully');
+    const quotation = quotations.find(q => q.id === id);
+    if (quotation) {
+      // Generate PDF or download as JSON
+      const data = {
+        quotation: quotation,
+        products: quotation.details
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${quotation.quotation_no}.json`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      toast.success('Quotation downloaded successfully');
+    }
   };
 
   const handlePrint = (id: number): void => {
-    console.log('Print quotation:', id);
     window.print();
   };
 
@@ -183,6 +222,7 @@ export function QuotationPage() {
                     size="icon" 
                     className="h-8 w-8"
                     onClick={() => handleViewQuotation(quotation.id)}
+                    title="View Details"
                   >
                     <Eye className="h-4 w-4" />
                   </Button>
@@ -191,6 +231,7 @@ export function QuotationPage() {
                     size="icon" 
                     className="h-8 w-8"
                     onClick={() => handleDownload(quotation.id)}
+                    title="Download"
                   >
                     <Download className="h-4 w-4" />
                   </Button>
@@ -199,6 +240,7 @@ export function QuotationPage() {
                     size="icon" 
                     className="h-8 w-8"
                     onClick={() => handlePrint(quotation.id)}
+                    title="Print"
                   >
                     <Printer className="h-4 w-4" />
                   </Button>
@@ -207,6 +249,7 @@ export function QuotationPage() {
                     size="icon" 
                     className="h-8 w-8"
                     onClick={() => handleEmail(quotation.id)}
+                    title="Email"
                   >
                     <Mail className="h-4 w-4" />
                   </Button>
@@ -223,7 +266,7 @@ export function QuotationPage() {
                 <span className="text-muted-foreground">{quotation.customer_email}</span>
               </div>
 
-              {/* Order Details */}
+              {/* Order Summary */}
               <div className="mt-4 pt-4 border-t">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
@@ -248,6 +291,71 @@ export function QuotationPage() {
                 </div>
               </div>
 
+              {/* Product Details - Expandable Section */}
+              {quotation.details && quotation.details.length > 0 && (
+                <div className="mt-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full flex items-center justify-between hover:bg-muted/50"
+                    onClick={() => toggleExpand(quotation.id)}
+                  >
+                    <span className="font-medium">
+                      View Products ({quotation.details.length} items)
+                    </span>
+                    {expandedQuotation === quotation.id ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
+
+                  {expandedQuotation === quotation.id && (
+                    <div className="mt-3 space-y-3">
+                      {quotation.details.map((detail) => (
+                        <div key={detail.id} className="bg-muted/20 rounded-lg p-4">
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <h5 className="font-semibold text-sm">{detail.product_name}</h5>
+                                <Badge variant="outline" className="text-xs">
+                                  {detail.brand}
+                                </Badge>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                <span>Code: {detail.product_code}</span>
+                                <span className="mx-2">|</span>
+                                <span>Qty: {detail.quantity}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm">
+                              <div>
+                                <p className="text-muted-foreground text-xs">Price</p>
+                                <p className="font-medium">₹{parseFloat(detail.price).toFixed(2)}</p>
+                              </div>
+                              {parseFloat(detail.discount) > 0 && (
+                                <div>
+                                  <p className="text-muted-foreground text-xs">Discount</p>
+                                  <p className="font-medium text-green-600">-₹{parseFloat(detail.discount).toFixed(2)}</p>
+                                </div>
+                              )}
+                              <div>
+                                <p className="text-muted-foreground text-xs">Final Price</p>
+                                <p className="font-medium text-primary">₹{parseFloat(detail.final_price).toFixed(2)}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground text-xs">Subtotal</p>
+                                <p className="font-semibold">₹{parseFloat(detail.subtotal).toFixed(2)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Archive Button */}
               <div className="mt-4 pt-4 border-t flex justify-end">
                 <Button variant="outline" size="sm" disabled>
@@ -260,9 +368,4 @@ export function QuotationPage() {
       </div>
     </div>
   );
-}
-
-// Helper function for className concatenation
-function cn(...classes: (string | undefined | false)[]): string {
-  return classes.filter(Boolean).join(' ');
 }
