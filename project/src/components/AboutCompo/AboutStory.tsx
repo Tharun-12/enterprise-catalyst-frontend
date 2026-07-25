@@ -33,7 +33,7 @@
 
 
 
-// components/about/AboutStory.tsx
+
 import { SectionHeader } from '@/components/shared';
 import { COMPANY } from '@/constants';
 
@@ -56,10 +56,10 @@ export function AboutStory() {
             
             <div className="space-y-4 text-gray-600 leading-relaxed mt-6">
               <p className="relative pl-6 border-l-2 border-pink-500">
-                MV Business Solutions (MVB) was founded in {COMPANY.established} with a simple mission: to provide businesses with access to world-class security, power, and networking products. What started as a small distribution office in Ahmedabad has grown into a trusted enterprise solutions provider serving 500+ clients across India.
+                MV Business Solutions (MVB) was founded with a simple mission: to provide businesses with access to world-class security, power, and networking products. What started as a small distribution office in Ahmedabad has grown into a trusted enterprise solutions provider serving businesses across India.
               </p>
               <p className="pl-6 border-l-2 border-orange-500">
-                Over the years, we've forged partnerships with 15+ global brands including Hikvision, Schneider Electric, Cisco, Siemens, and ABB. Our team of certified technicians and consultants has successfully delivered projects across industries — from hospitals and schools to factories and IT parks.
+                Over the years, we've forged partnerships with leading global brands including Hikvision, Schneider Electric, Cisco, Siemens, and ABB. Our team of certified technicians and consultants has successfully delivered projects across industries — from hospitals and schools to factories and IT parks.
               </p>
               <p className="pl-6 border-l-2 border-blue-500 bg-gradient-to-r from-pink-50 via-orange-50 to-blue-50 p-4 rounded-xl">
                 Today, MVB stands as a single-source solution provider for enterprise security, power backup, networking, electrical, fire safety, and solar energy needs. Our commitment to quality, genuine products, and professional service has made us the preferred partner for businesses across India.
