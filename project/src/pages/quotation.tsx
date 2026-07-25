@@ -204,9 +204,9 @@ export function QuotationPage() {
                 <div>
                   <div className="flex items-center gap-3">
                     <h3 className="text-lg font-semibold">{quotation.quotation_no}</h3>
-                    <Badge className={statusColors[quotation.status].bg + ' ' + statusColors[quotation.status].text}>
+                    {/* <Badge className={statusColors[quotation.status].bg + ' ' + statusColors[quotation.status].text}>
                       {statusColors[quotation.status].label}
-                    </Badge>
+                    </Badge> */}
                   </div>
                   <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                     <span className="flex items-center gap-1">
@@ -217,7 +217,7 @@ export function QuotationPage() {
                     <span className="font-medium text-foreground">₹{parseFloat(quotation.grand_total).toFixed(2)}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                {/* <div className="flex items-center gap-2">
                   <Button 
                     variant="ghost" 
                     size="icon" 
@@ -254,18 +254,18 @@ export function QuotationPage() {
                   >
                     <Mail className="h-4 w-4" />
                   </Button>
-                </div>
+                </div> */}
               </div>
 
               {/* Customer Info */}
-              <div className="mt-3 text-sm">
+              {/* <div className="mt-3 text-sm">
                 <span className="font-semibold">Customer:</span>
                 <span className="ml-2">{quotation.customer_name}</span>
                 <span className="mx-2">|</span>
                 <span>{quotation.customer_mobile}</span>
                 <span className="mx-2">|</span>
                 <span className="text-muted-foreground">{quotation.customer_email}</span>
-              </div>
+              </div> */}
 
               {/* Order Summary */}
               <div className="mt-4 pt-4 border-t">
@@ -358,11 +358,11 @@ export function QuotationPage() {
               )}
 
               {/* Archive Button */}
-              <div className="mt-4 pt-4 border-t flex justify-end">
+              {/* <div className="mt-4 pt-4 border-t flex justify-end">
                 <Button variant="outline" size="sm" disabled>
                   ARCHIVE ORDER
                 </Button>
-              </div>
+              </div> */}
             </Card>
           ))
         )}

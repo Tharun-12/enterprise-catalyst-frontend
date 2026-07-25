@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Heart, GitCompare, Download, FileText, Check, Star, ChevronRight,
-  ZoomIn, Share2, MessageSquare, ShieldCheck, Package, ArrowLeft,
-  BadgeCheck, Truck, Wrench
+  ZoomIn, Share2, ShieldCheck, Package, ArrowLeft,
+  BadgeCheck, Truck, Wrench, FileSpreadsheet
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,9 +15,6 @@ import { ProductCard } from '@/components/product-card';
 import { EmptyState } from '@/components/shared';
 import { WishlistLeadModal } from '@/components/wishlist-modal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { useApp } from '@/hooks/use-app';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -25,7 +22,7 @@ import { PageBreadcrumb as Breadcrumb } from '@/layouts/customer-layout-wrapper'
 import { baseurl } from '@/Baseurl/baseurl';
 import type { Product } from '@/types';
 
-// ---- Raw API response shapes (renamed so they don't collide with the app-wide `Product` type) ----
+// ---- Raw API response shapes ----
 interface ApiCategory {
   id: number;
   category_name: string;
@@ -101,7 +98,6 @@ const transformProduct = (
     shortDescription: product.product_description?.substring(0, 150) || '',
     description: product.product_description || '',
     gallery,
-    // sku_: undefined as never, // (no-op placeholder removed below)
     features: product.specifications?.split(',').map(s => s.trim()).filter(Boolean) || ['Premium quality', 'Enterprise grade'],
     specifications: {},
     currency: 'INR',
@@ -138,6 +134,7 @@ const transformProduct = (
 
 export function ProductDetailsPage() {
   const { slug } = useParams();
+  const navigate = useNavigate();
   const [productData, setProductData] = useState<ApiProduct | null>(null);
   const [categories, setCategories] = useState<ApiCategory[]>([]);
   const [brands, setBrands] = useState<ApiBrand[]>([]);
@@ -148,8 +145,8 @@ export function ProductDetailsPage() {
   const [zoomed, setZoomed] = useState(false);
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
   const [wishlistOpen, setWishlistOpen] = useState(false);
-  const [inquiryOpen, setInquiryOpen] = useState(false);
-  const { addToWishlist, removeFromWishlist, isInWishlist, addToCompare, removeFromCompare, isInCompare, addInquiry } = useApp();
+  const [submitting, setSubmitting] = useState(false);
+  const { addToWishlist, removeFromWishlist, isInWishlist, addToCompare, removeFromCompare, isInCompare } = useApp();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -228,6 +225,24 @@ export function ProductDetailsPage() {
     return null;
   };
 
+  const getUserDetails = () => {
+    const session = localStorage.getItem('userSession');
+    if (session) {
+      try {
+        const user = JSON.parse(session);
+        return {
+          id: user.userId,
+          name: user.name || '',
+          email: user.email || '',
+          mobile: user.mobile || ''
+        };
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  };
+
   const handleWishlist = async () => {
     if (!product) return;
     const userId = getUserId();
@@ -258,22 +273,58 @@ export function ProductDetailsPage() {
     setZoomPos({ x, y });
   };
 
-  const handleInquiry = (e: React.FormEvent) => {
-    e.preventDefault();
-    const form = e.target as HTMLFormElement;
-    const formData = new FormData(form);
-    addInquiry({
-      name: formData.get('name') as string,
-      phone: formData.get('phone') as string,
-      email: formData.get('email') as string,
-      company: formData.get('company') as string,
-      productId: product!.id,
-      productName: product!.name,
-      message: formData.get('message') as string,
-    });
-    toast.success('Inquiry submitted! Our team will contact you soon.');
-    setInquiryOpen(false);
-    form.reset();
+  const handleSingleQuotation = async () => {
+    if (!product) return;
+
+    const userId = getUserId();
+    if (!userId) {
+      toast.error('Please login to request a quotation');
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const user = getUserDetails();
+      
+      const payload = {
+        user_id: userId,
+        product_id: parseInt(product.id),
+        product_name: product.name,
+        product_code: product.sku,
+        product_brand: product.brandName,
+        price: product.price,
+        discount: product.discountPercentage || 0,
+        quantity: 1,
+        remarks: `Quotation requested for ${product.name}`,
+        customer_name: user?.name || '',
+        customer_mobile: user?.mobile || '',
+        customer_email: user?.email || ''
+      };
+
+      const response = await fetch(`${baseurl}/api/quotations/single`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(`Quotation #${data.quotation_no} generated successfully!`);
+        // Navigate to quotations page after successful generation
+        navigate('/wishlist/quotation');
+      } else {
+        toast.error(data.message || 'Failed to submit quotation request');
+      }
+    } catch (error) {
+      console.error('Error submitting quotation:', error);
+      toast.error('Failed to submit quotation request. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -393,7 +444,25 @@ export function ProductDetailsPage() {
           {/* Price */}
           <div className="mb-6">
             <div className="flex items-center gap-3">
-              <span className="text-3xl font-bold">₹{product.price.toLocaleString()}</span>
+              {product.variants && product.variants.length > 0 ? (
+                (() => {
+                  const variantPrices = product.variants.map(v => parseFloat(v.price));
+                  const minPrice = Math.min(...variantPrices);
+                  const maxPrice = Math.max(...variantPrices);
+                  
+                  if (minPrice === maxPrice) {
+                    return <span className="text-3xl font-bold">₹{minPrice.toLocaleString()}</span>;
+                  }
+                  
+                  return (
+                    <span className="text-3xl font-bold">
+                      ₹{minPrice.toLocaleString()} - ₹{maxPrice.toLocaleString()}
+                    </span>
+                  );
+                })()
+              ) : (
+                <span className="text-3xl font-bold">₹{product.price.toLocaleString()}</span>
+              )}
               {(product.discountPercentage ?? 0) > 0 && (
                 <>
                   <span className="text-lg text-muted-foreground line-through">₹{(product.originalPrice ?? 0).toLocaleString()}</span>
@@ -428,8 +497,21 @@ export function ProductDetailsPage() {
 
           {/* Actions */}
           <div className="flex flex-wrap gap-3 mb-4">
-            <Button size="lg" className="flex-1 min-w-[160px]" onClick={() => setInquiryOpen(true)}>
-              <MessageSquare className="w-4 h-4 mr-2" /> Send Inquiry
+            <Button 
+              size="lg" 
+              className="flex-1 min-w-[160px]" 
+              onClick={handleSingleQuotation}
+              disabled={submitting}
+            >
+              {submitting ? (
+                <>
+                  <span className="animate-spin mr-2">⟳</span> Generating...
+                </>
+              ) : (
+                <>
+                  <FileSpreadsheet className="w-4 h-4 mr-2" /> Request for Quotation
+                </>
+              )}
             </Button>
             <Button
               size="lg"
@@ -571,44 +653,6 @@ export function ProductDetailsPage() {
       )}
 
       <WishlistLeadModal product={product} open={wishlistOpen} onOpenChange={setWishlistOpen} />
-
-      {/* Inquiry Modal */}
-      <Dialog open={inquiryOpen} onOpenChange={setInquiryOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Send Inquiry</DialogTitle>
-            <DialogDescription>Send us your inquiry about <span className="font-semibold text-foreground">{product.name}</span></DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleInquiry} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="iq-name" className="text-xs">Name *</Label>
-                <Input id="iq-name" name="name" required placeholder="Your name" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="iq-phone" className="text-xs">Phone *</Label>
-                <Input id="iq-phone" name="phone" required placeholder="+91 98765 43210" />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="iq-email" className="text-xs">Email *</Label>
-              <Input id="iq-email" name="email" type="email" required placeholder="you@company.com" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="iq-company" className="text-xs">Company</Label>
-              <Input id="iq-company" name="company" placeholder="Company name" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="iq-message" className="text-xs">Message *</Label>
-              <Textarea id="iq-message" name="message" required placeholder="Tell us about your requirements..." className="resize-none" rows={4} />
-            </div>
-            <div className="flex gap-3 pt-2">
-              <Button type="button" variant="outline" className="flex-1" onClick={() => setInquiryOpen(false)}>Cancel</Button>
-              <Button type="submit" className="flex-1">Submit Inquiry</Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

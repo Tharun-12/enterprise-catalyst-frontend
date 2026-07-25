@@ -1,28 +1,24 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Package, Brain, Network, Server, Shield, Lock } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-// import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SectionHeader } from '@/components/shared';
-import * as Icons from 'lucide-react';
 import { PageBreadcrumb as Breadcrumb } from '@/layouts/customer-layout-wrapper';
 import { useState, useEffect } from 'react';
 import { baseurl } from '@/Baseurl/baseurl';
 
-// Category interface based on your API response - FIXED to match actual API
+// Category interface based on your API response
 interface Category {
   id: number;
-  category_name: string;  // Changed from 'name' to 'category_name'
+  category_name: string;
   created_at: string;
   updated_at: string;
-  // Note: description is not in your API response
 }
 
 // Define a color mapping for categories
 const categoryColors: Record<string, string> = {
-  'Artifical Intelligence': '#6C63FF',  // Fixed spelling to match API
-  'Artificial Intelligence': '#6C63FF', // Keep both for safety
+  'Artificial Intelligence': '#6C63FF',
   'Data Cabling': '#00B4D8',
   'Data Infrastructure': '#2D9CDB',
   'Data Physical Security': '#F2994A',
@@ -31,19 +27,17 @@ const categoryColors: Record<string, string> = {
 };
 
 // Define icon mapping for categories
-const categoryIcons: Record<string, keyof typeof Icons> = {
-  'Artifical Intelligence': 'Brain',  // Fixed spelling to match API
-  'Artificial Intelligence': 'Brain', // Keep both for safety
-  'Data Cabling': 'Network',
-  'Data Infrastructure': 'Server',
-  'Data Physical Security': 'Shield',
-  'Data Security': 'Lock',
-  'Default': 'Package'
+const categoryIcons: Record<string, React.ElementType> = {
+  'Artificial Intelligence': Brain,
+  'Data Cabling': Network,
+  'Data Infrastructure': Server,
+  'Data Physical Security': Shield,
+  'Data Security': Lock,
+  'Default': Package
 };
 
 // Placeholder images for categories
 const categoryImages: Record<string, string> = {
-  'Artifical Intelligence': 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&h=400&fit=crop',  // Fixed spelling
   'Artificial Intelligence': 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&h=400&fit=crop',
   'Data Cabling': 'https://images.unsplash.com/photo-1581091226033-d5c48150dbaa?w=800&h=400&fit=crop',
   'Data Infrastructure': 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&h=400&fit=crop',
@@ -57,6 +51,19 @@ const createSlug = (name: string): string => {
   if (!name) return 'uncategorized';
   return name.toLowerCase().replace(/\s+/g, '-');
 };
+
+// Skeleton Card Component
+const SkeletonCard = () => (
+  <Card className="overflow-hidden h-72 animate-pulse">
+    <div className="h-40 bg-gray-200 dark:bg-gray-700"></div>
+    <div className="p-5">
+      <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded mb-3 w-3/4"></div>
+      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
+      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
+      <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded"></div>
+    </div>
+  </Card>
+);
 
 export function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -94,23 +101,15 @@ export function CategoriesPage() {
   // Loading state with skeleton
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
         <Breadcrumb items={[{ label: 'Home', path: '/' }, { label: 'Categories' }]} />
         <SectionHeader
           title="Product Categories"
           subtitle="Browse our comprehensive catalog of enterprise product categories, each with specialized solutions."
         />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Card key={i} className="overflow-hidden h-72 animate-pulse">
-              <div className="h-40 bg-gray-200 dark:bg-gray-700"></div>
-              <div className="p-5">
-                <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded mb-3"></div>
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
-                <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded"></div>
-              </div>
-            </Card>
+            <SkeletonCard key={i} />
           ))}
         </div>
       </div>
@@ -120,7 +119,7 @@ export function CategoriesPage() {
   // Error state
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
         <Breadcrumb items={[{ label: 'Home', path: '/' }, { label: 'Categories' }]} />
         <SectionHeader
           title="Product Categories"
@@ -146,7 +145,7 @@ export function CategoriesPage() {
   // Empty state
   if (categories.length === 0) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
         <Breadcrumb items={[{ label: 'Home', path: '/' }, { label: 'Categories' }]} />
         <SectionHeader
           title="Product Categories"
@@ -164,23 +163,22 @@ export function CategoriesPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
       <Breadcrumb items={[{ label: 'Home', path: '/' }, { label: 'Categories' }]} />
+      
       <SectionHeader
         title="Product Categories"
         subtitle="Browse our comprehensive catalog of enterprise product categories, each with specialized solutions."
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {categories.map((cat, i) => {
-          // Use category_name from API response
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {categories.map((cat, index) => {
           const categoryName = cat.category_name;
           
           // Get category color or default
           const color = categoryColors[categoryName] || categoryColors.Default;
-          // Get icon name or default
-          const iconName = categoryIcons[categoryName] || categoryIcons.Default;
-          const Icon = (Icons as any)[iconName] || Icons.Package;
+          // Get icon component or default
+          const Icon = categoryIcons[categoryName] || categoryIcons.Default;
           // Get image or default
           const imageUrl = categoryImages[categoryName] || categoryImages.Default;
           const slug = createSlug(categoryName);
@@ -190,45 +188,60 @@ export function CategoriesPage() {
               key={cat.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
+              transition={{ delay: index * 0.05 }}
+              className="h-full"
             >
-              <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group h-full flex flex-col">
+              <Card className="overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group h-full flex flex-col border-0 shadow-lg">
+                {/* Image Section */}
                 <div
-                  className="h-40 relative bg-cover bg-center"
+                  className="h-48 relative bg-cover bg-center"
                   style={{ 
                     backgroundImage: `url(${imageUrl})`,
                   }}
                 >
+                  {/* Gradient Overlay */}
                   <div 
                     className="absolute inset-0"
-                    style={{ background: `linear-gradient(135deg, ${color}80, ${color}40)` }}
+                    style={{ 
+                      background: `linear-gradient(135deg, ${color}cc, ${color}66)` 
+                    }}
                   />
+                  
+                  {/* Icon Overlay */}
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <Icon className="w-16 h-16 text-white drop-shadow-lg" />
+                    <Icon className="w-20 h-20 text-white drop-shadow-lg opacity-90 group-hover:scale-110 transition-transform duration-300" />
                   </div>
-                  <div className="absolute top-3 right-3">
-                    {/* <Badge className="bg-white/90 text-foreground border-0 shadow-sm backdrop-blur-sm">
-                      {cat.id ? `${cat.id} Products` : 'Products'}
-                    </Badge> */}
+
+                  {/* Category Badge - Product Count (optional) */}
+                  <div className="absolute bottom-3 left-3">
+                    <span className="bg-black/30 backdrop-blur-sm text-white text-xs px-3 py-1 rounded-full">
+                      {cat.id ? `${cat.id} Products` : 'Available'}
+                    </span>
                   </div>
                 </div>
-                <div className="p-5 flex flex-col flex-1">
-                  <h3 className="font-bold text-lg mb-2 line-clamp-1">{categoryName}</h3>
-                  {/* <p className="text-sm text-muted-foreground leading-relaxed mb-4 flex-1 line-clamp-3">
-                    No description available
-                  </p> */}
+
+                {/* Content Section */}
+                <div className="p-6 flex flex-col flex-1 bg-white dark:bg-gray-800">
+                  <h3 className="font-bold text-xl mb-2 line-clamp-1 text-gray-900 dark:text-white">
+                    {categoryName}
+                  </h3>
                   
-                  <Link to={`/products?category=${slug}`} className="w-full">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-4 flex-1 line-clamp-2">
+                    Explore our comprehensive range of {categoryName.toLowerCase()} solutions designed for enterprise needs.
+                  </p>
+                  
+                  {/* Browse Products Button */}
+                  <Link to={`/products?category=${slug}`} className="w-full mt-auto">
                     <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
+                      className="w-full group-hover:shadow-lg transition-all duration-300"
                       style={{ 
-                        borderColor: color,
-                        color: color,
-                      } as React.CSSProperties}
+                        backgroundColor: color,
+                        color: 'white',
+                        border: 'none'
+                      }}
                     >
-                      Browse Products <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                      Browse Products 
+                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                     </Button>
                   </Link>
                 </div>

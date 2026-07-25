@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { SlidersHorizontal, Search } from 'lucide-react';
+import { SlidersHorizontal, Search, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,7 +14,7 @@ import { PageBreadcrumb as Breadcrumb } from '@/layouts/customer-layout-wrapper'
 import { baseurl } from '@/Baseurl/baseurl';
 import type { Product } from '@/types';
 
-// ---- Raw API response shapes (renamed to avoid colliding with the app-wide `Product` type) ----
+// ---- Raw API response shapes ----
 interface ApiCategory {
   id: number;
   category_name: string;
@@ -76,6 +76,11 @@ const transformProduct = (
   const defaultImage = 'https://via.placeholder.com/400x400';
   const gallery = galleryImages.length > 0 ? galleryImages : [defaultImage];
 
+  // Use variant price if available, otherwise use product price
+  const variantPrices = product.variants?.map(v => parseFloat(v.price)) || [];
+  const lowestVariantPrice = variantPrices.length > 0 ? Math.min(...variantPrices) : parseFloat(product.price);
+  const highestVariantPrice = variantPrices.length > 0 ? Math.max(...variantPrices) : parseFloat(product.price);
+  
   const priceNum = parseFloat(product.price);
   const discountNum = parseFloat(product.discount || '0');
 
@@ -122,6 +127,9 @@ const transformProduct = (
     variants: product.variants,
     hasVariants: (product.variants?.length || 0) > 0,
     stock: product.variants?.reduce((sum, v) => sum + v.stock, 0) || 0,
+    // Add price range for variants
+    lowestPrice: lowestVariantPrice,
+    highestPrice: highestVariantPrice,
   };
 };
 
@@ -278,7 +286,7 @@ export function ProductsPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
       <Breadcrumb items={[
         { label: 'Home', path: '/' },
         { label: 'Products', path: '/products' },
@@ -286,10 +294,10 @@ export function ProductsPage() {
       ]} />
 
       <div className="flex flex-col gap-2 mb-6">
-        <h1 className="text-2xl lg:text-3xl font-bold">
+        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
           {currentCategory ? currentCategory.category_name : 'All Products'}
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-gray-500 dark:text-gray-400">
           {currentCategory
             ? `Browse ${currentCategory.category_name} products`
             : 'Browse our complete catalog of enterprise products across all categories.'}
@@ -302,6 +310,7 @@ export function ProductsPage() {
           variant={!filters.category ? 'default' : 'outline'}
           size="sm"
           onClick={() => handleCategoryChange(null)}
+          className="rounded-full"
         >
           All Categories
         </Button>
@@ -311,6 +320,7 @@ export function ProductsPage() {
             variant={filters.category === createSlug(cat.category_name) ? 'default' : 'outline'}
             size="sm"
             onClick={() => handleCategoryChange(createSlug(cat.category_name))}
+            className="rounded-full"
           >
             {cat.category_name}
           </Button>
@@ -332,23 +342,23 @@ export function ProductsPage() {
         {/* Main content */}
         <div className="flex-1 min-w-0">
           {/* Toolbar */}
-          <div className="flex items-center justify-between gap-3 mb-5">
-            <div className="flex items-center gap-3 flex-1">
-              <div className="relative flex-1 max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
+            <div className="flex items-center gap-3 flex-1 w-full sm:w-auto">
+              <div className="relative flex-1 sm:max-w-xs w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
                   placeholder="Search products..."
-                  className="pl-9 h-9"
+                  className="pl-9 h-9 rounded-full border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary/20"
                   value={filters.search}
                   onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                 />
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <Sheet open={showMobileFilter} onOpenChange={setShowMobileFilter}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" size="sm" className="lg:hidden">
-                    <SlidersHorizontal className="w-4 h-4 mr-1.5" /> Filters
+                  <Button variant="outline" size="sm" className="lg:hidden rounded-full">
+                    <Filter className="w-4 h-4 mr-1.5" /> Filters
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="w-[300px] sm:w-[350px] overflow-y-auto">
@@ -363,7 +373,7 @@ export function ProductsPage() {
                 </SheetContent>
               </Sheet>
               <Select value={filters.sort} onValueChange={(v) => setFilters({ ...filters, sort: v })}>
-                <SelectTrigger className="w-[140px] h-9">
+                <SelectTrigger className="w-[140px] h-9 rounded-full border-gray-200 dark:border-gray-700">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
@@ -389,8 +399,10 @@ export function ProductsPage() {
             />
           ) : (
             <>
-              <p className="text-sm text-muted-foreground mb-4">Showing {filteredProducts.length} products</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                Showing <span className="font-semibold text-gray-700 dark:text-gray-300">{filteredProducts.length}</span> products
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-5">
                 {filteredProducts.map((product, i) => (
                   <motion.div
                     key={product.id}
