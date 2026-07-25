@@ -1,7 +1,7 @@
-// src/components/admin/AdminProducts.tsx (renamed from .jsx)
+// src/components/admin/AdminProducts.tsx
 import { useState, useEffect, useMemo, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Edit, Trash2, ChevronLeft, ChevronRight, CheckSquare, Square, Loader2 } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, ChevronLeft, ChevronRight, Loader2, Eye } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,10 +40,12 @@ interface Product {
   }>;
 }
 
+// FIXED: Updated Category interface to match API response
 interface Category {
   id: number;
-  name: string;
-  slug: string;
+  category_name: string;  // Changed from 'name' to 'category_name'
+  created_at: string;
+  updated_at: string;
 }
 
 // API Response types
@@ -74,38 +76,42 @@ type SortDirection = 'asc' | 'desc';
 
 interface AdminProductsProps {
   onEditProduct?: (productId: number) => void;
+  onViewProduct?: (productId: number) => void;
 }
 
-export function AdminProducts({ onEditProduct }: AdminProductsProps) {
+export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsProps) {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [search, setSearch] = useState<string>('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [sortField, setSortField] = useState<SortField>('createdAt'); // Uncommented
-  const [sortDir, setSortDir] = useState<SortDirection>('desc'); // Uncommented
+  const [sortField, setSortField] = useState<SortField>('createdAt');
+  const [sortDir, setSortDir] = useState<SortDirection>('desc');
   const [page, setPage] = useState<number>(1);
-  const [pageSize] = useState<number>(10);
+  const [pageSize, setPageSize] = useState<number>(10);
   const [totalProducts, setTotalProducts] = useState<number>(0);
-  const [selected, setSelected] = useState<number[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
 
   // Fetch products and categories
   useEffect(() => {
     fetchProducts();
     fetchCategories();
-  }, [search, categoryFilter, page]);
+  }, [search, categoryFilter, page, pageSize]);
 
   const fetchCategories = async (): Promise<void> => {
     try {
       const response = await fetch(`${baseurl}/api/categories/`);
       const data: CategoryResponse = await response.json();
       if (data.success) {
+        console.log('Fetched categories:', data.data); // Debug log
         setCategories(data.data);
+      } else {
+        console.error('Failed to fetch categories:', data);
       }
     } catch (error) {
       console.error('Error fetching categories:', error);
+      toast.error('Failed to fetch categories');
     }
   };
 
@@ -164,7 +170,7 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
       );
     }
     
-    // Apply sorting - now sortField and sortDir are defined
+    // Apply sorting
     result.sort((a, b) => {
       let cmp = 0;
       if (sortField === 'name') {
@@ -180,14 +186,6 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
 
   const totalPages = Math.ceil(totalProducts / pageSize);
   const paginated = filteredAndSortedProducts;
-
-  const toggleSelect = (id: number): void => {
-    setSelected((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
-  };
-  
-  const toggleSelectAll = (): void => {
-    setSelected(selected.length === paginated.length ? [] : paginated.map((p) => p.id));
-  };
 
   const handleDelete = async (): Promise<void> => {
     if (!deleteTarget) return;
@@ -213,24 +211,6 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
     }
   };
 
-  const handleBulkDelete = async (): Promise<void> => {
-    try {
-      const promises = selected.map((id) =>
-        fetch(`${baseurl}/api/products/${id}`, {
-          method: 'DELETE',
-        })
-      );
-      
-      await Promise.all(promises);
-      toast.success(`${selected.length} products deleted`);
-      setSelected([]);
-      fetchProducts();
-    } catch (error) {
-      console.error('Error bulk deleting products:', error);
-      toast.error('Failed to delete products');
-    }
-  };
-
   const getProductImage = (product: Product): string => {
     if (product.variants && product.variants.length > 0) {
       return product.variants[0].image_url;
@@ -253,9 +233,22 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
     if (onEditProduct) {
       onEditProduct(productId);
     } else {
-      // Navigate to edit page with product ID
       navigate(`/admin/products/edit/${productId}`);
     }
+  };
+
+  const handleViewClick = (productId: number): void => {
+    if (onViewProduct) {
+      onViewProduct(productId);
+    } else {
+      navigate(`/admin/products/view/${productId}`);
+    }
+  };
+
+  // Handle page size change
+  const handlePageSizeChange = (value: string): void => {
+    setPageSize(Number(value));
+    setPage(1); // Reset to first page when changing page size
   };
 
   if (loading && products.length === 0) {
@@ -271,6 +264,17 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
 
   return (
     <div className="space-y-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Product Management</h2>
+          <p className="text-sm text-muted-foreground">Manage your product inventory</p>
+        </div>
+        <Button onClick={() => navigate('/admin/products/add')}>
+          <Plus className="w-4 h-4 mr-1.5" /> Add Product
+        </Button>
+      </div>
+
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div className="flex flex-wrap gap-2 flex-1">
@@ -296,7 +300,9 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
               {categories.map((c) => (
-                <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                <SelectItem key={c.id} value={String(c.id)}>
+                  {c.category_name}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -319,21 +325,10 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
             {sortDir === 'asc' ? '↑' : '↓'}
           </Button>
         </div>
-        <Button onClick={() => navigate('/admin/products/add')}>
-          <Plus className="w-4 h-4 mr-1.5" /> Add Product
-        </Button>
-      </div>
-
-      {/* Bulk actions */}
-      {selected.length > 0 && (
-        <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
-          <span className="text-sm font-medium">{selected.length} selected</span>
-          <Button variant="outline" size="sm" onClick={handleBulkDelete} className="text-destructive hover:text-destructive">
-            <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Delete Selected
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setSelected([])}>Clear</Button>
+        <div className="text-sm text-muted-foreground whitespace-nowrap">
+          {totalProducts} products found
         </div>
-      )}
+      </div>
 
       {/* Table */}
       <Card className="overflow-hidden">
@@ -341,14 +336,7 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
           <table className="w-full">
             <thead className="bg-muted/50 border-b">
               <tr>
-                <th className="p-3 w-10">
-                  <button onClick={toggleSelectAll}>
-                    {selected.length === paginated.length && paginated.length > 0 ? 
-                      <CheckSquare className="w-4 h-4 text-primary" /> : 
-                      <Square className="w-4 h-4 text-muted-foreground" />
-                    }
-                  </button>
-                </th>
+                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">#</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Product</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Category</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Brand</th>
@@ -365,15 +353,10 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
                   </td>
                 </tr>
               ) : (
-                paginated.map((product) => (
+                paginated.map((product, index) => (
                   <tr key={product.id} className="border-b hover:bg-muted/30 transition-colors">
-                    <td className="p-3">
-                      <button onClick={() => toggleSelect(product.id)}>
-                        {selected.includes(product.id) ? 
-                          <CheckSquare className="w-4 h-4 text-primary" /> : 
-                          <Square className="w-4 h-4 text-muted-foreground" />
-                        }
-                      </button>
+                    <td className="p-3 text-sm">
+                      {(page - 1) * pageSize + index + 1}
                     </td>
                     <td className="p-3">
                       <div className="flex items-center gap-3">
@@ -414,7 +397,17 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
                           variant="ghost" 
                           size="icon" 
                           className="h-8 w-8" 
+                          onClick={() => handleViewClick(product.id)}
+                          title="View Product Details"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8" 
                           onClick={() => handleEditClick(product.id)}
+                          title="Edit Product"
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
@@ -423,6 +416,7 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
                           size="icon" 
                           className="h-8 w-8 text-destructive hover:text-destructive" 
                           onClick={() => setDeleteTarget(product)}
+                          title="Delete Product"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -436,46 +430,73 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
         </div>
 
         {/* Pagination */}
-        <div className="flex items-center justify-between p-4 border-t">
-          <div className="text-sm text-muted-foreground">
-            Showing {paginated.length} of {totalProducts} products
+        {totalProducts > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t">
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-muted-foreground">
+                Showing {((page - 1) * pageSize) + 1} - {Math.min(page * pageSize, totalProducts)} of {totalProducts} products
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Show</span>
+                <Select value={String(pageSize)} onValueChange={handlePageSizeChange}>
+                  <SelectTrigger className="w-[70px] h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="15">15</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-sm text-muted-foreground">entries</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                disabled={page === 1} 
+                onClick={() => setPage(page - 1)}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <span className="text-sm">Page {page} of {totalPages || 1}</span>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                disabled={page === totalPages || totalPages === 0} 
+                onClick={() => setPage(page + 1)}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              disabled={page === 1} 
-              onClick={() => setPage(page - 1)}
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <span className="text-sm">Page {page} of {totalPages || 1}</span>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              disabled={page === totalPages || totalPages === 0} 
-              onClick={() => setPage(page + 1)}
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
+        )}
       </Card>
 
       {/* Delete confirmation */}
       <Dialog open={!!deleteTarget} onOpenChange={(v: boolean) => !v && setDeleteTarget(null)}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle>Delete Product</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete "{deleteTarget?.product_name}"? This action cannot be undone.
+            <DialogTitle className="text-xl font-semibold text-gray-900">Delete Product</DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Are you sure you want to delete "<span className="font-semibold text-gray-900">{deleteTarget?.product_name}</span>"? 
+              This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-3 pt-4">
-            <Button variant="outline" className="flex-1" onClick={() => setDeleteTarget(null)}>
+            <Button 
+              variant="outline" 
+              className="flex-1 border-gray-300 hover:bg-gray-50" 
+              onClick={() => setDeleteTarget(null)}
+            >
               Cancel
             </Button>
-            <Button variant="destructive" className="flex-1" onClick={handleDelete}>
+            <Button 
+              variant="destructive" 
+              className="flex-1 bg-red-600 hover:bg-red-700" 
+              onClick={handleDelete}
+            >
               Delete
             </Button>
           </div>

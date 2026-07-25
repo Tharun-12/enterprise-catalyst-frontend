@@ -1,10 +1,11 @@
 // src/components/admin/AdminCategories.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit, Trash2, Loader2, X, Check } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, X, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import axios, { AxiosError } from 'axios';
@@ -34,19 +35,21 @@ export function AdminCategories() {
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
   
-  // State for quick add
-  const [newCategoryName, setNewCategoryName] = useState<string>('');
-  const [isAdding, setIsAdding] = useState<boolean>(false);
+  // State for add/edit modal
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [categoryName, setCategoryName] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // State for inline editing
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editingName, setEditingName] = useState<string>('');
-  const [isUpdating, setIsUpdating] = useState<boolean>(false);
+  // Pagination and search
+  const [search, setSearch] = useState<string>('');
+  const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
 
   // Fetch categories from API
   useEffect(() => {
     fetchCategories();
-  }, []);
+  }, [page, pageSize]);
 
   const fetchCategories = async (): Promise<void> => {
     try {
@@ -65,59 +68,90 @@ export function AdminCategories() {
     }
   };
 
-  const handleAddCategory = (): void => {
-    navigate('/admin/categories/add');
+  // Filter categories based on search
+  const filteredCategories = categories.filter(cat =>
+    cat.category_name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  // Paginate filtered categories
+  const paginatedCategories = filteredCategories.slice(
+    (page - 1) * pageSize,
+    page * pageSize
+  );
+
+  const totalPages = Math.ceil(filteredCategories.length / pageSize);
+
+  // Open modal for adding new category
+  const handleOpenAddModal = (): void => {
+    setEditingCategory(null);
+    setCategoryName('');
+    setIsModalOpen(true);
   };
 
-  // Start inline editing - prefill the header input
-  const startEditing = (category: Category): void => {
-    setEditingId(category.id);
-    setEditingName(category.category_name);
-    setNewCategoryName(category.category_name); // Prefill the header input
+  // Open modal for editing category
+  const handleOpenEditModal = (category: Category): void => {
+    setEditingCategory(category);
+    setCategoryName(category.category_name);
+    setIsModalOpen(true);
   };
 
-  // Cancel inline editing
-  const cancelEditing = (): void => {
-    setEditingId(null);
-    setEditingName('');
-    setNewCategoryName(''); // Clear the header input
+  // Close modal
+  const handleCloseModal = (): void => {
+    setIsModalOpen(false);
+    setEditingCategory(null);
+    setCategoryName('');
   };
 
-  // Save inline editing
-  const saveEditing = async (): Promise<void> => {
-    if (!editingId) return;
+  // Handle form submit for add/edit
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
+    e.preventDefault();
     
-    const trimmedName = newCategoryName.trim();
+    const trimmedName = categoryName.trim();
     if (!trimmedName) {
       toast.error('Category name is required');
       return;
     }
 
-    setIsUpdating(true);
+    setIsSubmitting(true);
     try {
-      const response = await axios.put<ApiResponse<Category>>(`${API_URL}/categories/${editingId}`, {
-        category_name: trimmedName,
-      });
-
-      if (response.data.success) {
-        toast.success('Category updated successfully!');
-        setCategories(prevCategories =>
-          prevCategories.map(cat =>
-            cat.id === editingId ? { ...cat, category_name: trimmedName } : cat
-          )
+      if (editingCategory) {
+        // Update existing category
+        const response = await axios.put<ApiResponse<Category>>(
+          `${API_URL}/categories/${editingCategory.id}`,
+          { category_name: trimmedName }
         );
-        setEditingId(null);
-        setEditingName('');
-        setNewCategoryName(''); // Clear the input after saving
+
+        if (response.data.success) {
+          toast.success('Category updated successfully!');
+          await fetchCategories();
+          handleCloseModal();
+        } else {
+          toast.error(response.data.message || 'Failed to update category');
+        }
       } else {
-        toast.error(response.data.message || 'Failed to update category');
+        // Add new category
+        const response = await axios.post<ApiResponse<Category>>(
+          `${API_URL}/categories`,
+          { category_name: trimmedName }
+        );
+
+        if (response.data.success) {
+          toast.success('Category added successfully!');
+          await fetchCategories();
+          // Go to last page to show new category
+          const newTotalPages = Math.ceil((filteredCategories.length + 1) / pageSize);
+          setPage(newTotalPages);
+          handleCloseModal();
+        } else {
+          toast.error(response.data.message || 'Failed to add category');
+        }
       }
     } catch (error: unknown) {
-      console.error('Error updating category:', error);
+      console.error('Error saving category:', error);
       const axiosError = error as AxiosError<{ message: string }>;
-      toast.error(axiosError.response?.data?.message || 'Failed to update category');
+      toast.error(axiosError.response?.data?.message || 'Failed to save category');
     } finally {
-      setIsUpdating(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -130,7 +164,7 @@ export function AdminCategories() {
       
       if (response.data.success) {
         toast.success('Category deleted successfully');
-        setCategories(prevCategories => prevCategories.filter(c => c.id !== deleteTarget.id));
+        await fetchCategories();
         setDeleteTarget(null);
       } else {
         toast.error(response.data.message || 'Failed to delete category');
@@ -149,54 +183,17 @@ export function AdminCategories() {
     setDeleteTarget(null);
   };
 
-  // Handle quick add category
-  const handleQuickAdd = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
-    e.preventDefault();
-    
-    // If editing mode is active, save the edit instead
-    if (editingId !== null) {
-      await saveEditing();
-      return;
-    }
-    
-    const trimmedName = newCategoryName.trim();
-    if (!trimmedName) {
-      toast.error('Category name is required');
-      return;
-    }
-
-    setIsAdding(true);
-    try {
-      const response = await axios.post<ApiResponse<Category>>(`${API_URL}/categories`, {
-        category_name: trimmedName,
-      });
-
-      if (response.data.success) {
-        toast.success('Category added successfully!');
-        setNewCategoryName('');
-        // Refresh categories list
-        await fetchCategories();
-      } else {
-        toast.error(response.data.message || 'Failed to add category');
-      }
-    } catch (error: unknown) {
-      console.error('Error adding category:', error);
-      const axiosError = error as AxiosError<{ message: string }>;
-      if (axiosError.response) {
-        toast.error(axiosError.response.data?.message || 'Failed to add category');
-      } else {
-        toast.error('Failed to add category');
-      }
-    } finally {
-      setIsAdding(false);
-    }
+  // Handle page size change
+  const handlePageSizeChange = (value: string): void => {
+    setPageSize(Number(value));
+    setPage(1); // Reset to first page when changing page size
   };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
           <p className="mt-4 text-muted-foreground">Loading categories...</p>
         </div>
       </div>
@@ -204,149 +201,212 @@ export function AdminCategories() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header with Quick Add / Edit */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Category Management</h2>
-          <p className="text-sm text-gray-500">
-            {editingId !== null ? `Editing: ${editingName}` : 'Manage your product categories'}
-          </p>
+          <h2 className="text-lg font-semibold">Category Management</h2>
+          <p className="text-sm text-muted-foreground">Manage your product categories</p>
         </div>
-        
-        {/* Quick Add / Edit Form - Inline with header */}
-        <form onSubmit={handleQuickAdd} className="flex w-full sm:w-auto gap-2">
-          <div className="flex-1 sm:w-72">
-            <Input
-              placeholder={editingId !== null ? "Edit category name..." : "Enter category name..."}
-              value={newCategoryName}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCategoryName(e.target.value)}
-              disabled={isAdding || isUpdating}
-              className={`w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
-                editingId !== null ? 'border-yellow-500 bg-yellow-50' : ''
-              }`}
-              autoFocus={editingId !== null}
-            />
-          </div>
-          <Button 
-            type="submit" 
-            disabled={isAdding || isUpdating || !newCategoryName.trim()}
-            className={`whitespace-nowrap ${
-              editingId !== null 
-                ? 'bg-green-600 hover:bg-green-700' 
-                : 'bg-blue-600 hover:bg-blue-700'
-            } text-white`}
-          >
-            {isAdding || isUpdating ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                {editingId !== null ? 'Updating...' : 'Adding...'}
-              </>
-            ) : (
-              <>
-                {editingId !== null ? (
-                  <>
-                    <Check className="w-4 h-4 mr-1.5" />
-                    Update Category
-                  </>
-                ) : (
-                  <>
-                    <Plus className="w-4 h-4 mr-1.5" />
-                    Add Category
-                  </>
-                )}
-              </>
-            )}
-          </Button>
-          {editingId !== null && (
-            <Button 
-              type="button"
-              variant="outline"
-              onClick={cancelEditing}
-              disabled={isUpdating}
-              className="whitespace-nowrap border-gray-300 hover:bg-gray-100"
-            >
-              <X className="w-4 h-4 mr-1.5" />
-              Cancel
-            </Button>
-          )}
-        </form>
+        <Button onClick={handleOpenAddModal}>
+          <Plus className="w-4 h-4 mr-1.5" /> Add Category
+        </Button>
       </div>
 
-      {categories.length === 0 ? (
-        <Card className="p-16 text-center border-2 border-dashed border-gray-300">
-          <div className="flex flex-col items-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <Plus className="w-8 h-8 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">No categories yet</h3>
-            <p className="text-sm text-gray-500 mb-4">Get started by adding your first category</p>
-            <Button onClick={handleAddCategory} className="bg-blue-600 hover:bg-blue-700 text-white">
-              <Plus className="w-4 h-4 mr-1.5" /> Add Your First Category
-            </Button>
-          </div>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {categories.map((cat: Category) => (
-            <Card 
-              key={cat.id} 
-              className={`p-4 hover:shadow-lg transition-all duration-200 border ${
-                editingId === cat.id 
-                  ? 'border-yellow-400 bg-yellow-50/50' 
-                  : 'border-gray-200 hover:border-blue-300'
-              }`}
-            >
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-900 truncate">
-                    {cat.category_name}
-                  </h3>
-                </div>
-                {/* Removed group-hover:opacity-0 and added always visible */}
-                <div className="flex gap-1 ml-2 flex-shrink-0">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8 hover:bg-blue-50 hover:text-blue-600 transition-colors" 
-                    onClick={() => startEditing(cat)}
-                    aria-label={`Edit ${cat.category_name}`}
-                    disabled={editingId !== null}
-                  >
-                    <Edit className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8 hover:bg-red-50 hover:text-red-600 transition-colors" 
-                    onClick={() => setDeleteTarget(cat)}
-                    aria-label={`Delete ${cat.category_name}`}
-                    disabled={editingId !== null}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-              </div>
-              <div className="mt-2 pt-2 border-t border-gray-100">
-                <p className="text-xs text-gray-400">
-                  Created: {new Date(cat.created_at).toLocaleDateString('en-IN', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
-                  })}
-                </p>
-              </div>
-              {editingId === cat.id && (
-                <div className="mt-2 pt-2 border-t border-yellow-200">
-                  <p className="text-xs text-yellow-600 font-medium">
-                    ✏️ Editing in progress...
-                  </p>
-                </div>
-              )}
-            </Card>
-          ))}
+      {/* Toolbar */}
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input 
+            placeholder="Search categories..." 
+            className="pl-9 h-9" 
+            value={search} 
+            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }} 
+          />
         </div>
-      )}
+        <div className="text-sm text-muted-foreground">
+          {filteredCategories.length} categories found
+        </div>
+      </div>
+
+      {/* Table */}
+      <Card className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-muted/50 border-b">
+              <tr>
+                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">#</th>
+                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Category Name</th>
+                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Created At</th>
+                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Updated At</th>
+                <th className="p-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedCategories.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                    {search ? 'No categories match your search.' : 'No categories found. Click "Add Category" to create one.'}
+                  </td>
+                </tr>
+              ) : (
+                paginatedCategories.map((cat, index) => (
+                  <tr key={cat.id} className="border-b hover:bg-muted/30 transition-colors">
+                    <td className="p-3 text-sm">
+                      {(page - 1) * pageSize + index + 1}
+                    </td>
+                    <td className="p-3">
+                      <span className="font-medium">{cat.category_name}</span>
+                    </td>
+                    <td className="p-3 hidden md:table-cell text-sm text-muted-foreground">
+                      {new Date(cat.created_at).toLocaleDateString('en-IN', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                      })}
+                    </td>
+                    <td className="p-3 hidden lg:table-cell text-sm text-muted-foreground">
+                      {new Date(cat.updated_at).toLocaleDateString('en-IN', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                      })}
+                    </td>
+                    <td className="p-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8" 
+                          onClick={() => handleOpenEditModal(cat)}
+                          aria-label={`Edit ${cat.category_name}`}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-destructive hover:text-destructive" 
+                          onClick={() => setDeleteTarget(cat)}
+                          aria-label={`Delete ${cat.category_name}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {filteredCategories.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t">
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-muted-foreground">
+                Showing {((page - 1) * pageSize) + 1} - {Math.min(page * pageSize, filteredCategories.length)} of {filteredCategories.length} categories
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Show</span>
+                <Select value={String(pageSize)} onValueChange={handlePageSizeChange}>
+                  <SelectTrigger className="w-[70px] h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="15">15</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-sm text-muted-foreground">entries</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                disabled={page === 1} 
+                onClick={() => setPage(page - 1)}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <span className="text-sm">Page {page} of {totalPages || 1}</span>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                disabled={page === totalPages || totalPages === 0} 
+                onClick={() => setPage(page + 1)}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {/* Add/Edit Category Modal */}
+      <Dialog open={isModalOpen} onOpenChange={(open: boolean) => !open && handleCloseModal()}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900">
+              {editingCategory ? 'Edit Category' : 'Add New Category'}
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              {editingCategory 
+                ? `Update the category name for "${editingCategory.category_name}"` 
+                : 'Enter a name for the new category'}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit}>
+            <div className="space-y-4 py-4">
+              <div>
+                <label htmlFor="categoryName" className="block text-sm font-medium text-gray-700 mb-1">
+                  Category Name <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  id="categoryName"
+                  placeholder="Enter category name..."
+                  value={categoryName}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setCategoryName(e.target.value)}
+                  disabled={isSubmitting}
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 pt-4 border-t">
+              <Button 
+                type="button"
+                variant="outline" 
+                className="flex-1 border-gray-300 hover:bg-gray-50" 
+                onClick={handleCloseModal}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={isSubmitting || !categoryName.trim()}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {editingCategory ? 'Updating...' : 'Adding...'}
+                  </>
+                ) : (
+                  editingCategory ? 'Update Category' : 'Add Category'
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!deleteTarget} onOpenChange={(open: boolean) => !open && handleCancelDelete()}>

@@ -20,12 +20,14 @@ import { ResetPassword } from '@/pages/admin/reset-password';
 import { AdminDashboard } from '@/pages/admin/dashboard';
 import { AdminProducts } from '@/pages/admin/products';
 import { ProductForm } from '@/pages/admin/product-form';
+import { ProductView } from '@/pages/admin/productview-details';
 import { AdminCategories } from '@/pages/admin/categories';
 // import { CategoryForm } from '@/pages/admin/categories-form';
 import { AdminBrands } from '@/pages/admin/brands';
 import { AdminSpecifications } from '@/pages/admin/specifications';
 import { AdminLeads } from '@/pages/admin/leads';
 import { AdminQuotations } from '@/pages/admin/quotation';
+import { QuotationView } from '@/pages/admin/quotationview-details';
 import { AdminInquiries } from '@/pages/admin/inquiries';
 import { AdminSettings } from '@/pages/admin/settings';
 import { BrandForm } from '@/pages/admin/brand-form';
@@ -92,6 +94,7 @@ export default function App() {
             <Route path="products" element={<AdminProducts />} />
             <Route path="products/add" element={<ProductForm />} />
             <Route path="products/edit/:id" element={<ProductForm />} />
+            <Route path="products/view/:id" element={<ProductView />} /> 
             <Route path="categories" element={<AdminCategories />} />
             {/* <Route path="categories/add" element={<CategoryForm />} />
             <Route path="categories/add/:id" element={<CategoryForm />} /> */}
@@ -104,6 +107,7 @@ export default function App() {
             <Route path="specifications" element={<AdminSpecifications />} />
             <Route path="leads" element={<AdminLeads />} />
             <Route path="quotations" element={<AdminQuotations />} />
+            <Route path="quotations/view/:id" element={<QuotationView />} />
             <Route path="inquiries" element={<AdminInquiries />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>
