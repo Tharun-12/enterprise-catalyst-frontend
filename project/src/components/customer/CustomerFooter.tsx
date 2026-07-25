@@ -586,10 +586,9 @@
 // }
 
 
-
 import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { NAV_LINKS, COMPANY } from '@/constants';
-import { categories } from '@/data';
 import { useSettings } from '@/hooks/use-settings';
 import logo from '@/asstes/mvblogo.png';
 import { baseurl } from '../../Baseurl/baseurl';
@@ -607,6 +606,38 @@ import {
 
 export function CustomerFooter() {
   const { settings } = useSettings();
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch categories from API
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('http://localhost:5000/api/categories/');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          setCategories(data.data);
+        } else {
+          throw new Error('Failed to fetch categories');
+        }
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []); // Empty dependency array means this runs once on component mount
 
   return (
     <footer className="mt-20">
@@ -705,26 +736,44 @@ export function CustomerFooter() {
               </ul>
             </div>
 
-            {/* Categories */}
+            {/* Categories - Now fetching from API */}
             <div>
               <h3 className="font-semibold mb-5 text-sm uppercase tracking-wider text-transparent bg-gradient-to-r from-pink-500 via-orange-500 to-blue-600 bg-clip-text">
                 Categories
               </h3>
-              <ul className="space-y-3">
-                {categories.slice(0, 6).map((cat) => (
-                  <li key={cat.id}>
-                    <Link 
-                      to={`/products?category=${cat.slug}`} 
-                      className="text-sm text-gray-600 hover:text-gray-900 group flex items-center gap-2 transition-all duration-200"
-                    >
-                      <FaArrowRight className="w-3 h-3 text-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                      <span className="group-hover:translate-x-1 transition-transform duration-200 inline-block">
-                        {cat.name}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              
+              {/* Loading State */}
+              {loading && (
+                <div className="text-sm text-gray-500">
+                  Loading categories...
+                </div>
+              )}
+              
+              {/* Error State */}
+              {error && (
+                <div className="text-sm text-red-500">
+                  Failed to load categories
+                </div>
+              )}
+              
+              {/* Categories List */}
+              {!loading && !error && (
+                <ul className="space-y-3">
+                  {categories.slice(0, 6).map((cat) => (
+                    <li key={cat.id}>
+                      <Link 
+                        to={`/products?category=${cat.category_name.toLowerCase().replace(/\s+/g, '-')}`} 
+                        className="text-sm text-gray-600 hover:text-gray-900 group flex items-center gap-2 transition-all duration-200"
+                      >
+                        <FaArrowRight className="w-3 h-3 text-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                        <span className="group-hover:translate-x-1 transition-transform duration-200 inline-block">
+                          {cat.category_name}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             {/* Contact Info - Updated with specific details and proper icons */}
