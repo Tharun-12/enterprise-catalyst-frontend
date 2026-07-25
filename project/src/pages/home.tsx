@@ -378,6 +378,7 @@
 
 import { CompanyIntroSection } from "@/components/HomeCompo/CompanyIntroSection";
 import { CTASection } from "@/components/HomeCompo/CTASection";
+import FeaturedCategories from "@/components/HomeCompo/FeaturedCategories";
 import { FeaturedCategoriesSection } from "@/components/HomeCompo/FeaturedCategoriesSection";
 import { FeaturedProductsSection } from "@/components/HomeCompo/FeaturedProductsSection";
 import { HeroSection } from "@/components/HomeCompo/HeroSection";
@@ -394,7 +395,8 @@ export function HomePage() {
       <HeroSection />
       <CompanyIntroSection />
       <ServicesSection />
-      <FeaturedCategoriesSection />
+      {/* <FeaturedCategoriesSection /> */}
+      <FeaturedCategories />
       <FeaturedProductsSection />
       <TrustedBrandsSection />
       <WhyChooseUsSection />
