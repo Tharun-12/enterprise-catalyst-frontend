@@ -119,34 +119,34 @@ export function ContactPage() {
   };
 
   const contactCards = [
-    {
-      icon: Phone,
-      title: 'Call Us',
-      detail: COMPANY.phone,
-      sub: COMPANY.workingHours,
-      href: `tel:${COMPANY.phone}`,
-      gradient: 'from-pink-500/20 to-orange-500/20',
-      iconBg: 'from-pink-500 to-orange-500'
-    },
-    {
-      icon: MessageSquare,
-      title: 'WhatsApp',
-      detail: COMPANY.whatsapp,
-      sub: 'Quick responses on WhatsApp',
-      href: `https://wa.me/${COMPANY.whatsapp.replace(/\s/g, '')}`,
-      gradient: 'from-orange-500/20 to-yellow-400/20',
-      iconBg: 'from-orange-500 to-yellow-400'
-    },
-    {
-      icon: Mail,
-      title: 'Email Us',
-      detail: COMPANY.email,
-      sub: 'We reply within 24 hours',
-      href: `mailto:${COMPANY.email}`,
-      gradient: 'from-yellow-400/20 to-blue-600/20',
-      iconBg: 'from-yellow-400 to-blue-600'
-    }
-  ];
+  {
+    icon: Phone,
+    title: 'Call Us',
+    detail: '+91 96865 21214',
+    sub: 'Mon-Sat: 9:00 AM - 6:00 PM',
+    href: 'tel:+919686521214',
+    gradient: 'from-pink-500/20 to-orange-500/20',
+    iconBg: 'from-pink-500 to-orange-500'
+  },
+  {
+    icon: MessageSquare,
+    title: 'WhatsApp',
+    detail: COMPANY.whatsapp,
+    sub: 'Quick responses on WhatsApp',
+    href: `https://wa.me/${COMPANY.whatsapp.replace(/\s/g, '')}`,
+    gradient: 'from-orange-500/20 to-yellow-400/20',
+    iconBg: 'from-orange-500 to-yellow-400'
+  },
+  {
+    icon: Mail,
+    title: 'Email Us',
+    detail: 'venkatesh@mvbsolutions.com',
+    sub: 'We reply within 24 hours',
+    href: 'mailto:venkatesh@mvbsolutions.com',
+    gradient: 'from-yellow-400/20 to-blue-600/20',
+    iconBg: 'from-yellow-400 to-blue-600'
+  }
+];
 
   // Google Maps embed URL for P.N. Shetty Complex
   const mapEmbedUrl = "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3888.123456789012!2d77.6160524!3d12.8678349!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bae6b2f749b10e7%3A0x8fad47fa07dc98d3!2sP.N.Shetty%20Complex!5e0!3m2!1sen!2sin!4v1234567890!5m2!1sen!2sin";
@@ -360,103 +360,119 @@ export function ContactPage() {
           </motion.div>
 
           {/* Office Info & Map */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.4 }}
-            className="space-y-6"
+        <motion.div
+  initial={{ opacity: 0, x: 20 }}
+  animate={{ opacity: 1, x: 0 }}
+  transition={{ delay: 0.4 }}
+  className="space-y-6"
+>
+  <Card className="p-8 shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+    <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-pink-500 via-orange-500 to-blue-600 bg-clip-text text-transparent">
+      Our Office
+    </h2>
+
+    <div className="space-y-4">
+      <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-gradient-to-r hover:from-pink-50 hover:to-blue-50 transition-colors group">
+        <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-pink-500 to-orange-500 flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform">
+          <MapPin className="w-5 h-5" />
+        </div>
+        <div>
+          <div className="font-medium text-sm">Address</div>
+          <p className="text-sm text-muted-foreground">
+            MV Business Solutions Pvt Ltd.
+          
+            P.N. Shetty Complex, Akshayanagar,
+         
+            Bengaluru
+          </p>
+          <a
+            href="https://www.google.com/maps/place/P.N.Shetty+Complex/@12.8678349,77.6160524,17z/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-primary hover:underline inline-flex items-center gap-1 mt-1"
           >
-            <Card className="p-8 shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-              <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-pink-500 via-orange-500 to-blue-600 bg-clip-text text-transparent">
-                Our Office
-              </h2>
-              
-              <div className="space-y-4">
-                <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-gradient-to-r hover:from-pink-50 hover:to-blue-50 transition-colors group">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-pink-500 to-orange-500 flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform">
-                    <MapPin className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-sm">Address</div>
-                    <p className="text-sm text-muted-foreground">{COMPANY.address}</p>
-                    <a 
-                      href="https://www.google.com/maps/place/P.N.Shetty+Complex/@12.8678349,77.6160524,17z/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-primary hover:underline inline-flex items-center gap-1 mt-1"
-                    >
-                      <MapPin className="w-3 h-3" />
-                      Open in Google Maps
-                    </a>
-                  </div>
-                </div>
+            <MapPin className="w-3 h-3" />
+            Open in Google Maps
+          </a>
+        </div>
+      </div>
 
-                <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-gradient-to-r hover:from-orange-50 hover:to-yellow-50 transition-colors group">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-orange-500 to-yellow-400 flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform">
-                    <Phone className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-sm">Phone</div>
-                    <a href={`tel:${COMPANY.phone}`} className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                      {COMPANY.phone}
-                    </a>
-                  </div>
-                </div>
+      <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-gradient-to-r hover:from-orange-50 hover:to-yellow-50 transition-colors group">
+        <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-orange-500 to-yellow-400 flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform">
+          <Phone className="w-5 h-5" />
+        </div>
+        <div>
+          <div className="font-medium text-sm">Phone</div>
+          <a
+            href="tel:+919686521214"
+            className="text-sm text-muted-foreground hover:text-primary transition-colors"
+          >
+            +91 96865 21214
+          </a>
+        </div>
+      </div>
 
-                <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-gradient-to-r hover:from-yellow-50 hover:to-blue-50 transition-colors group">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-yellow-400 to-blue-600 flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform">
-                    <Mail className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-sm">Email</div>
-                    <a href={`mailto:${COMPANY.email}`} className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                      {COMPANY.email}
-                    </a>
-                  </div>
-                </div>
+      <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-gradient-to-r hover:from-yellow-50 hover:to-blue-50 transition-colors group">
+        <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-yellow-400 to-blue-600 flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform">
+          <Mail className="w-5 h-5" />
+        </div>
+        <div>
+          <div className="font-medium text-sm">Email</div>
+          <a
+            href="mailto:venkatesh@mvbsolutions.com"
+            className="text-sm text-muted-foreground hover:text-primary transition-colors"
+          >
+            venkatesh@mvbsolutions.com
+          </a>
+        </div>
+      </div>
 
-                <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-gradient-to-r hover:from-pink-50 hover:to-blue-50 transition-colors group">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-pink-500 to-blue-600 flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform">
-                    <Clock className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-sm">Working Hours</div>
-                    <p className="text-sm text-muted-foreground">{COMPANY.workingHours}</p>
-                  </div>
-                </div>
+      <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-gradient-to-r hover:from-pink-50 hover:to-blue-50 transition-colors group">
+        <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-pink-500 to-blue-600 flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform">
+          <Clock className="w-5 h-5" />
+        </div>
+        <div>
+          <div className="font-medium text-sm">Working Hours</div>
+          <p className="text-sm text-muted-foreground">
+            Mon-Sat: 9:00 AM - 6:00 PM
+          </p>
+        </div>
+      </div>
 
-                <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-gradient-to-r hover:from-orange-50 hover:to-yellow-50 transition-colors group">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-orange-500 to-blue-600 flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform">
-                    <Building className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-sm">GSTIN</div>
-                    <p className="text-sm text-muted-foreground">{COMPANY.gst}</p>
-                  </div>
-                </div>
-              </div>
-            </Card>
+     <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-gradient-to-r hover:from-orange-50 hover:to-yellow-50 transition-colors group">
+  <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-orange-500 to-blue-600 flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform">
+    <Building className="w-5 h-5" />
+  </div>
+  <div>
+    <div className="font-medium text-sm">GSTIN</div>
+    <p className="text-sm text-muted-foreground">
+      24ABCDM1234E1Z5
+    </p>
+  </div>
+</div>
+    </div>
+  </Card>
 
-            {/* Interactive Map Card */}
-            <Card className="overflow-hidden shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-              <div className="relative aspect-video">
-                <iframe
-                  src={mapEmbedUrl}
-                  width="100%"
-                  height="100%"
-                  style={{ border: 0 }}
-                  allowFullScreen
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                  title="P.N. Shetty Complex Location"
-                  className="absolute inset-0"
-                />
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-lg text-xs font-medium">
-                  📍 P.N. Shetty Complex
-                </div>
-              </div>
-            </Card>
-          </motion.div>
+  {/* Interactive Map Card */}
+  <Card className="overflow-hidden shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+    <div className="relative aspect-video">
+      <iframe
+        src={mapEmbedUrl}
+        width="100%"
+        height="100%"
+        style={{ border: 0 }}
+        allowFullScreen
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+        title="P.N. Shetty Complex Location"
+        className="absolute inset-0"
+      />
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-lg text-xs font-medium">
+        📍 P.N. Shetty Complex, Akshayanagar
+      </div>
+    </div>
+  </Card>
+</motion.div>
         </div>
       </div>
     </div>

@@ -5,7 +5,7 @@ export const COMPANY = {
   description: 'MV Business Solutions (MVB) is a leading provider of enterprise security, power, networking, and electrical solutions. We serve businesses across India with premium products from world-renowned brands.',
   email: 'info@mvbusinesssolutions.com',
   phone: '+91 79 2640 5500',
-  whatsapp: '+91 98250 12345',
+  whatsapp: '+91 96865 21214',
   address: '3rd Floor, Surya Tower, Satellite Road, Ahmedabad, Gujarat 380015, India',
   mapEmbedUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3672.241!2d72.5050!3d23.0225!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMjPCsDAxJzIxMC4wTiA3MsKwMzAnMTguMCJF!5e0!3m2!1sen!2sin!4v1234567890',
   workingHours: 'Mon - Sat: 9:30 AM - 7:00 PM',
