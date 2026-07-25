@@ -660,13 +660,327 @@
 
 
 
+// import {
+//   BrainCircuit,
+//   Database,
+//   ShieldCheck,
+//   LockKeyhole,
+//   Network,
+//   ArrowRight,
+//   LucideIcon,
+// } from "lucide-react";
+
+// type Product = {
+//   name: string;
+//   image: string;
+// };
+
+// type Service = {
+//   title: string;
+//   icon: LucideIcon;
+//   gradient: string;
+//   products: Product[];
+// };
+
+// const services: Service[] = [
+//   {
+//     title: "Artificial Intelligence",
+//     icon: BrainCircuit,
+//     gradient: "from-blue-500 via-purple-500 to-pink-500",
+//     products: [
+//       {
+//         name: "AI Camera",
+//         image:
+//           "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&auto=format&fit=crop",
+//       },
+//       {
+//         name: "Face Recognition",
+//         image:
+//           "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=600&auto=format&fit=crop",
+//       },
+//       {
+//         name: "AI NVR",
+//         image:
+//           "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=600&auto=format&fit=crop",
+//       },
+//       {
+//         name: "Video Analytics",
+//         image:
+//           "https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&auto=format&fit=crop",
+//       },
+//     ],
+//   },
+//   {
+//     title: "Data Infrastructure",
+//     icon: Database,
+//     gradient: "from-cyan-500 via-blue-500 to-indigo-500",
+//     products: [
+//       {
+//         name: "Rack Server",
+//         image:
+//           "https://images.unsplash.com/photo-1518773553398-650c184e0bb3?w=600&auto=format&fit=crop",
+//       },
+//       {
+//         name: "Storage",
+//         image:
+//           "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=600&auto=format&fit=crop",
+//       },
+//       {
+//         name: "Cloud Infrastructure",
+//         image:
+//           "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&auto=format&fit=crop",
+//       },
+//       {
+//         name: "Virtualization",
+//         image:
+//           "https://i.pinimg.com/736x/33/31/3f/33313f981dfdb8d6bb84e09ae01536a0.jpg",
+//       },
+//     ],
+//   },
+//   {
+//     title: "Data Security",
+//     icon: ShieldCheck,
+//     gradient: "from-emerald-500 via-teal-500 to-cyan-500",
+//     products: [
+//       {
+//         name: "Firewall",
+//         image:
+//           "https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=600&auto=format&fit=crop",
+//       },
+//       {
+//         name: "Endpoint Security",
+//         image:
+//           "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=600&auto=format&fit=crop",
+//       },
+//       {
+//         name: "Backup",
+//         image:
+//           "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=600&auto=format&fit=crop",
+//       },
+//       {
+//         name: "Encryption",
+//         image:
+//           "https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=600&auto=format&fit=crop",
+//       },
+//     ],
+//   },
+//   {
+//     title: "Physical Security",
+//     icon: LockKeyhole,
+//     gradient: "from-rose-500 via-red-500 to-orange-500",
+//     products: [
+//       {
+//         name: "CCTV Camera",
+//         image:
+//           "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&auto=format&fit=crop",
+//       },
+//       {
+//         name: "Access Control",
+//         image:
+//           "https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=600&auto=format&fit=crop",
+//       },
+//       {
+//         name: "Boom Barrier",
+//         image:
+//           "https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=600&auto=format&fit=crop",
+//       },
+//       {
+//         name: "Video Door Phone",
+//         image:
+//           "https://images.unsplash.com/photo-1496171367470-9ed9a91ea931?w=600&auto=format&fit=crop",
+//       },
+//     ],
+//   },
+//   {
+//     title: "Data Cabling",
+//     icon: Network,
+//     gradient: "from-amber-500 via-yellow-500 to-orange-400",
+//     products: [
+//       {
+//         name: "Cat6 Cable",
+//         image:
+//           "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=600&auto=format&fit=crop",
+//       },
+//       {
+//         name: "Fiber Optic",
+//         image:
+//           "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=600&auto=format&fit=crop",
+//       },
+//       {
+//         name: "Patch Panel",
+//         image:
+//           "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&auto=format&fit=crop",
+//       },
+//       {
+//         name: "Network Rack",
+//         image:
+//           "https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&auto=format&fit=crop",
+//       },
+//     ],
+//   },
+// ];
+
+// export default function ProductsSection() {
+//   return (
+//     <section className="bg-gradient-to-br from-slate-50 via-white to-blue-50/30 py-24 text-slate-800">
+//       <div className="container mx-auto px-6">
+//         {/* Heading */}
+//         <div className="mb-16 text-center">
+//           <span className="inline-block rounded-full border border-blue-500/30 bg-blue-500/10 px-6 py-2 text-sm font-semibold text-blue-600 backdrop-blur-sm">
+//             ✨ Our Products
+//           </span>
+
+//           <h2 className="mt-6 text-4xl font-bold md:text-5xl lg:text-6xl">
+//             Enterprise Technology
+//             <span className="block bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+//               Solutions & Products
+//             </span>
+//           </h2>
+
+//           <p className="mx-auto mt-6 max-w-3xl text-lg text-slate-600">
+//             Discover our complete range of enterprise solutions across AI,
+//             Infrastructure, Security, Surveillance and Networking.
+//           </p>
+//         </div>
+
+//         {/* First Row: AI + Data Infrastructure */}
+//         <div className="mb-8 grid gap-8 lg:grid-cols-2">
+//           {services.slice(0, 2).map((service) => {
+//             const Icon = service.icon;
+//             return (
+//               <div
+//                 key={service.title}
+//                 className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white/80 p-8 shadow-xl shadow-slate-200/50 backdrop-blur-xl transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/10 hover:scale-[1.02]"
+//               >
+//                 <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-gradient-to-br opacity-10 blur-3xl transition duration-500 group-hover:opacity-20"
+//                   style={{ backgroundImage: `linear-gradient(to bottom right, ${service.gradient})` }}
+//                 />
+                
+//                 <div className="relative">
+//                   <div className="mb-6 flex items-center gap-4">
+//                     <div
+//                       className={`flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br ${service.gradient} shadow-lg shadow-blue-500/20 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3`}
+//                     >
+//                       <Icon className="h-8 w-8 text-white" />
+//                     </div>
+//                     <div>
+//                       <h3 className="text-2xl font-bold text-slate-800">
+//                         {service.title}
+//                       </h3>
+//                       <p className="text-sm text-slate-500">
+//                         {service.products.length} products available
+//                       </p>
+//                     </div>
+//                   </div>
+
+//                   <div className="grid gap-4 sm:grid-cols-2">
+//                     {service.products.map((product) => (
+//                       <div
+//                         key={product.name}
+//                         className="group/product relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-50 to-white p-4 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10 hover:-translate-y-1"
+//                       >
+//                         <div className="relative h-32 w-full overflow-hidden rounded-lg">
+//                           <img
+//                             src={product.image}
+//                             alt={product.name}
+//                             className="h-full w-full object-cover transition-transform duration-500 group-hover/product:scale-110"
+//                           />
+//                           <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-0 transition-opacity duration-300 group-hover/product:opacity-100" />
+//                         </div>
+//                         <div className="mt-3 flex items-center justify-between">
+//                           <h4 className="font-semibold text-slate-800">
+//                             {product.name}
+//                           </h4>
+//                           <button className="rounded-full bg-gradient-to-r from-blue-500 to-purple-500 p-1.5 text-white opacity-0 transition-all duration-300 group-hover/product:opacity-100 hover:scale-110">
+//                             <ArrowRight size={14} />
+//                           </button>
+//                         </div>
+//                       </div>
+//                     ))}
+//                   </div>
+//                 </div>
+//               </div>
+//             );
+//           })}
+//         </div>
+
+//         {/* Second Row: Data Security + Physical Security + Data Cabling (3 columns) */}
+//         <div className="grid gap-8 lg:grid-cols-3">
+//           {services.slice(2).map((service) => {
+//             const Icon = service.icon;
+//             return (
+//               <div
+//                 key={service.title}
+//                 className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-xl shadow-slate-200/50 backdrop-blur-xl transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/10 hover:scale-[1.02]"
+//               >
+//                 <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-gradient-to-br opacity-10 blur-3xl transition duration-500 group-hover:opacity-20"
+//                   style={{ backgroundImage: `linear-gradient(to bottom right, ${service.gradient})` }}
+//                 />
+                
+//                 <div className="relative">
+//                   <div className="mb-4 flex items-center gap-3">
+//                     <div
+//                       className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${service.gradient} shadow-lg shadow-blue-500/20 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3`}
+//                     >
+//                       <Icon className="h-6 w-6 text-white" />
+//                     </div>
+//                     <div>
+//                       <h3 className="text-lg font-bold text-slate-800">
+//                         {service.title}
+//                       </h3>
+//                       <p className="text-xs text-slate-500">
+//                         {service.products.length} products
+//                       </p>
+//                     </div>
+//                   </div>
+
+//                   <div className="grid gap-3 grid-cols-2">
+//                     {service.products.map((product) => (
+//                       <div
+//                         key={product.name}
+//                         className="group/product relative overflow-hidden rounded-lg bg-gradient-to-br from-slate-50 to-white p-3 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10 hover:-translate-y-1"
+//                       >
+//                         <div className="relative h-20 w-full overflow-hidden rounded-md">
+//                           <img
+//                             src={product.image}
+//                             alt={product.name}
+//                             className="h-full w-full object-cover transition-transform duration-500 group-hover/product:scale-110"
+//                           />
+//                           <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-0 transition-opacity duration-300 group-hover/product:opacity-100" />
+//                         </div>
+//                         <div className="mt-2 flex items-center justify-between">
+//                           <h4 className="text-sm font-semibold text-slate-800 truncate">
+//                             {product.name}
+//                           </h4>
+//                           <button className="rounded-full bg-gradient-to-r from-blue-500 to-purple-500 p-1 text-white opacity-0 transition-all duration-300 group-hover/product:opacity-100 hover:scale-110">
+//                             <ArrowRight size={12} />
+//                           </button>
+//                         </div>
+//                       </div>
+//                     ))}
+//                   </div>
+//                 </div>
+//               </div>
+//             );
+//           })}
+//         </div>
+//       </div>
+//     </section>
+//   );
+// }
+
+
+
+
+import { useState, useEffect, useRef } from "react";
 import {
   BrainCircuit,
   Database,
   ShieldCheck,
   LockKeyhole,
   Network,
-  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
   LucideIcon,
 } from "lucide-react";
 
@@ -686,7 +1000,7 @@ const services: Service[] = [
   {
     title: "Artificial Intelligence",
     icon: BrainCircuit,
-    gradient: "from-blue-500 via-purple-500 to-pink-500",
+    gradient: "from-pink-500 via-orange-500 to-yellow-400",
     products: [
       {
         name: "AI Camera",
@@ -708,12 +1022,23 @@ const services: Service[] = [
         image:
           "https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&auto=format&fit=crop",
       },
+      {
+        name: "Deep Learning",
+        image:
+          "https://images.unsplash.com/photo-1555255707-c07966088b7b?w=600&auto=format&fit=crop",
+      },
+      {
+        name: "Neural Networks",
+        image:
+          "https://images.unsplash.com/photo-1555949963-aa79dcee981c?w=600&auto=format&fit=crop",
+      },
     ],
   },
+
   {
     title: "Data Infrastructure",
     icon: Database,
-    gradient: "from-cyan-500 via-blue-500 to-indigo-500",
+    gradient: "from-pink-500 via-orange-500 to-yellow-400",
     products: [
       {
         name: "Rack Server",
@@ -735,12 +1060,23 @@ const services: Service[] = [
         image:
           "https://i.pinimg.com/736x/33/31/3f/33313f981dfdb8d6bb84e09ae01536a0.jpg",
       },
+      {
+        name: "Data Center",
+        image:
+          "https://images.unsplash.com/photo-1518773553398-650c184e0bb3?w=600&auto=format&fit=crop",
+      },
+      {
+        name: "Server Room",
+        image:
+          "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=600&auto=format&fit=crop",
+      },
     ],
   },
+
   {
     title: "Data Security",
     icon: ShieldCheck,
-    gradient: "from-emerald-500 via-teal-500 to-cyan-500",
+    gradient: "from-pink-500 via-orange-500 to-yellow-400",
     products: [
       {
         name: "Firewall",
@@ -762,12 +1098,23 @@ const services: Service[] = [
         image:
           "https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=600&auto=format&fit=crop",
       },
+      {
+        name: "Security Audit",
+        image:
+          "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=600&auto=format&fit=crop",
+      },
+      {
+        name: "Threat Detection",
+        image:
+          "https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=600&auto=format&fit=crop",
+      },
     ],
   },
+
   {
     title: "Physical Security",
     icon: LockKeyhole,
-    gradient: "from-rose-500 via-red-500 to-orange-500",
+    gradient: "from-pink-500 via-orange-500 to-yellow-400",
     products: [
       {
         name: "CCTV Camera",
@@ -789,12 +1136,23 @@ const services: Service[] = [
         image:
           "https://images.unsplash.com/photo-1496171367470-9ed9a91ea931?w=600&auto=format&fit=crop",
       },
+      {
+        name: "Security Guard",
+        image:
+          "https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=600&auto=format&fit=crop",
+      },
+      {
+        name: "Surveillance System",
+        image:
+          "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&auto=format&fit=crop",
+      },
     ],
   },
+
   {
     title: "Data Cabling",
     icon: Network,
-    gradient: "from-amber-500 via-yellow-500 to-orange-400",
+    gradient: "from-pink-500 via-orange-500 to-yellow-400",
     products: [
       {
         name: "Cat6 Cable",
@@ -816,23 +1174,142 @@ const services: Service[] = [
         image:
           "https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&auto=format&fit=crop",
       },
+      {
+        name: "Fiber Connectors",
+        image:
+          "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=600&auto=format&fit=crop",
+      },
+      {
+        name: "Network Switch",
+        image:
+          "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=600&auto=format&fit=crop",
+      },
     ],
   },
 ];
 
+// Carousel Component - Larger cards with no view product button
+const ProductCarousel = ({ products }: { products: Product[] }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const totalProducts = products.length;
+
+  const nextSlide = () => {
+    if (isTransitioning) return;
+    setIsTransitioning(true);
+    setCurrentIndex((prev) => (prev + 1) % totalProducts);
+    setTimeout(() => setIsTransitioning(false), 500);
+  };
+
+  const prevSlide = () => {
+    if (isTransitioning) return;
+    setIsTransitioning(true);
+    setCurrentIndex((prev) => (prev - 1 + totalProducts) % totalProducts);
+    setTimeout(() => setIsTransitioning(false), 500);
+  };
+
+  // Auto-play functionality
+  useEffect(() => {
+    if (isAutoPlaying && !isHovered) {
+      timerRef.current = setInterval(nextSlide, 3000);
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isAutoPlaying, currentIndex, totalProducts, isHovered]);
+
+  const currentProduct = products[currentIndex];
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div className="grid grid-cols-1">
+        <div
+          className="group overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all duration-500 hover:-translate-y-2 hover:border-pink-400 hover:shadow-xl"
+        >
+          {/* Larger Image */}
+          <img
+            src={currentProduct.image}
+            alt={currentProduct.name}
+            className="h-64 w-full object-cover transition duration-500 group-hover:scale-110"
+          />
+          <div className="p-6">
+            {/* Larger Product Name */}
+            <h4 className="text-xl font-bold text-slate-800">
+              {currentProduct.name}
+            </h4>
+            <div className="mt-3 flex items-center justify-between">
+              <span className="text-sm font-medium text-slate-500">
+                {currentIndex + 1} / {totalProducts}
+              </span>
+              {/* Removed View Product button */}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation Buttons */}
+      {totalProducts > 1 && (
+        <>
+          <button
+            onClick={prevSlide}
+            className="absolute -left-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white p-1.5 shadow-lg transition hover:scale-110 hover:bg-pink-50 hover:shadow-pink-200/50"
+          >
+            <ChevronLeft className="h-4 w-4 text-pink-600" />
+          </button>
+          <button
+            onClick={nextSlide}
+            className="absolute -right-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white p-1.5 shadow-lg transition hover:scale-110 hover:bg-pink-50 hover:shadow-pink-200/50"
+          >
+            <ChevronRight className="h-4 w-4 text-pink-600" />
+          </button>
+        </>
+      )}
+
+      {/* Dots Indicator */}
+      {totalProducts > 1 && (
+        <div className="mt-4 flex justify-center gap-1.5">
+          {Array.from({ length: totalProducts }).map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => {
+                setCurrentIndex(idx);
+                setIsAutoPlaying(false);
+                setTimeout(() => setIsAutoPlaying(true), 5000);
+              }}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                idx === currentIndex
+                  ? "w-6 bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-400"
+                  : "w-1.5 bg-slate-300 hover:bg-pink-300"
+              }`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function ProductsSection() {
   return (
-    <section className="bg-gradient-to-br from-slate-50 via-white to-blue-50/30 py-24 text-slate-800">
+    <section className="bg-white py-24 text-slate-800">
       <div className="container mx-auto px-6">
         {/* Heading */}
         <div className="mb-16 text-center">
-          <span className="inline-block rounded-full border border-blue-500/30 bg-blue-500/10 px-6 py-2 text-sm font-semibold text-blue-600 backdrop-blur-sm">
-            ✨ Our Products
+          <span className="rounded-full border border-pink-500/30 bg-pink-500/10 px-5 py-2 text-sm font-medium text-pink-600">
+            Our Products
           </span>
 
-          <h2 className="mt-6 text-4xl font-bold md:text-5xl lg:text-6xl">
+          <h2 className="mt-6 text-4xl font-bold md:text-5xl">
             Enterprise Technology
-            <span className="block bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+            <span className="block bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 bg-clip-text text-transparent">
               Solutions & Products
             </span>
           </h2>
@@ -843,123 +1320,36 @@ export default function ProductsSection() {
           </p>
         </div>
 
-        {/* First Row: AI + Data Infrastructure */}
-        <div className="mb-8 grid gap-8 lg:grid-cols-2">
-          {services.slice(0, 2).map((service) => {
+        {/* Services Grid - 5 in one row */}
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-5">
+          {services.map((service) => {
             const Icon = service.icon;
+
             return (
               <div
                 key={service.title}
-                className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white/80 p-8 shadow-xl shadow-slate-200/50 backdrop-blur-xl transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/10 hover:scale-[1.02]"
+                className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-xl shadow-slate-200/50 backdrop-blur-xl transition hover:shadow-2xl"
               >
-                <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-gradient-to-br opacity-10 blur-3xl transition duration-500 group-hover:opacity-20"
-                  style={{ backgroundImage: `linear-gradient(to bottom right, ${service.gradient})` }}
-                />
-                
-                <div className="relative">
-                  <div className="mb-6 flex items-center gap-4">
-                    <div
-                      className={`flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br ${service.gradient} shadow-lg shadow-blue-500/20 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3`}
-                    >
-                      <Icon className="h-8 w-8 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold text-slate-800">
-                        {service.title}
-                      </h3>
-                      <p className="text-sm text-slate-500">
-                        {service.products.length} products available
-                      </p>
-                    </div>
+                {/* Category Header */}
+                <div className="mb-6 flex flex-col items-center text-center">
+                  <div
+                    className={`flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br ${service.gradient} shadow-md shadow-pink-500/20`}
+                  >
+                    <Icon className="h-8 w-8 text-white" />
                   </div>
 
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    {service.products.map((product) => (
-                      <div
-                        key={product.name}
-                        className="group/product relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-50 to-white p-4 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10 hover:-translate-y-1"
-                      >
-                        <div className="relative h-32 w-full overflow-hidden rounded-lg">
-                          <img
-                            src={product.image}
-                            alt={product.name}
-                            className="h-full w-full object-cover transition-transform duration-500 group-hover/product:scale-110"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-0 transition-opacity duration-300 group-hover/product:opacity-100" />
-                        </div>
-                        <div className="mt-3 flex items-center justify-between">
-                          <h4 className="font-semibold text-slate-800">
-                            {product.name}
-                          </h4>
-                          <button className="rounded-full bg-gradient-to-r from-blue-500 to-purple-500 p-1.5 text-white opacity-0 transition-all duration-300 group-hover/product:opacity-100 hover:scale-110">
-                            <ArrowRight size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="mt-3">
+                    <h3 className="text-lg font-bold text-slate-800">
+                      {service.title}
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      {service.products.length} products
+                    </p>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
 
-        {/* Second Row: Data Security + Physical Security + Data Cabling (3 columns) */}
-        <div className="grid gap-8 lg:grid-cols-3">
-          {services.slice(2).map((service) => {
-            const Icon = service.icon;
-            return (
-              <div
-                key={service.title}
-                className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-xl shadow-slate-200/50 backdrop-blur-xl transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/10 hover:scale-[1.02]"
-              >
-                <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-gradient-to-br opacity-10 blur-3xl transition duration-500 group-hover:opacity-20"
-                  style={{ backgroundImage: `linear-gradient(to bottom right, ${service.gradient})` }}
-                />
-                
-                <div className="relative">
-                  <div className="mb-4 flex items-center gap-3">
-                    <div
-                      className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${service.gradient} shadow-lg shadow-blue-500/20 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3`}
-                    >
-                      <Icon className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-slate-800">
-                        {service.title}
-                      </h3>
-                      <p className="text-xs text-slate-500">
-                        {service.products.length} products
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 grid-cols-2">
-                    {service.products.map((product) => (
-                      <div
-                        key={product.name}
-                        className="group/product relative overflow-hidden rounded-lg bg-gradient-to-br from-slate-50 to-white p-3 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10 hover:-translate-y-1"
-                      >
-                        <div className="relative h-20 w-full overflow-hidden rounded-md">
-                          <img
-                            src={product.image}
-                            alt={product.name}
-                            className="h-full w-full object-cover transition-transform duration-500 group-hover/product:scale-110"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-0 transition-opacity duration-300 group-hover/product:opacity-100" />
-                        </div>
-                        <div className="mt-2 flex items-center justify-between">
-                          <h4 className="text-sm font-semibold text-slate-800 truncate">
-                            {product.name}
-                          </h4>
-                          <button className="rounded-full bg-gradient-to-r from-blue-500 to-purple-500 p-1 text-white opacity-0 transition-all duration-300 group-hover/product:opacity-100 hover:scale-110">
-                            <ArrowRight size={12} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                {/* Products Carousel */}
+                <ProductCarousel products={service.products} />
               </div>
             );
           })}
