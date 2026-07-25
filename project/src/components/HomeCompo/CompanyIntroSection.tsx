@@ -222,9 +222,10 @@
 // }
 
 
+
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight,  } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { COMPANY } from '@/constants';
@@ -266,12 +267,12 @@ export function CompanyIntroSection() {
             </h2>
             
             <p className="text-gray-600 leading-relaxed mb-4 text-base lg:text-lg">
-              Established in {COMPANY.established}, MV Business Solutions has grown to become one of India's leading providers of security, power, networking, and electrical solutions. We serve businesses of all sizes — from small offices to large industrial complexes.
+              MV Business Solutions has grown to become one of India's leading providers of security, power, networking, and electrical solutions. We serve businesses of all sizes — from small offices to large industrial complexes.
             </p>
             
             <p className="text-gray-600 leading-relaxed mb-8 text-base lg:text-lg">
-              As authorized partners of 15+ global brands including Hikvision, Schneider Electric, Cisco, and Siemens, we bring you genuine products with full manufacturer warranty. Our certified technicians ensure professional installation and ongoing support.
-            </p>
+  As authorized partners of leading global technology brands including Hikvision, Schneider Electric, Cisco, and Siemens, we deliver genuine products backed by manufacturer warranties. Our certified professionals provide expert consultation, seamless installation, and reliable after-sales support to ensure long-term performance and customer satisfaction.
+</p>
 
             <motion.div
               whileHover={{ scale: 1.02 }}
