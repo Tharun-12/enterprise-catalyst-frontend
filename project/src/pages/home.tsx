@@ -399,7 +399,7 @@ export function HomePage() {
       <TrustedBrandsSection />
       <WhyChooseUsSection />
       <ProductsSection />
-      <CTASection />
+      {/* <CTASection /> */}
       <TestimonialsSection />
       <ContactInfoSection />
     </div>
