@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, Phone, LogIn, UserPlus, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, User, Phone, UserPlus, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,9 +8,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from 'sonner';
 import axios from 'axios';
 import { useSettings } from '@/hooks/use-settings';
+import { baseurl } from '@/Baseurl/baseurl';
 
 // Use environment variable or fallback to localhost
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL =  `${baseurl}/api`;
 
 export function RegisterPage() {
     const [name, setName] = useState('');

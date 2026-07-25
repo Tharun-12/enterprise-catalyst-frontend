@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { WishlistLead, Inquiry, Product } from '@/types';
 import { toast } from 'sonner';
+import { baseurl } from '@/Baseurl/baseurl';
 
 interface AppContextValue {
   wishlist: string[];
@@ -24,7 +25,7 @@ interface AppContextValue {
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = `${baseurl}/api`;
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [wishlist, setWishlist] = useState<string[]>([]);

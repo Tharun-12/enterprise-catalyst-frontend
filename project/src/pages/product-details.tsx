@@ -22,14 +22,16 @@ import { useApp } from '@/hooks/use-app';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { PageBreadcrumb as Breadcrumb } from '@/layouts/customer-layout-wrapper';
+import { baseurl } from '@/Baseurl/baseurl';
+import type { Product } from '@/types';
 
-// API response types
-interface Category {
+// ---- Raw API response shapes (renamed so they don't collide with the app-wide `Product` type) ----
+interface ApiCategory {
   id: number;
   category_name: string;
 }
 
-interface Brand {
+interface ApiBrand {
   id: number;
   name: string;
   description: string;
@@ -37,7 +39,7 @@ interface Brand {
   updated_at: string;
 }
 
-interface Variant {
+interface ApiVariant {
   id: number;
   product_id: number;
   color_name: string;
@@ -47,7 +49,7 @@ interface Variant {
   image_url: string;
 }
 
-interface Product {
+interface ApiProduct {
   id: number;
   product_name: string;
   product_code: string;
@@ -64,44 +66,46 @@ interface Product {
   created_at: string;
   updated_at: string;
   category_name?: string;
-  variants?: Variant[];
+  variants?: ApiVariant[];
 }
 
-// Transform API product to match expected format
-const transformProduct = (product: Product, categories: Category[], brands: Brand[]) => {
+// ---- Transform API product into the app-wide `Product` type ----
+const transformProduct = (
+  product: ApiProduct,
+  categories: ApiCategory[],
+  brands: ApiBrand[]
+): Product => {
   const category = categories.find(c => c.id === product.product_category_id);
   const brand = brands.find(b => b.name === product.product_brand);
-  const primaryVariant = product.variants?.[0];
-  
-  // Get all images from variants
-  const galleryImages = product.variants?.map(v => 
-    v.image_url ? `http://localhost:5000${v.image_url}` : null
+
+  const galleryImages = product.variants?.map(v =>
+    v.image_url ? `${baseurl}${v.image_url}` : null
   ).filter(Boolean) as string[] || [];
-  
+
   const defaultImage = 'https://via.placeholder.com/400x400';
   const gallery = galleryImages.length > 0 ? galleryImages : [defaultImage];
-  
+
+  const priceNum = parseFloat(product.price);
+  const discountNum = parseFloat(product.discount || '0');
+
   return {
     id: String(product.id),
     name: product.product_name,
     slug: product.product_name.toLowerCase().replace(/\s+/g, '-'),
-    price: parseFloat(product.price),
-    originalPrice: parseFloat(product.price) * (1 + parseFloat(product.discount || '0') / 100),
-    discount: parseFloat(product.discount || '0'),
-    rating: 4.5,
-    reviewCount: 0,
-    isPopular: false,
-    isNew: false,
-    brandId: String(brand?.id || product.product_brand || 'Unknown'),
+    sku: product.product_code,
+    brandId: String(brand?.id ?? product.product_brand ?? 'unknown'),
     brandName: brand?.name || product.product_brand || 'Unknown',
     brandDescription: brand?.description || '',
-    categoryId: product.product_category_id,
+    categoryId: String(product.product_category_id),
     categoryName: category?.category_name || product.category_name || 'Uncategorized',
     shortDescription: product.product_description?.substring(0, 150) || '',
     description: product.product_description || '',
-    gallery: gallery,
-    sku: product.product_code,
-    warranty: product.warranty || 'Standard warranty',
+    gallery,
+    // sku_: undefined as never, // (no-op placeholder removed below)
+    features: product.specifications?.split(',').map(s => s.trim()).filter(Boolean) || ['Premium quality', 'Enterprise grade'],
+    specifications: {},
+    currency: 'INR',
+    relatedProductIds: [],
     specGroups: [
       {
         groupName: 'Specifications',
@@ -113,32 +117,31 @@ const transformProduct = (product: Product, categories: Category[], brands: Bran
         ]
       }
     ],
-    features: product.specifications?.split(',').map(s => s.trim()).filter(Boolean) || ['Premium quality', 'Enterprise grade'],
-    downloads: product.product_details_pdf ? [
-      { name: 'Product Details', size: 'PDF', url: product.product_details_pdf }
-    ] : [],
-    status: 'active' as const,
+    price: priceNum,
+    originalPrice: priceNum * (1 + discountNum / 100),
+    discountPercentage: discountNum,
+    status: 'active',
+    isPopular: false,
+    isNew: false,
+    rating: 4.5,
+    reviewCount: 0,
+    downloads: product.product_details_pdf
+      ? [{ name: 'Product Details', type: 'pdf', size: 'PDF', url: product.product_details_pdf }]
+      : [],
     createdAt: product.created_at,
-    variants: product.variants || [],
-    productCode: product.product_code,
-    brand: brand?.name || product.product_brand || 'Unknown',
-    category: category?.category_name || product.category_name || 'Uncategorized',
-    image: gallery[0] || defaultImage,
-    images: gallery,
-    stock: product.variants?.reduce((sum, v) => sum + v.stock, 0) || 0,
+    warranty: product.warranty || 'Standard warranty',
+    variants: product.variants,
     hasVariants: (product.variants?.length || 0) > 0,
-    discountPercentage: parseFloat(product.discount || '0'),
-    regularPrice: parseFloat(product.price),
-    salePrice: parseFloat(product.price) * (1 - parseFloat(product.discount || '0') / 100),
+    stock: product.variants?.reduce((sum, v) => sum + v.stock, 0) || 0,
   };
 };
 
 export function ProductDetailsPage() {
   const { slug } = useParams();
-  const [productData, setProductData] = useState<Product | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [productData, setProductData] = useState<ApiProduct | null>(null);
+  const [categories, setCategories] = useState<ApiCategory[]>([]);
+  const [brands, setBrands] = useState<ApiBrand[]>([]);
+  const [allProducts, setAllProducts] = useState<ApiProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeImage, setActiveImage] = useState(0);
@@ -148,43 +151,32 @@ export function ProductDetailsPage() {
   const [inquiryOpen, setInquiryOpen] = useState(false);
   const { addToWishlist, removeFromWishlist, isInWishlist, addToCompare, removeFromCompare, isInCompare, addInquiry } = useApp();
 
-  // Fetch data
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Fetch categories
-        const categoriesRes = await fetch('http://localhost:5000/api/categories/');
+        const categoriesRes = await fetch(`${baseurl}/api/categories/`);
         const categoriesData = await categoriesRes.json();
-        
-        if (!categoriesData.success) {
-          throw new Error('Failed to fetch categories');
-        }
+        if (!categoriesData.success) throw new Error('Failed to fetch categories');
         setCategories(categoriesData.data);
 
-        // Fetch brands
-        const brandsRes = await fetch('http://localhost:5000/api/brands/');
+        const brandsRes = await fetch(`${baseurl}/api/brands/`);
         const brandsData = await brandsRes.json();
-        
-        if (!brandsData.success) {
-          throw new Error('Failed to fetch brands');
-        }
+        if (!brandsData.success) throw new Error('Failed to fetch brands');
         setBrands(brandsData.data);
 
-        // Fetch all products with variants
-        const productsRes = await fetch('http://localhost:5000/api/products/products-with-variants');
+        const productsRes = await fetch(`${baseurl}/api/products/products-with-variants`);
         const productsData = await productsRes.json();
-        
+
         if (Array.isArray(productsData)) {
           setAllProducts(productsData);
-          
-          // Find the current product by slug
-          const foundProduct = productsData.find((p: Product) => 
+
+          const foundProduct = productsData.find((p: ApiProduct) =>
             p.product_name.toLowerCase().replace(/\s+/g, '-') === slug
           );
-          
+
           if (foundProduct) {
             setProductData(foundProduct);
           } else {
@@ -213,17 +205,16 @@ export function ProductDetailsPage() {
 
   const relatedProducts = useMemo(() => {
     if (!product || allProducts.length === 0) return [];
-    
+
     return allProducts
-      .filter(p => 
-        p.product_category_id === product.categoryId && 
-        p.id !== parseInt(product.id)
+      .filter(p =>
+        String(p.product_category_id) === product.categoryId &&
+        String(p.id) !== product.id
       )
       .slice(0, 4)
       .map(p => transformProduct(p, categories, brands));
   }, [product, allProducts, categories, brands]);
 
-  // Get current user ID
   const getUserId = () => {
     const session = localStorage.getItem('userSession');
     if (session) {
@@ -240,13 +231,12 @@ export function ProductDetailsPage() {
   const handleWishlist = async () => {
     if (!product) return;
     const userId = getUserId();
-    
+
     if (isInWishlist(product.id)) {
       await removeFromWishlist(product.id, userId || undefined);
     } else {
       await addToWishlist(product.id, userId || undefined);
       if (!userId) {
-        // Show login prompt if not logged in
         setWishlistOpen(true);
       }
     }
@@ -404,10 +394,10 @@ export function ProductDetailsPage() {
           <div className="mb-6">
             <div className="flex items-center gap-3">
               <span className="text-3xl font-bold">₹{product.price.toLocaleString()}</span>
-              {product.discount > 0 && (
+              {(product.discountPercentage ?? 0) > 0 && (
                 <>
-                  <span className="text-lg text-muted-foreground line-through">₹{product.originalPrice.toLocaleString()}</span>
-                  <Badge variant="destructive" className="text-sm">{product.discount}% OFF</Badge>
+                  <span className="text-lg text-muted-foreground line-through">₹{(product.originalPrice ?? 0).toLocaleString()}</span>
+                  <Badge variant="destructive" className="text-sm">{product.discountPercentage}% OFF</Badge>
                 </>
               )}
             </div>

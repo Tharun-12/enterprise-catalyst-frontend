@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ADMIN_NAV } from '@/constants';
 import { useSettings } from '@/hooks/use-settings';
+import { baseurl } from '@/Baseurl/baseurl';
 
 const iconMap: Record<string, any> = {
   LayoutDashboard, Package, FolderTree, Award, Settings2, Heart,
@@ -35,7 +36,7 @@ export function AdminLayout() {
       <div className={cn('flex items-center gap-3 px-4 h-16 border-b border-white/10 shrink-0', collapsed && 'justify-center')}>
         {settings?.logo_url ? (
           <img 
-            src={`http://localhost:5000${settings.logo_url}`} 
+            src={`${baseurl}${settings.logo_url}`} 
             alt={settings.short_name || 'Logo'}
             className={cn(
               'object-contain',

@@ -2,12 +2,13 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+// import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SectionHeader } from '@/components/shared';
 import * as Icons from 'lucide-react';
 import { PageBreadcrumb as Breadcrumb } from '@/layouts/customer-layout-wrapper';
 import { useState, useEffect } from 'react';
+import { baseurl } from '@/Baseurl/baseurl';
 
 // Category interface based on your API response - FIXED to match actual API
 interface Category {
@@ -66,7 +67,7 @@ export function CategoriesPage() {
     const fetchCategories = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:5000/api/categories/');
+        const response = await fetch(`${baseurl}/api/categories/`);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);

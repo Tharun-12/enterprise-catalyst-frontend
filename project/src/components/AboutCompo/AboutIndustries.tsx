@@ -38,7 +38,7 @@
 // components/about/AboutIndustries.tsx
 
 import { motion } from "framer-motion";
-import { SectionHeader } from "@/components/shared";
+// import { SectionHeader } from "@/components/shared";
 import { INDUSTRIES_SERVED } from "@/constants";
 import {
   Building2,

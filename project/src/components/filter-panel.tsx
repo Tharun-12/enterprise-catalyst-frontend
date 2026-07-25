@@ -44,15 +44,15 @@ export function FilterPanel({
   onFilterChange, 
   resultCount, 
   brands,
-  categories 
+  // categories 
 }: FilterPanelProps) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     brands: true
   });
 
-  const currentCategory = categories.find((c) => 
-    c.category_name.toLowerCase().replace(/\s+/g, '-') === filters.category
-  );
+  // const currentCategory = categories.find((c) => 
+  //   c.category_name.toLowerCase().replace(/\s+/g, '-') === filters.category
+  // );
 
   // Get unique brand names from products for filtering
   // Since we don't have spec fields from API yet, we'll use a simpler approach

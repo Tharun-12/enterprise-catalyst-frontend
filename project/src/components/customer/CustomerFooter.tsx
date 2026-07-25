@@ -14,7 +14,7 @@
 //             <div className="flex items-center gap-2.5 mb-4">
 //               {settings?.logo_url ? (
 //                 <img 
-//                   src={`http://localhost:5000${settings.logo_url}`} 
+//                   src={`${baseurl}/${settings.logo_url}`} 
 //                   alt={settings.short_name || 'Logo'}
 //                   className="w-10 h-10 object-contain"
 //                 />
@@ -121,6 +121,7 @@ import { NAV_LINKS, COMPANY } from '@/constants';
 import { categories } from '@/data';
 import { useSettings } from '@/hooks/use-settings';
 import logo from '@/asstes/mvblogo.png'; // Import your logo
+import {baseurl} from '../../Baseurl/baseurl'
 
 export function CustomerFooter() {
   const { settings } = useSettings();
@@ -139,7 +140,7 @@ export function CustomerFooter() {
               <div className="flex flex-col items-start gap-3 mb-4">
                 {settings?.logo_url ? (
                   <img 
-                    src={`http://localhost:5000${settings.logo_url}`} 
+                    src={`${baseurl}/{settings.logo_url}`} 
                     alt={settings.short_name || 'Logo'}
                     className="w-32 h-32 object-contain"
                   />

@@ -134,7 +134,7 @@
 //             <Link to="/" className="flex items-center gap-2.5 shrink-0">
 //               {settings?.logo_url ? (
 //                 <img 
-//                   src={`http://localhost:5000${settings.logo_url}`} 
+//                   src={`${baseurl}/${settings.logo_url}`} 
 //                   alt={settings.short_name || 'Logo'}
 //                   className="w-10 h-10 object-contain"
 //                 />
@@ -263,7 +263,7 @@
 //                   <div className="flex items-center gap-2.5 mb-6 pt-2">
 //                     {settings?.logo_url ? (
 //                       <img 
-//                         src={`http://localhost:5000${settings.logo_url}`} 
+//                         src={`${baseurl}/${settings.logo_url}`} 
 //                         alt={settings.short_name || 'Logo'}
 //                         className="w-10 h-10 object-contain"
 //                       />
@@ -404,6 +404,7 @@ import { toast } from 'sonner';
 import { useSettings } from '@/hooks/use-settings';
 
 import logo from '@/asstes/mvblogo.png';
+import { baseurl } from '@/Baseurl/baseurl';
 
 interface UserSession {
   userId: number;
@@ -437,7 +438,7 @@ export function CustomerHeader() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/categories/');
+        const response = await fetch(`${baseurl}/api/categories/`);
         const result = await response.json();
         
         if (result.success) {
@@ -494,9 +495,9 @@ export function CustomerHeader() {
   };
 
   // Get product count for a category (you may want to fetch this from API)
-  const getProductCount = (categoryName: string) => {
-    return products.filter(p => p.categoryName === categoryName).length;
-  };
+  // const getProductCount = (categoryName: string) => {
+  //   return products.filter(p => p.categoryName === categoryName).length;
+  // };
 
   const searchResults = searchQuery
     ? products
@@ -555,7 +556,7 @@ export function CustomerHeader() {
             <Link to="/" className="flex items-center gap-2.5 shrink-0">
               {settings?.logo_url ? (
                 <img 
-                  src={`http://localhost:5000${settings.logo_url}`} 
+                  src={`${baseurl}${settings.logo_url}`} 
                   alt={settings.short_name || 'Logo'}
                   className="w-10 h-10 object-contain"
                 />
@@ -686,7 +687,7 @@ export function CustomerHeader() {
                   <div className="flex items-center gap-2.5 mb-6 pt-2">
                     {settings?.logo_url ? (
                       <img 
-                        src={`http://localhost:5000${settings.logo_url}`} 
+                        src={`${baseurl}${settings.logo_url}`} 
                         alt={settings.short_name || 'Logo'}
                         className="w-10 h-10 object-contain"
                       />
@@ -791,7 +792,7 @@ export function CustomerHeader() {
                   </div>
                 ) : categories.length > 0 ? (
                   categories.map((cat) => {
-                    const productCount = getProductCount(cat.category_name);
+                    // const productCount = getProductCount(cat.category_name);
                     return (
                       <Link
                         key={cat.id}

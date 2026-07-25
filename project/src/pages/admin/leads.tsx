@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+// src/components/admin/AdminLeads.tsx (renamed from .jsx)
+import { useState, useEffect, useMemo, ChangeEvent } from 'react';
 import { Search, Phone, Mail, Building, Eye } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ import type { WishlistLead, LeadStatus } from '@/types';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import axios from 'axios';
+import { baseurl } from '@/Baseurl/baseurl';
 
 const statusColors: Record<LeadStatus, string> = {
   new: 'bg-blue-100 text-blue-700',
@@ -61,25 +63,32 @@ interface GroupedWishlistData {
   wishlist_items: WishlistWithUser[];
 }
 
+// API Response type
+interface ApiResponse {
+  success: boolean;
+  data: GroupedWishlistData[];
+  message?: string;
+}
+
 export function AdminLeads() {
   const { leads: contextLeads } = useApp();
   const [leads, setLeads] = useState<WishlistLead[]>([]);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [search, setSearch] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedLead, setSelectedLead] = useState<WishlistLead | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
   const [wishlistData, setWishlistData] = useState<GroupedWishlistData[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
   // Fetch wishlist data with user details
   useEffect(() => {
     fetchWishlistData();
   }, []);
 
-  const fetchWishlistData = async () => {
+  const fetchWishlistData = async (): Promise<void> => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:5000/api/wishlist/all-with-users');
+      const response = await axios.get<ApiResponse>(`${baseurl}/api/wishlist/all-with-users`);
       
       if (response.data.success) {
         setWishlistData(response.data.data);
@@ -95,6 +104,7 @@ export function AdminLeads() {
               phone: group.user.mobile,
               company: item.product_brand || 'N/A',
               city: '', // Remove location
+              productId: item.product_id.toString(), // Add the missing productId
               productName: item.product_name,
               assignedTo: 'Unassigned',
               status: 'new' as LeadStatus,
@@ -115,7 +125,7 @@ export function AdminLeads() {
     }
   };
 
-  const filtered = useMemo(() => {
+  const filtered = useMemo((): WishlistLead[] => {
     let result = [...leads];
     if (search) {
       const q = search.toLowerCase();
@@ -132,15 +142,7 @@ export function AdminLeads() {
     return result;
   }, [leads, search, statusFilter]);
 
-  const updateStatus = (lead: WishlistLead, status: LeadStatus) => {
-    setLeads((prev) => prev.map((l) => 
-      l.id === lead.id ? { ...l, status } : l
-    ));
-    setSelectedLead({ ...lead, status });
-    toast.success(`Lead marked as ${status}`);
-  };
-
-  const handleViewLead = (lead: WishlistLead) => {
+  const handleViewLead = (lead: WishlistLead): void => {
     setSelectedLead(lead);
     setIsModalOpen(true);
   };
@@ -204,7 +206,7 @@ export function AdminLeads() {
             placeholder="Search leads..." 
             className="pl-9 h-9" 
             value={search} 
-            onChange={(e) => setSearch(e.target.value)} 
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)} 
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>

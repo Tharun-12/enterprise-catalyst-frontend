@@ -1,31 +1,51 @@
-// src/components/admin/AdminBrands.jsx
+// src/components/admin/AdminBrands.tsx (renamed from .jsx)
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+// import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { baseurl } from '@/Baseurl/baseurl';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = `${baseurl}/api`;
+
+// Define types
+interface Brand {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface BrandsResponse {
+  success: boolean;
+  data: Brand[];
+}
+
+interface DeleteResponse {
+  success: boolean;
+  message?: string;
+}
 
 export function AdminBrands() {
   const navigate = useNavigate();
-  const [brands, setBrands] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [deleteTarget, setDeleteTarget] = useState<Brand | null>(null);
 
   // Fetch brands from API
   useEffect(() => {
     fetchBrands();
   }, []);
 
-  const fetchBrands = async () => {
+  const fetchBrands = async (): Promise<void> => {
     try {
       setIsLoading(true);
-      const response = await axios.get(`${API_URL}/brands`);
+      const response = await axios.get<BrandsResponse>(`${API_URL}/brands`);
       if (response.data.success) {
         setBrands(response.data.data);
       }
@@ -37,19 +57,19 @@ export function AdminBrands() {
     }
   };
 
-  const handleAddBrand = () => {
+  const handleAddBrand = (): void => {
     navigate('/admin/brands/add');
   };
 
-  const handleEditBrand = (brand) => {
+  const handleEditBrand = (brand: Brand): void => {
     navigate(`/admin/brands/add/${brand.id}`);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (): Promise<void> => {
     if (!deleteTarget) return;
     
     try {
-      const response = await axios.delete(`${API_URL}/brands/${deleteTarget.id}`);
+      const response = await axios.delete<DeleteResponse>(`${API_URL}/brands/${deleteTarget.id}`);
       if (response.data.success) {
         toast.success('Brand deleted successfully');
         setBrands(brands.filter(b => b.id !== deleteTarget.id));
@@ -93,7 +113,7 @@ export function AdminBrands() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {brands.map((brand) => (
+          {brands.map((brand: Brand) => (
             <Card key={brand.id} className="p-5 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
@@ -128,7 +148,7 @@ export function AdminBrands() {
       )}
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
+      <Dialog open={!!deleteTarget} onOpenChange={(v: boolean) => !v && setDeleteTarget(null)}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle>Delete Brand</DialogTitle>

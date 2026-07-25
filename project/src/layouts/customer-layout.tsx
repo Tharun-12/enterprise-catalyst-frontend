@@ -20,6 +20,7 @@ import { categories, products } from '@/data';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useSettings } from '@/hooks/use-settings';
+import { baseurl } from '@/Baseurl/baseurl';
 
 interface UserSession {
   userId: number;
@@ -135,7 +136,7 @@ export function CustomerHeader() {
             <Link to="/" className="flex items-center gap-2.5 shrink-0">
               {settings?.logo_url ? (
                 <img 
-                  src={`http://localhost:5000${settings.logo_url}`} 
+                  src={`${baseurl}/${settings.logo_url}`} 
                   alt={settings.short_name || 'Logo'}
                   className="w-10 h-10 object-contain"
                 />
@@ -268,7 +269,7 @@ export function CustomerHeader() {
                   <div className="flex items-center gap-2.5 mb-6 pt-2">
                     {settings?.logo_url ? (
                       <img 
-                        src={`http://localhost:5000${settings.logo_url}`} 
+                        src={`${baseurl}/${settings.logo_url}`} 
                         alt={settings.short_name || 'Logo'}
                         className="w-10 h-10 object-contain"
                       />
@@ -397,7 +398,7 @@ export function CustomerFooter() {
             <div className="flex items-center gap-2.5 mb-4">
               {settings?.logo_url ? (
                 <img 
-                  src={`http://localhost:5000${settings.logo_url}`} 
+                  src={`${baseurl}/${settings.logo_url}`} 
                   alt={settings.short_name || 'Logo'}
                   className="w-10 h-10 object-contain"
                 />

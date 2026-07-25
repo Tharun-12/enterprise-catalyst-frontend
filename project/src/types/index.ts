@@ -11,7 +11,6 @@ export interface Brand {
   country: string;
   description: string;
   website: string;
-  productCount: number;
 }
 
 export interface Category {
@@ -45,6 +44,15 @@ export interface DownloadResource {
   url: string;
 }
 
+export interface ProductVariant {
+  id: number;
+  color_name: string;
+  color_hex: string;
+  price: string;
+  stock: number;
+  image_url: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -71,6 +79,14 @@ export interface Product {
   relatedProductIds: string[];
   createdAt: string;
   warranty: string;
+
+  // Optional extras used by product-details page (not required by ProductCard/WishlistLeadModal)
+  originalPrice?: number;
+  discountPercentage?: number;
+  brandDescription?: string;
+  variants?: ProductVariant[];
+  hasVariants?: boolean;
+  stock?: number;
 }
 
 export interface WishlistLead {
@@ -102,17 +118,16 @@ export interface Inquiry {
   createdAt: string;
 }
 
+// In your types file (e.g., src/types/index.ts)
 export interface Testimonial {
-  quote: string;
-  location: string;
-  image: string;
   id: string;
   name: string;
   role: string;
   company: string;
-  message: string;
+  message: string;  // ✅ Changed from 'quote'
   rating: number;
-  avatar: string;
+  avatar: string;   // ✅ Changed from 'image'
+  // Optional: Add any additional fields you need
 }
 
 export interface Activity {

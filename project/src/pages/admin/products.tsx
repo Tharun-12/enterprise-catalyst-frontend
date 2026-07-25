@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+// src/components/admin/AdminProducts.tsx (renamed from .jsx)
+import { useState, useEffect, useMemo, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Plus, Edit, Trash2, ChevronLeft, ChevronRight, CheckSquare, Square, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -8,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { baseurl } from '@/Baseurl/baseurl';
 
 // Updated interface to match API response
 interface Product {
@@ -44,6 +46,32 @@ interface Category {
   slug: string;
 }
 
+// API Response types
+interface ProductsResponse {
+  success: boolean;
+  data: Product[];
+  pagination?: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+interface CategoryResponse {
+  success: boolean;
+  data: Category[];
+}
+
+interface DeleteResponse {
+  success: boolean;
+  message?: string;
+}
+
+// Sort types
+type SortField = 'name' | 'createdAt';
+type SortDirection = 'asc' | 'desc';
+
 interface AdminProductsProps {
   onEditProduct?: (productId: number) => void;
 }
@@ -52,14 +80,14 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [sortField, setSortField] = useState<'name' | 'createdAt'>('createdAt');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-  const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
-  const [totalProducts, setTotalProducts] = useState(0);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [search, setSearch] = useState<string>('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [sortField, setSortField] = useState<SortField>('createdAt'); // Uncommented
+  const [sortDir, setSortDir] = useState<SortDirection>('desc'); // Uncommented
+  const [page, setPage] = useState<number>(1);
+  const [pageSize] = useState<number>(10);
+  const [totalProducts, setTotalProducts] = useState<number>(0);
   const [selected, setSelected] = useState<number[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
 
@@ -69,10 +97,10 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
     fetchCategories();
   }, [search, categoryFilter, page]);
 
-  const fetchCategories = async () => {
+  const fetchCategories = async (): Promise<void> => {
     try {
-      const response = await fetch('http://localhost:5000/api/categories/');
-      const data = await response.json();
+      const response = await fetch(`${baseurl}/api/categories/`);
+      const data: CategoryResponse = await response.json();
       if (data.success) {
         setCategories(data.data);
       }
@@ -81,11 +109,11 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
     }
   };
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (): Promise<void> => {
     try {
       setLoading(true);
       
-      let url = `http://localhost:5000/api/products/products-with-variants?page=${page}&limit=${pageSize}`;
+      let url = `${baseurl}/api/products/products-with-variants?page=${page}&limit=${pageSize}`;
       
       if (search) {
         url += `&search=${encodeURIComponent(search)}`;
@@ -95,7 +123,7 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
       }
 
       const response = await fetch(url);
-      const data = await response.json();
+      const data: ProductsResponse | Product[] = await response.json();
       
       if (Array.isArray(data)) {
         setProducts(data);
@@ -115,10 +143,11 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
     }
   };
 
-  // Filter and sort products
-  const filteredAndSortedProducts = useMemo(() => {
+  // Filter, sort, and paginate products
+  const filteredAndSortedProducts = useMemo((): Product[] => {
     let result = [...products];
     
+    // Apply search filter
     if (search && products.length > 0) {
       const q = search.toLowerCase();
       result = result.filter((p) => 
@@ -128,12 +157,14 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
       );
     }
     
+    // Apply category filter
     if (categoryFilter !== 'all') {
       result = result.filter((p) => 
         p.product_category_id === parseInt(categoryFilter)
       );
     }
     
+    // Apply sorting - now sortField and sortDir are defined
     result.sort((a, b) => {
       let cmp = 0;
       if (sortField === 'name') {
@@ -150,23 +181,23 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
   const totalPages = Math.ceil(totalProducts / pageSize);
   const paginated = filteredAndSortedProducts;
 
-  const toggleSelect = (id: number) => {
+  const toggleSelect = (id: number): void => {
     setSelected((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
   };
   
-  const toggleSelectAll = () => {
+  const toggleSelectAll = (): void => {
     setSelected(selected.length === paginated.length ? [] : paginated.map((p) => p.id));
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (): Promise<void> => {
     if (!deleteTarget) return;
     
     try {
-      const response = await fetch(`http://localhost:5000/api/products/${deleteTarget.id}`, {
+      const response = await fetch(`${baseurl}/api/products/${deleteTarget.id}`, {
         method: 'DELETE',
       });
       
-      const data = await response.json();
+      const data: DeleteResponse = await response.json();
       
       if (data.success) {
         toast.success(`Product "${deleteTarget.product_name}" deleted`);
@@ -182,10 +213,10 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
     }
   };
 
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = async (): Promise<void> => {
     try {
       const promises = selected.map((id) =>
-        fetch(`http://localhost:5000/api/products/${id}`, {
+        fetch(`${baseurl}/api/products/${id}`, {
           method: 'DELETE',
         })
       );
@@ -200,14 +231,14 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
     }
   };
 
-  const getProductImage = (product: Product) => {
+  const getProductImage = (product: Product): string => {
     if (product.variants && product.variants.length > 0) {
       return product.variants[0].image_url;
     }
     return '/placeholder-image.jpg';
   };
 
-  const getImageUrl = (imageUrl: string) => {
+  const getImageUrl = (imageUrl: string): string => {
     if (!imageUrl || imageUrl === '/placeholder-image.jpg') {
       return '/placeholder-image.jpg';
     }
@@ -215,10 +246,10 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
       return imageUrl;
     }
     const normalizedUrl = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
-    return `http://localhost:5000${normalizedUrl}`;
+    return `${baseurl}${normalizedUrl}`;
   };
 
-  const handleEditClick = (productId: number) => {
+  const handleEditClick = (productId: number): void => {
     if (onEditProduct) {
       onEditProduct(productId);
     } else {
@@ -249,13 +280,13 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
               placeholder="Search products..." 
               className="pl-9 h-9" 
               value={search} 
-              onChange={(e) => {
+              onChange={(e: ChangeEvent<HTMLInputElement>) => {
                 setSearch(e.target.value);
                 setPage(1);
               }} 
             />
           </div>
-          <Select value={categoryFilter} onValueChange={(value) => {
+          <Select value={categoryFilter} onValueChange={(value: string) => {
             setCategoryFilter(value);
             setPage(1);
           }}>
@@ -269,6 +300,24 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
               ))}
             </SelectContent>
           </Select>
+          {/* Add Sort Controls */}
+          <Select value={sortField} onValueChange={(value: SortField) => setSortField(value)}>
+            <SelectTrigger className="w-[140px] h-9">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name">Name</SelectItem>
+              <SelectItem value="createdAt">Date</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-9"
+            onClick={() => setSortDir(sortDir === 'asc' ? 'desc' : 'asc')}
+          >
+            {sortDir === 'asc' ? '↑' : '↓'}
+          </Button>
         </div>
         <Button onClick={() => navigate('/admin/products/add')}>
           <Plus className="w-4 h-4 mr-1.5" /> Add Product
@@ -333,7 +382,7 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
                             src={getImageUrl(getProductImage(product))} 
                             alt={product.product_name} 
                             className="w-full h-full object-cover"
-                            onError={(e) => {
+                            onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
                               (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
                             }}
                           />
@@ -414,7 +463,7 @@ export function AdminProducts({ onEditProduct }: AdminProductsProps) {
       </Card>
 
       {/* Delete confirmation */}
-      <Dialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
+      <Dialog open={!!deleteTarget} onOpenChange={(v: boolean) => !v && setDeleteTarget(null)}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle>Delete Product</DialogTitle>

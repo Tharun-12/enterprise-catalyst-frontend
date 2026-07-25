@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import axios, { AxiosError } from 'axios';
+import { baseurl } from '@/Baseurl/baseurl';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = `${baseurl}/api`;
 
 // Define the Category type
 interface Category {

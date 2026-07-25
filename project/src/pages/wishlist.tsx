@@ -1,3 +1,4 @@
+// src/pages/wishlist.tsx
 import { Link, useNavigate } from 'react-router-dom';
 import { Heart, ArrowRight, Trash2, Loader2, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,8 +11,10 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { PageBreadcrumb as Breadcrumb } from '@/layouts/customer-layout-wrapper';
 import { cn } from '@/lib/utils';
 import axios from 'axios';
+import { baseurl } from '@/Baseurl/baseurl';
 
-interface WishlistProduct {
+// Define the API product type (matches what the API returns)
+interface ApiProduct {
   id: number;
   product_name: string;
   product_code: string;
@@ -25,6 +28,8 @@ interface WishlistProduct {
   warranty: string;
   created_at: string;
   updated_at: string;
+  product_category_id: number;
+  product_details_pdf?: string;
   category_name?: string;
   variants?: Array<{
     id: number;
@@ -37,9 +42,35 @@ interface WishlistProduct {
   }>;
 }
 
+// Display product type (what we show in the UI)
+interface DisplayProduct {
+  id: string;
+  name: string;
+  slug: string;
+  brandName: string;
+  categoryName: string;
+  shortDescription: string;
+  description: string;
+  price: number;
+  discount: number;
+  rating: number;
+  reviewCount: number;
+  gallery: string[];
+  image: string;
+  isPopular: boolean;
+  isNew: boolean;
+  createdAt: string;
+  variants: ApiProduct['variants'];
+}
+
+// Type guard to check if an item is an ApiProduct
+function isApiProduct(item: any): item is ApiProduct {
+  return item && typeof item === 'object' && 'product_name' in item && 'product_code' in item;
+}
+
 export function WishlistPage() {
   const navigate = useNavigate();
-  const { wishlist, wishlistProducts, removeFromWishlist, clearWishlist, loadingWishlist, fetchWishlist } = useApp();
+  const { wishlistProducts, removeFromWishlist, clearWishlist, fetchWishlist } = useApp();
   const [userId, setUserId] = useState<number | null>(null);
   const [initialLoad, setInitialLoad] = useState(true);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -71,46 +102,52 @@ export function WishlistPage() {
   }, []);
 
   // Transform wishlist products to match display format - memoized
-  const displayProducts = useMemo(() => {
+  const displayProducts = useMemo((): DisplayProduct[] => {
+    // Check if wishlistProducts exists and has items
     if (!wishlistProducts || wishlistProducts.length === 0) {
       return [];
     }
 
-    return wishlistProducts.map((p: WishlistProduct) => {
-      // Get image from variants (same logic as ProductsPage)
-      let image = 'https://via.placeholder.com/400x400';
-      if (p.variants && p.variants.length > 0 && p.variants[0].image_url) {
-        image = `http://localhost:5000${p.variants[0].image_url}`;
-      }
-      
-      // Get all gallery images
-      const galleryImages = p.variants?.map(v => 
-        v.image_url ? `http://localhost:5000${v.image_url}` : null
-      ).filter(Boolean) as string[] || [];
-      
-      return {
-        id: String(p.id),
-        name: p.product_name,
-        slug: p.product_name.toLowerCase().replace(/\s+/g, '-'),
-        brandName: p.product_brand || 'Unknown',
-        categoryName: p.category_name || 'Uncategorized',
-        shortDescription: p.product_description?.substring(0, 100) || '',
-        description: p.product_description || '',
-        price: parseFloat(p.price) || 0,
-        discount: parseFloat(p.discount) || 0,
-        rating: 4.5,
-        reviewCount: 0,
-        gallery: galleryImages.length > 0 ? galleryImages : [image],
-        image: image,
-        isPopular: false,
-        isNew: false,
-        createdAt: p.created_at,
-        variants: p.variants || [],
-      };
-    });
+    // Use type assertion to handle the data
+    const products = wishlistProducts as any[];
+    
+    return products
+      .filter(isApiProduct) // Filter out any items that don't match the ApiProduct shape
+      .map((p: ApiProduct) => {
+        // Get image from variants
+        let image = 'https://via.placeholder.com/400x400';
+        if (p.variants && p.variants.length > 0 && p.variants[0].image_url) {
+          image = `${baseurl}${p.variants[0].image_url}`;
+        }
+        
+        // Get all gallery images
+        const galleryImages = p.variants?.map(v => 
+          v.image_url ? `${baseurl}${v.image_url}` : null
+        ).filter((url): url is string => Boolean(url)) || [];
+        
+        return {
+          id: String(p.id),
+          name: p.product_name,
+          slug: p.product_name.toLowerCase().replace(/\s+/g, '-'),
+          brandName: p.product_brand || 'Unknown',
+          categoryName: p.category_name || 'Uncategorized',
+          shortDescription: p.product_description?.substring(0, 100) || '',
+          description: p.product_description || '',
+          price: parseFloat(p.price) || 0,
+          discount: parseFloat(p.discount) || 0,
+          rating: 4.5,
+          reviewCount: 0,
+          gallery: galleryImages.length > 0 ? galleryImages : [image],
+          image: image,
+          isPopular: false,
+          isNew: false,
+          createdAt: p.created_at,
+          variants: p.variants || [],
+        };
+      });
   }, [wishlistProducts]);
 
-  const handleRemove = useCallback(async (productId: string) => {
+  const handleRemove = useCallback(async (productId: string): Promise<void> => {
     if (removingId) return;
     
     setRemovingId(productId);
@@ -128,7 +165,7 @@ export function WishlistPage() {
     }
   }, [removeFromWishlist, userId, fetchWishlist, removingId]);
 
-  const handleClearAll = useCallback(async () => {
+  const handleClearAll = useCallback(async (): Promise<void> => {
     if (isClearing) return;
     
     // Confirm before clearing
@@ -156,7 +193,7 @@ export function WishlistPage() {
   }, [clearWishlist, userId, fetchWishlist, displayProducts, removeFromWishlist, isClearing]);
 
   // Handle Generate Quotation
-  const handleGenerateQuotation = useCallback(async () => {
+  const handleGenerateQuotation = useCallback(async (): Promise<void> => {
     if (displayProducts.length === 0) {
       toast.error('Your wishlist is empty. Add products to generate a quotation.');
       return;
@@ -179,7 +216,7 @@ export function WishlistPage() {
     setIsGeneratingQuotation(true);
 
     try {
-      const response = await axios.post('http://localhost:5000/api/quotations/generate', {
+      const response = await axios.post(`${baseurl}/api/quotations/generate`, {
         user_id: userId,
         remarks: remarks.trim() || ''
       });
@@ -193,9 +230,10 @@ export function WishlistPage() {
         // Navigate to quotations page
         navigate('/wishlist/quotation');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error generating quotation:', error);
-      const errorMessage = error.response?.data?.message || 'Failed to generate quotation';
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      const errorMessage = axiosError.response?.data?.message || 'Failed to generate quotation';
       toast.error(errorMessage);
     } finally {
       setIsGeneratingQuotation(false);
@@ -269,7 +307,7 @@ export function WishlistPage() {
 
       {/* Wishlist items - Card style like product cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-        {displayProducts.map((product) => (
+        {displayProducts.map((product: DisplayProduct) => (
           <Card 
             key={product.id} 
             className="group relative overflow-hidden border-border hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col"
@@ -281,7 +319,7 @@ export function WishlistPage() {
                 alt={product.name}
                 loading="lazy"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                onError={(e) => {
+                onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
                   (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x400';
                 }}
               />
@@ -296,7 +334,7 @@ export function WishlistPage() {
                   'border-accent text-accent hover:bg-accent/20',
                   removingId === product.id && 'opacity-50 cursor-not-allowed'
                 )}
-                onClick={(e) => {
+                onClick={(e: React.MouseEvent) => {
                   e.preventDefault();
                   e.stopPropagation();
                   handleRemove(product.id);

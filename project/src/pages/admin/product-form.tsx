@@ -3,8 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { Pencil, Trash2, X, Plus, FileText, ExternalLink } from 'lucide-react';
 import './product-form.css';
+import { baseurl } from '@/Baseurl/baseurl';
 
-const API_URL = 'http://localhost:5000';
+const API_URL = baseurl;
 
 // Type definitions
 interface Category {

@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSettings } from '@/hooks/use-settings';
 import { toast } from 'sonner';
+import { baseurl } from '@/Baseurl/baseurl';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE_URL = baseurl;
 
 export function CustomerResetPassword() {
     const [newPassword, setNewPassword] = useState('');

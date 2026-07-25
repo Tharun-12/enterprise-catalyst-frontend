@@ -9,9 +9,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import axios from 'axios';
 import { useSettings } from '@/hooks/use-settings';
+import { baseurl } from '@/Baseurl/baseurl';
 
 // Use environment variable or fallback to localhost
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL =  `${baseurl}/api`;
 
 export function LoginPage() {
     const [email, setEmail] = useState('');

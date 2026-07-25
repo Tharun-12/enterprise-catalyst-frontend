@@ -31,8 +31,8 @@
 
 
 // components/about/AboutMissionVision.tsx
-import { Card } from '@/components/ui/card';
-import { Target, Eye, Sparkles, ArrowRight, Quote } from 'lucide-react';
+// import { Card } from '@/components/ui/card';
+import { Target, Eye, Sparkles, Quote } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export function AboutMissionVision() {

@@ -1,5 +1,6 @@
+// src/components/admin/AdminInquiries.tsx (renamed from .jsx)
 import { useState, useMemo, useEffect } from 'react';
-import { Search, Mail, Phone, Building, MessageSquare, Eye, Loader2, X } from 'lucide-react';
+import { Search, Mail, Phone, Building, MessageSquare, Eye, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { baseurl } from '@/Baseurl/baseurl';
 
 // Types matching backend API
 interface Inquiry {
@@ -22,6 +24,11 @@ interface Inquiry {
   updated_at: string;
 }
 
+// Extended type for UI with status
+interface InquiryWithStatus extends Inquiry {
+  status: InquiryStatus;
+}
+
 type InquiryStatus = 'new' | 'in-review' | 'responded' | 'closed';
 
 // Status mapping for UI display
@@ -32,23 +39,35 @@ const statusColors: Record<InquiryStatus, string> = {
   closed: 'bg-gray-100 text-gray-700',
 };
 
+// API Response types
+interface ApiResponse {
+  success: boolean;
+  data: Inquiry[];
+  message?: string;
+}
+
 export function AdminInquiries() {
-  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [selected, setSelected] = useState<Inquiry | null>(null);
-  const [updating, setUpdating] = useState(false);
+  const [inquiries, setInquiries] = useState<InquiryWithStatus[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [search, setSearch] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [selected, setSelected] = useState<InquiryWithStatus | null>(null);
+  const [updating, setUpdating] = useState<boolean>(false);
 
   // Fetch inquiries from API
-  const fetchInquiries = async () => {
+  const fetchInquiries = async (): Promise<void> => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/api/inquiries');
-      const result = await response.json();
+      const response = await fetch(`${baseurl}/api/inquiries`);
+      const result: ApiResponse = await response.json();
       
       if (result.success) {
-        setInquiries(result.data);
+        // Add default status to each inquiry
+        const inquiriesWithStatus: InquiryWithStatus[] = result.data.map(inquiry => ({
+          ...inquiry,
+          status: 'new' as InquiryStatus // Default status
+        }));
+        setInquiries(inquiriesWithStatus);
       } else {
         toast.error('Failed to fetch inquiries');
         console.error('API Error:', result.message);
@@ -67,7 +86,7 @@ export function AdminInquiries() {
   }, []);
 
   // Filtered inquiries
-  const filtered = useMemo(() => {
+  const filtered = useMemo((): InquiryWithStatus[] => {
     let result = [...inquiries];
     
     // Search filter
@@ -82,20 +101,9 @@ export function AdminInquiries() {
       );
     }
     
-    // Status filter (using a simple status mapping based on UI needs)
-    // Since backend doesn't have status field, we'll add a default 'new' status
-    // You can implement your own status logic here
+    // Status filter
     if (statusFilter !== 'all') {
-      // For demo, we'll filter based on some logic
-      // You can modify this based on your requirements
-      const statusMap: Record<string, string[]> = {
-        'new': ['new'],
-        'in-review': ['in-review'],
-        'responded': ['responded'],
-        'closed': ['closed']
-      };
-      // For now, we'll just show all if status filter is not 'all'
-      // You can implement actual status logic here
+      result = result.filter((i) => i.status === statusFilter);
     }
     
     return result.sort((a, b) => 
@@ -103,32 +111,38 @@ export function AdminInquiries() {
     );
   }, [inquiries, search, statusFilter]);
 
-  // Update inquiry status (since backend doesn't have status, we'll store it locally)
-  const updateStatus = (inquiry: Inquiry, status: InquiryStatus) => {
-    // In a real implementation, you'd make an API call to update status
-    // For now, we'll store status in local state
-    // You'll need to add a status field to your backend or create a separate status tracking
-    
-    // For demo, let's just update the local state
-    toast.success(`Inquiry marked as ${status}`);
-    
-    // If you want to persist status locally
-    const updatedInquiries = inquiries.map((i) => 
-      i.id === inquiry.id ? { ...i, status: status as any } : i
-    );
-    setInquiries(updatedInquiries as Inquiry[]);
-    setSelected({ ...inquiry, status: status as any });
-  };
-
-  // Helper function to get status (with default fallback)
-  const getStatus = (inquiry: Inquiry): InquiryStatus => {
-    // If you have a status field in your data, use it
-    // Otherwise, return a default status
-    return (inquiry as any).status || 'new';
+  // Update inquiry status
+  const updateStatus = async (inquiry: InquiryWithStatus, status: InquiryStatus): Promise<void> => {
+    try {
+      setUpdating(true);
+      // In a real implementation, you'd make an API call to update status
+      // For now, we'll just update the local state
+      
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Update status in local state
+      const updatedInquiries = inquiries.map((i) => 
+        i.id === inquiry.id ? { ...i, status } : i
+      );
+      setInquiries(updatedInquiries);
+      
+      // Update selected if it's the same inquiry
+      if (selected && selected.id === inquiry.id) {
+        setSelected({ ...selected, status });
+      }
+      
+      toast.success(`Inquiry marked as ${status}`);
+    } catch (error) {
+      toast.error('Failed to update status');
+      console.error('Update error:', error);
+    } finally {
+      setUpdating(false);
+    }
   };
 
   // Format date
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string): string => {
     try {
       return new Date(dateString).toLocaleDateString('en-IN', {
         day: '2-digit',
@@ -140,7 +154,7 @@ export function AdminInquiries() {
     }
   };
 
-  const formatDateTime = (dateString: string) => {
+  const formatDateTime = (dateString: string): string => {
     try {
       return new Date(dateString).toLocaleString('en-IN', {
         day: '2-digit',
@@ -183,7 +197,7 @@ export function AdminInquiries() {
             placeholder="Search by name, email, product..." 
             className="pl-9 h-9" 
             value={search} 
-            onChange={(e) => setSearch(e.target.value)} 
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)} 
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -229,59 +243,56 @@ export function AdminInquiries() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((inquiry) => {
-                  const status = getStatus(inquiry);
-                  return (
-                    <tr 
-                      key={inquiry.id} 
-                      className="border-b hover:bg-muted/30 transition-colors cursor-pointer" 
-                      onClick={() => setSelected(inquiry)}
-                    >
-                      <td className="p-3">
-                        <div className="font-medium text-sm">{inquiry.full_name}</div>
-                        <div className="text-xs text-muted-foreground">{inquiry.email}</div>
-                        {inquiry.company_name && (
-                          <div className="text-xs text-muted-foreground mt-0.5">{inquiry.company_name}</div>
-                        )}
-                      </td>
-                      <td className="p-3 hidden md:table-cell">
-                        <div className="text-sm truncate max-w-[180px]">{inquiry.product_interest}</div>
-                      </td>
-                      <td className="p-3 hidden lg:table-cell">
-                        <div className="text-sm text-muted-foreground truncate max-w-[200px]">{inquiry.message}</div>
-                      </td>
-                      <td className="p-3">
-                        <Badge className={cn('text-xs', statusColors[status] || statusColors.new)}>
-                          {status}
-                        </Badge>
-                      </td>
-                      <td className="p-3 hidden md:table-cell text-sm text-muted-foreground">
-                        {formatDate(inquiry.created_at)}
-                      </td>
-                      <td className="p-3 text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8" 
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
-                            setSelected(inquiry); 
-                          }}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {filtered.map((inquiry) => (
+                  <tr 
+                    key={inquiry.id} 
+                    className="border-b hover:bg-muted/30 transition-colors cursor-pointer" 
+                    onClick={() => setSelected(inquiry)}
+                  >
+                    <td className="p-3">
+                      <div className="font-medium text-sm">{inquiry.full_name}</div>
+                      <div className="text-xs text-muted-foreground">{inquiry.email}</div>
+                      {inquiry.company_name && (
+                        <div className="text-xs text-muted-foreground mt-0.5">{inquiry.company_name}</div>
+                      )}
+                    </td>
+                    <td className="p-3 hidden md:table-cell">
+                      <div className="text-sm truncate max-w-[180px]">{inquiry.product_interest}</div>
+                    </td>
+                    <td className="p-3 hidden lg:table-cell">
+                      <div className="text-sm text-muted-foreground truncate max-w-[200px]">{inquiry.message}</div>
+                    </td>
+                    <td className="p-3">
+                      <Badge className={cn('text-xs', statusColors[inquiry.status])}>
+                        {inquiry.status}
+                      </Badge>
+                    </td>
+                    <td className="p-3 hidden md:table-cell text-sm text-muted-foreground">
+                      {formatDate(inquiry.created_at)}
+                    </td>
+                    <td className="p-3 text-right">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8" 
+                        onClick={(e: React.MouseEvent) => { 
+                          e.stopPropagation(); 
+                          setSelected(inquiry); 
+                        }}
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         )}
       </Card>
 
-      {/* Detail Modal - Replacing Sheet with Dialog */}
-      <Dialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
+      {/* Detail Modal */}
+      <Dialog open={!!selected} onOpenChange={(v: boolean) => !v && setSelected(null)}>
         <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
           {selected && (
             <>
@@ -340,8 +351,8 @@ export function AdminInquiries() {
                       Update Status
                     </label>
                     <Select 
-                      value={getStatus(selected)} 
-                      onValueChange={(v) => updateStatus(selected, v as InquiryStatus)}
+                      value={selected.status} 
+                      onValueChange={(v: string) => updateStatus(selected, v as InquiryStatus)}
                       disabled={updating}
                     >
                       <SelectTrigger className="w-full">

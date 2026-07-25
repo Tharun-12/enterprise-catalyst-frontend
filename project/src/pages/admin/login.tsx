@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, LogIn, Eye, EyeOff, UserPlus } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useSettings } from '@/hooks/use-settings';
+import { baseurl } from '@/Baseurl/baseurl';
 
 // API Base URL - Update this based on your environment
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE_URL = baseurl;
 
 export function AdminLogin() {
     const [email, setEmail] = useState('');

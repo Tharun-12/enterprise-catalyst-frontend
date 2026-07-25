@@ -8,6 +8,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
+import { baseurl } from '@/Baseurl/baseurl';
 
 type QuotationStatus = 'Pending' | 'Approved' | 'Rejected';
 
@@ -88,7 +89,7 @@ export function QuotationPage() {
   const fetchQuotations = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:5000/api/quotations/user/${userId}`);
+      const response = await axios.get(`${baseurl}/api/quotations/user/${userId}`);
       
       if (response.data.success) {
         setQuotations(response.data.data);
@@ -135,9 +136,9 @@ export function QuotationPage() {
     }
   };
 
-  const handlePrint = (id: number): void => {
-    window.print();
-  };
+  // const handlePrint = (id: number): void => {
+  //   window.print();
+  // };
 
   const handleEmail = (id: number): void => {
     console.log('Email quotation:', id);
@@ -239,7 +240,7 @@ export function QuotationPage() {
                     variant="ghost" 
                     size="icon" 
                     className="h-8 w-8"
-                    onClick={() => handlePrint(quotation.id)}
+                    // onClick={() => handlePrint(quotation.id)}
                     title="Print"
                   >
                     <Printer className="h-4 w-4" />

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { baseurl } from '@/Baseurl/baseurl';
 
 interface Settings {
   id: number;
@@ -30,7 +31,7 @@ export function useSettings() {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/settings/');
+        const response = await axios.get(`${baseurl}/api/settings/`);
         if (response.data.success) {
           setSettings(response.data.data);
         }

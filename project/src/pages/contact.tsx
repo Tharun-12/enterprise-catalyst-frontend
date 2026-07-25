@@ -18,10 +18,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { SectionHeader } from '@/components/shared';
+// import { SectionHeader } from '@/components/shared';
 import { COMPANY } from '@/constants';
 import { toast } from 'sonner';
 import { PageBreadcrumb as Breadcrumb } from '@/layouts/customer-layout-wrapper';
+import { baseurl } from '@/Baseurl/baseurl';
 
 // Interface for category data
 interface Category {
@@ -48,7 +49,7 @@ export function ContactPage() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/categories/');
+        const response = await fetch(`${baseurl}/api/categories/`);
         const result = await response.json();
         
         if (result.success) {
@@ -87,7 +88,7 @@ export function ContactPage() {
       };
 
       // Send to backend API
-      const response = await fetch('http://localhost:5000/api/inquiries', {
+      const response = await fetch(`${baseurl}/api/inquiries`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

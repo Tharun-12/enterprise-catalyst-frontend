@@ -83,7 +83,7 @@ import { motion } from 'framer-motion';
 import { ArrowRight, Sparkles, Zap, Shield, Star, CheckCircle, Award, Users, Clock, ChevronLeft, ChevronRight, Package, Headphones, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { COMPANY } from '@/constants';
+// import { COMPANY } from '@/constants';
 import { useState, useEffect } from 'react';
 
 export function HeroSection() {

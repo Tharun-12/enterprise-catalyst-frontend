@@ -1,5 +1,5 @@
-// src/components/admin/BrandForm.jsx
-import { useState, useEffect } from 'react';
+// src/components/admin/BrandForm.tsx (renamed from .jsx)
+import { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, X } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -8,16 +8,35 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
+import { baseurl } from '@/Baseurl/baseurl';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = `${baseurl}/api`;
+
+// Define types
+interface BrandData {
+  name: string;
+  description: string;
+}
+
+interface BrandResponse {
+  success: boolean;
+  data: {
+    name: string;
+    description?: string;
+  };
+}
+
+interface ErrorResponse {
+  message?: string;
+}
 
 export function BrandForm() {
   const navigate = useNavigate();
-  const { id } = useParams();
-  const [isLoading, setIsLoading] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
+  const { id } = useParams<{ id: string }>();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [formData, setFormData] = useState<BrandData>({
     name: '',
     description: '',
   });
@@ -33,12 +52,13 @@ export function BrandForm() {
         description: '',
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const fetchBrand = async (brandId) => {
+  const fetchBrand = async (brandId: string): Promise<void> => {
     try {
       setIsLoading(true);
-      const response = await axios.get(`${API_URL}/brands/${brandId}`);
+      const response = await axios.get<BrandResponse>(`${API_URL}/brands/${brandId}`);
       
       if (response.data.success) {
         const brand = response.data.data;
@@ -60,7 +80,7 @@ export function BrandForm() {
     }
   };
 
-  const handleChange = (e) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -68,7 +88,7 @@ export function BrandForm() {
     }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     
     // Validate required fields
@@ -82,7 +102,7 @@ export function BrandForm() {
     try {
       if (isEditing) {
         // Update existing brand
-        const response = await axios.put(`${API_URL}/brands/${id}`, {
+        const response = await axios.put<BrandResponse>(`${API_URL}/brands/${id}`, {
           name: formData.name.trim(),
           description: formData.description.trim(),
         });
@@ -92,7 +112,7 @@ export function BrandForm() {
         }
       } else {
         // Create new brand
-        const response = await axios.post(`${API_URL}/brands`, {
+        const response = await axios.post<BrandResponse>(`${API_URL}/brands`, {
           name: formData.name.trim(),
           description: formData.description.trim(),
         });
@@ -109,8 +129,15 @@ export function BrandForm() {
 
     } catch (error) {
       console.error('Error:', error);
-      if (error.response) {
-        toast.error(error.response.data.message || 'Operation failed');
+      
+      // Handle Axios error properly with type checking
+      if (axios.isAxiosError(error)) {
+        const axiosError = error as AxiosError<ErrorResponse>;
+        if (axiosError.response?.data?.message) {
+          toast.error(axiosError.response.data.message);
+        } else {
+          toast.error(isEditing ? 'Failed to update brand' : 'Failed to create brand');
+        }
       } else {
         toast.error(isEditing ? 'Failed to update brand' : 'Failed to create brand');
       }
@@ -119,7 +146,7 @@ export function BrandForm() {
     }
   };
 
-  const handleCancel = () => {
+  const handleCancel = (): void => {
     navigate('/admin/brands');
   };
 

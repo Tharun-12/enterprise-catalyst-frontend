@@ -11,12 +11,12 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
-    DialogDescription,
-    DialogFooter,
+    DialogDescription
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import axios from 'axios';
+import { baseurl } from '@/Baseurl/baseurl';
 
 // Types for quotations
 type QuotationStatus = 'Pending' | 'Approved' | 'Rejected' | 'Sent';
@@ -161,7 +161,7 @@ export function AdminQuotations() {
     const fetchQuotations = async () => {
         try {
             setLoading(true);
-            const response = await axios.get('http://localhost:5000/api/quotations');
+            const response = await axios.get(`${baseurl}/api/quotations`);
 
             if (response.data.success && response.data.data) {
                 const transformedData = transformApiData(response.data.data);
@@ -197,24 +197,24 @@ export function AdminQuotations() {
         return result;
     }, [quotations, search, statusFilter]);
 
-    const updateStatus = async (quotation: Quotation, status: QuotationStatus) => {
-        try {
-            // Update local state
-            setQuotations((prev) => prev.map((q) =>
-                q.id === quotation.id ? { ...q, status } : q
-            ));
-            setSelectedQuotation({ ...quotation, status });
-            toast.success(`Quotation marked as ${status}`);
+    // const updateStatus = async (quotation: Quotation, status: QuotationStatus) => {
+    //     try {
+    //         // Update local state
+    //         setQuotations((prev) => prev.map((q) =>
+    //             q.id === quotation.id ? { ...q, status } : q
+    //         ));
+    //         setSelectedQuotation({ ...quotation, status });
+    //         toast.success(`Quotation marked as ${status}`);
 
-            // Call API to update status
-            await axios.patch(`http://localhost:5000/api/quotations/${quotation.id}/status`, { status });
-        } catch (error) {
-            console.error('Error updating status:', error);
-            toast.error('Failed to update status');
-            // Revert the change
-            fetchQuotations();
-        }
-    };
+    //         // Call API to update status
+    //         await axios.patch(`${baseurl}/api/quotations/${quotation.id}/status`, { status });
+    //     } catch (error) {
+    //         console.error('Error updating status:', error);
+    //         toast.error('Failed to update status');
+    //         // Revert the change
+    //         fetchQuotations();
+    //     }
+    // };
 
     const handleViewQuotation = (quotation: Quotation) => {
         setSelectedQuotation(quotation);

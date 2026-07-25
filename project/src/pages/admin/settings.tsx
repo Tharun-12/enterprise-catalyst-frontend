@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import { baseurl } from '@/Baseurl/baseurl';
 
 interface CompanySettings {
   id?: number;
@@ -58,7 +59,7 @@ export function AdminSettings() {
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/api/settings/');
+      const response = await fetch(`${baseurl}/api/settings/`);
       const data = await response.json();
       if (data.success) {
         setSettings(data.data);
@@ -74,7 +75,7 @@ export function AdminSettings() {
   const handleCompanySave = async () => {
     try {
       setSubmitting(true);
-      const response = await fetch('http://localhost:5000/api/settings/company', {
+      const response = await fetch(`${baseurl}/api/settings/company`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -107,7 +108,7 @@ export function AdminSettings() {
   const handleSocialSave = async () => {
     try {
       setSubmitting(true);
-      const response = await fetch('http://localhost:5000/api/settings/social', {
+      const response = await fetch(`${baseurl}/api/settings/social`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -139,7 +140,7 @@ export function AdminSettings() {
   const handleContactSave = async () => {
     try {
       setSubmitting(true);
-      const response = await fetch('http://localhost:5000/api/settings/contact', {
+      const response = await fetch(`${baseurl}/api/settings/contact`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -207,7 +208,7 @@ export function AdminSettings() {
       formData.append('youtube', settings.youtube);
       formData.append('instagram', settings.instagram);
 
-      const response = await fetch('http://localhost:5000/api/settings/', {
+      const response = await fetch(`${baseurl}/api/settings/`, {
         method: 'PUT',
         body: formData,
       });
@@ -231,7 +232,7 @@ export function AdminSettings() {
   const handleDeleteLogo = async () => {
     try {
       setSubmitting(true);
-      const response = await fetch('http://localhost:5000/api/settings/logo', {
+      const response = await fetch(`${baseurl}/api/settings/logo`, {
         method: 'DELETE',
       });
       
@@ -286,7 +287,7 @@ export function AdminSettings() {
                 <div className="relative">
                   {settings.logo_url ? (
                     <img 
-                      src={`http://localhost:5000${settings.logo_url}`} 
+                      src={`${baseurl}${settings.logo_url}`} 
                       alt="Company Logo" 
                       className="w-16 h-16 rounded-2xl object-cover border"
                     />

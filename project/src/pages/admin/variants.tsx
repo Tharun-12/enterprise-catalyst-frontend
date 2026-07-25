@@ -18,7 +18,7 @@
 // import { toast } from 'sonner';
 // import axios, { AxiosError } from 'axios';
 
-// const API_URL = 'http://localhost:5000/api';
+// const API_URL = `${baseurl}/api`;
 
 // // Define the Variant type
 // interface Variant {

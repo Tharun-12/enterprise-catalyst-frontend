@@ -11,16 +11,18 @@ import { FilterPanel, type FilterState } from '@/components/filter-panel';
 import { EmptyState, ProductGridSkeleton } from '@/components/shared';
 import { Package } from 'lucide-react';
 import { PageBreadcrumb as Breadcrumb } from '@/layouts/customer-layout-wrapper';
+import { baseurl } from '@/Baseurl/baseurl';
+import type { Product } from '@/types';
 
-// API response types
-interface Category {
+// ---- Raw API response shapes (renamed to avoid colliding with the app-wide `Product` type) ----
+interface ApiCategory {
   id: number;
   category_name: string;
   created_at: string;
   updated_at: string;
 }
 
-interface Brand {
+interface ApiBrand {
   id: number;
   name: string;
   description: string;
@@ -28,7 +30,17 @@ interface Brand {
   updated_at: string;
 }
 
-interface Product {
+interface ApiVariant {
+  id: number;
+  product_id: number;
+  color_name: string;
+  color_hex: string;
+  price: string;
+  stock: number;
+  image_url: string;
+}
+
+interface ApiProduct {
   id: number;
   product_name: string;
   product_code: string;
@@ -45,64 +57,44 @@ interface Product {
   created_at: string;
   updated_at: string;
   category_name?: string;
-  variants?: Variant[];
+  variants?: ApiVariant[];
 }
 
-interface Variant {
-  id: number;
-  product_id: number;
-  color_name: string;
-  color_hex: string;
-  price: string;
-  stock: number;
-  image_url: string;
-}
-
-// Transform API product to match ProductCard expected format
-const transformProduct = (product: Product, categories: Category[], brands: Brand[]) => {
+// ---- Transform API product into the app-wide `Product` type ----
+const transformProduct = (
+  product: ApiProduct,
+  categories: ApiCategory[],
+  brands: ApiBrand[]
+): Product => {
   const category = categories.find(c => c.id === product.product_category_id);
   const brand = brands.find(b => b.name === product.product_brand);
-  const primaryVariant = product.variants?.[0];
-  
-  // Get all images from variants
-  const galleryImages = product.variants?.map(v => 
-    v.image_url ? `http://localhost:5000${v.image_url}` : null
+
+  const galleryImages = product.variants?.map(v =>
+    v.image_url ? `${baseurl}${v.image_url}` : null
   ).filter(Boolean) as string[] || [];
-  
+
   const defaultImage = 'https://via.placeholder.com/400x400';
   const gallery = galleryImages.length > 0 ? galleryImages : [defaultImage];
+
+  const priceNum = parseFloat(product.price);
+  const discountNum = parseFloat(product.discount || '0');
 
   return {
     id: String(product.id),
     name: product.product_name,
     slug: product.product_name.toLowerCase().replace(/\s+/g, '-'),
-    price: parseFloat(product.price),
-    originalPrice: parseFloat(product.price) * (1 + parseFloat(product.discount || '0') / 100),
-    discount: parseFloat(product.discount || '0'),
-    rating: 4.5,
-    reviewCount: 0,
-    isPopular: false,
-    isNew: false,
-    brandId: String(brand?.id || product.product_brand || 'Unknown'),
+    sku: product.product_code,
+    brandId: String(brand?.id ?? product.product_brand ?? 'unknown'),
     brandName: brand?.name || product.product_brand || 'Unknown',
-    categoryId: product.product_category_id,
+    categoryId: String(product.product_category_id),
     categoryName: category?.category_name || product.category_name || 'Uncategorized',
     shortDescription: product.product_description?.substring(0, 150) || '',
     description: product.product_description || '',
-    gallery: gallery,
-    sku: product.product_code,
-    specs: {
-      dimensions: product.dimensions || 'N/A',
-      weight: product.weight || 'N/A',
-      specifications: product.specifications || 'N/A'
-    },
+    gallery,
     features: product.specifications?.split(',').map(s => s.trim()).filter(Boolean) || [],
-    downloads: product.product_details_pdf ? [
-      { name: 'Product Details', size: 'PDF', url: product.product_details_pdf }
-    ] : [],
-    status: 'active' as const,
-    createdAt: product.created_at,
-    warranty: product.warranty || 'Standard warranty',
+    specifications: {},
+    currency: 'INR',
+    relatedProductIds: [],
     specGroups: [
       {
         groupName: 'Specifications',
@@ -114,18 +106,22 @@ const transformProduct = (product: Product, categories: Category[], brands: Bran
         ]
       }
     ],
-    // Additional fields that might be expected by ProductCard
-    productCode: product.product_code,
-    brand: brand?.name || product.product_brand || 'Unknown',
-    category: category?.category_name || product.category_name || 'Uncategorized',
-    image: gallery[0] || defaultImage,
-    images: gallery,
-    variants: product.variants || [],
-    stock: product.variants?.reduce((sum, v) => sum + v.stock, 0) || 0,
+    price: priceNum,
+    originalPrice: priceNum * (1 + discountNum / 100),
+    discountPercentage: discountNum,
+    status: 'active',
+    isPopular: false,
+    isNew: false,
+    rating: 4.5,
+    reviewCount: 0,
+    downloads: product.product_details_pdf
+      ? [{ name: 'Product Details', type: 'pdf', size: 'PDF', url: product.product_details_pdf }]
+      : [],
+    createdAt: product.created_at,
+    warranty: product.warranty || 'Standard warranty',
+    variants: product.variants,
     hasVariants: (product.variants?.length || 0) > 0,
-    discountPercentage: parseFloat(product.discount || '0'),
-    regularPrice: parseFloat(product.price),
-    salePrice: parseFloat(product.price) * (1 - parseFloat(product.discount || '0') / 100),
+    stock: product.variants?.reduce((sum, v) => sum + v.stock, 0) || 0,
   };
 };
 
@@ -133,49 +129,38 @@ export function ProductsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [showMobileFilter, setShowMobileFilter] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<ApiCategory[]>([]);
+  const [brands, setBrands] = useState<ApiBrand[]>([]);
+  const [products, setProducts] = useState<ApiProduct[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const categorySlug = searchParams.get('category');
   const searchQuery = searchParams.get('search') || '';
 
-  // Helper function to create slug
   const createSlug = (name: string): string => {
     if (!name) return '';
     return name.toLowerCase().replace(/\s+/g, '-');
   };
 
-  // Fetch categories, brands, and products
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Fetch categories
-        const categoriesRes = await fetch('http://localhost:5000/api/categories/');
+        const categoriesRes = await fetch(`${baseurl}/api/categories/`);
         const categoriesData = await categoriesRes.json();
-        
-        if (!categoriesData.success) {
-          throw new Error('Failed to fetch categories');
-        }
+        if (!categoriesData.success) throw new Error('Failed to fetch categories');
         setCategories(categoriesData.data);
 
-        // Fetch brands
-        const brandsRes = await fetch('http://localhost:5000/api/brands/');
+        const brandsRes = await fetch(`${baseurl}/api/brands/`);
         const brandsData = await brandsRes.json();
-        
-        if (!brandsData.success) {
-          throw new Error('Failed to fetch brands');
-        }
+        if (!brandsData.success) throw new Error('Failed to fetch brands');
         setBrands(brandsData.data);
 
-        // Fetch products with variants
-        const productsRes = await fetch('http://localhost:5000/api/products/products-with-variants');
+        const productsRes = await fetch(`${baseurl}/api/products/products-with-variants`);
         const productsData = await productsRes.json();
-        
+
         if (Array.isArray(productsData)) {
           setProducts(productsData);
         } else {
@@ -192,12 +177,11 @@ export function ProductsPage() {
     fetchData();
   }, []);
 
-  // Transform products for display
   const transformedProducts = useMemo(() => {
     return products.map(p => transformProduct(p, categories, brands));
   }, [products, categories, brands]);
 
-  const currentCategory = categorySlug 
+  const currentCategory = categorySlug
     ? categories.find((c) => createSlug(c.category_name) === categorySlug)
     : undefined;
 
@@ -230,7 +214,7 @@ export function ProductsPage() {
 
     if (filters.category) {
       const cat = categories.find((c) => createSlug(c.category_name) === filters.category);
-      if (cat) result = result.filter((p) => p.categoryId === cat.id);
+      if (cat) result = result.filter((p) => p.categoryId === String(cat.id));
     }
 
     if (filters.brands.length > 0) {
@@ -296,8 +280,8 @@ export function ProductsPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <Breadcrumb items={[
-        { label: 'Home', path: '/' }, 
-        { label: 'Products', path: '/products' }, 
+        { label: 'Home', path: '/' },
+        { label: 'Products', path: '/products' },
         ...(currentCategory ? [{ label: currentCategory.category_name }] : [])
       ]} />
 
@@ -306,8 +290,8 @@ export function ProductsPage() {
           {currentCategory ? currentCategory.category_name : 'All Products'}
         </h1>
         <p className="text-sm text-muted-foreground">
-          {currentCategory 
-            ? `Browse ${currentCategory.category_name} products` 
+          {currentCategory
+            ? `Browse ${currentCategory.category_name} products`
             : 'Browse our complete catalog of enterprise products across all categories.'}
         </p>
       </div>
@@ -336,9 +320,9 @@ export function ProductsPage() {
       <div className="flex gap-6">
         {/* Desktop filter */}
         <aside className="hidden lg:block w-72 shrink-0">
-          <FilterPanel 
-            filters={filters} 
-            onFilterChange={setFilters} 
+          <FilterPanel
+            filters={filters}
+            onFilterChange={setFilters}
             resultCount={filteredProducts.length}
             brands={brands}
             categories={categories}
@@ -369,9 +353,9 @@ export function ProductsPage() {
                 </SheetTrigger>
                 <SheetContent side="left" className="w-[300px] sm:w-[350px] overflow-y-auto">
                   <SheetTitle className="sr-only">Filters</SheetTitle>
-                  <FilterPanel 
-                    filters={filters} 
-                    onFilterChange={setFilters} 
+                  <FilterPanel
+                    filters={filters}
+                    onFilterChange={setFilters}
                     resultCount={filteredProducts.length}
                     brands={brands}
                     categories={categories}
