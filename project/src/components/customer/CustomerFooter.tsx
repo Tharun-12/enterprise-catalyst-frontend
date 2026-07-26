@@ -585,7 +585,6 @@
 //   );
 // }
 
-
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { NAV_LINKS, COMPANY } from '@/constants';
@@ -604,40 +603,60 @@ import {
   FaArrowRight
 } from 'react-icons/fa';
 
+// Define the Category type
+interface Category {
+  id: number | string;
+  category_name: string;
+  // Add other properties if your category object has more fields
+}
+
+// Define the API response type
+interface CategoriesResponse {
+  success: boolean;
+  data: Category[];
+  message?: string;
+}
+
 export function CustomerFooter() {
   const { settings } = useSettings();
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Fetch categories from API
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:5000/api/categories/');
+        const response = await fetch(`${baseurl}/api/categories/`);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        const data = await response.json();
+        const data: CategoriesResponse = await response.json();
         
         if (data.success) {
           setCategories(data.data);
+          setError(null);
         } else {
-          throw new Error('Failed to fetch categories');
+          throw new Error(data.message || 'Failed to fetch categories');
         }
       } catch (err) {
         console.error('Error fetching categories:', err);
-        setError(err.message);
+        // Type-safe error handling
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError('An unknown error occurred');
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchCategories();
-  }, []); // Empty dependency array means this runs once on component mount
+  }, []);
 
   return (
     <footer className="mt-20">

@@ -6,9 +6,10 @@ import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pi
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { baseurl } from '@/Baseurl/baseurl';
 
 // API Base URL
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = `${baseurl}/api`;
 
 // Type definitions
 interface Category {

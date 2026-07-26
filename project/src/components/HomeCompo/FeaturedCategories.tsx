@@ -50,9 +50,8 @@ const FeaturedCategories: React.FC = () => {
     navigate('/categories');
   };
 
-  const handleCategoryClick = (categoryName: string) => {
-    const slug = categoryName.toLowerCase().replace(/\s+/g, '-');
-    navigate(`/categories/${slug}`);
+  const handleCategoryClick = () => {
+    navigate('/categories');
   };
 
   return (
@@ -87,7 +86,7 @@ const FeaturedCategories: React.FC = () => {
               <div
                 key={index}
                 className="group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-8 flex flex-col items-center text-center border border-gray-100 hover:border-transparent hover:-translate-y-2 cursor-pointer"
-                onClick={() => handleCategoryClick(category.name)}
+                onClick={() => handleCategoryClick()}
               >
                 {/* Gradient Icon Background */}
                 <div className={`mb-5 p-4 rounded-2xl bg-gradient-to-br ${category.color} shadow-lg group-hover:shadow-xl transition-all duration-300`}>
