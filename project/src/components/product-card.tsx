@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom';
-import { Heart, GitCompare, Eye, Star, BadgeCheck, IndianRupee } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Heart, GitCompare, Eye, Star, BadgeCheck } from 'lucide-react'; // Removed unused IndianRupee
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,8 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product }: ProductCardProps) {
+  const navigate = useNavigate();
+  
   const { 
     compareList, 
     addToWishlist, 
@@ -90,6 +92,8 @@ export function ProductCard({ product }: ProductCardProps) {
       }
       addToCompare(product.id);
       toast.success('Added to comparison');
+      // Navigate to compare page after adding
+      navigate('/compare');
     }
   };
 
@@ -118,9 +122,12 @@ export function ProductCard({ product }: ProductCardProps) {
     return formatPrice(product.price);
   };
 
-  // Check if product has discount
-  const hasDiscount = product.discountPercentage && product.discountPercentage > 0;
-  const discountedPrice = hasDiscount ? product.price * (1 - product.discountPercentage / 100) : product.price;
+  // Check if product has discount - fixed with optional chaining and nullish coalescing
+  const hasDiscount = (product.discountPercentage ?? 0) > 0;
+  const discountedPrice = hasDiscount ? product.price * (1 - (product.discountPercentage ?? 0) / 100) : product.price;
+
+  // Get stock with fallback
+  const stock = product.stock ?? 0;
 
   return (
     <Card className="group relative overflow-hidden border border-gray-200 dark:border-gray-800 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 flex flex-col bg-white dark:bg-gray-900 rounded-2xl">
@@ -225,9 +232,9 @@ export function ProductCard({ product }: ProductCardProps) {
             ))}
           </div>
           <span className="text-xs text-gray-500 dark:text-gray-400">({product.reviewCount})</span>
-          {product.stock > 0 && (
+          {stock > 0 && (
             <span className="text-xs text-green-600 dark:text-green-400 ml-auto">
-              {product.stock > 10 ? 'In Stock' : `Only ${product.stock} left`}
+              {stock > 10 ? 'In Stock' : `Only ${stock} left`}
             </span>
           )}
         </div>

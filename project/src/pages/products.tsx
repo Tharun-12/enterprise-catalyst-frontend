@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { SlidersHorizontal, Search, Filter } from 'lucide-react';
+import { Search, Filter } from 'lucide-react'; // Removed unused SlidersHorizontal
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -127,9 +127,6 @@ const transformProduct = (
     variants: product.variants,
     hasVariants: (product.variants?.length || 0) > 0,
     stock: product.variants?.reduce((sum, v) => sum + v.stock, 0) || 0,
-    // Add price range for variants
-    lowestPrice: lowestVariantPrice,
-    highestPrice: highestVariantPrice,
   };
 };
 
