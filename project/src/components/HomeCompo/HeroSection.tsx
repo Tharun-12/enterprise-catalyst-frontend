@@ -360,7 +360,7 @@
 
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, Sparkles, Zap, Shield, Star, CheckCircle, Award, Users, Clock, ChevronLeft, ChevronRight, Package, Headphones, TrendingUp } from 'lucide-react';
+import { ArrowRight, Sparkles, Star, CheckCircle, Award, ChevronLeft, ChevronRight} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 // import { COMPANY } from '@/constants';

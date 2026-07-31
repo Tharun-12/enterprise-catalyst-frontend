@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Eye, Download, Printer, Mail, Calendar, Package, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Calendar, Package, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -45,17 +45,17 @@ interface Quotation {
   details: QuotationDetail[];
 }
 
-interface StatusColor {
-  bg: string;
-  text: string;
-  label: string;
-}
+// interface StatusColor {
+//   bg: string;
+//   text: string;
+//   label: string;
+// }
 
-const statusColors: Record<QuotationStatus, StatusColor> = {
-  Pending: { bg: 'bg-yellow-50', text: 'text-yellow-700', label: 'Pending' },
-  Approved: { bg: 'bg-green-50', text: 'text-green-700', label: 'Approved' },
-  Rejected: { bg: 'bg-red-50', text: 'text-red-700', label: 'Rejected' },
-};
+// const statusColors: Record<QuotationStatus, StatusColor> = {
+//   Pending: { bg: 'bg-yellow-50', text: 'text-yellow-700', label: 'Pending' },
+//   Approved: { bg: 'bg-green-50', text: 'text-green-700', label: 'Approved' },
+//   Rejected: { bg: 'bg-red-50', text: 'text-red-700', label: 'Rejected' },
+// };
 
 export function QuotationPage() {
   const navigate = useNavigate();
@@ -106,44 +106,44 @@ export function QuotationPage() {
     setExpandedQuotation(expandedQuotation === id ? null : id);
   };
 
-  const handleViewQuotation = (id: number): void => {
-    const quotation = quotations.find(q => q.id === id);
-    if (quotation) {
-      console.log('Quotation Details:', quotation);
-      console.log('Products:', quotation.details);
+  // const handleViewQuotation = (id: number): void => {
+  //   const quotation = quotations.find(q => q.id === id);
+  //   if (quotation) {
+  //     console.log('Quotation Details:', quotation);
+  //     console.log('Products:', quotation.details);
       
-      // You can navigate to a detail page or open a modal
-      navigate(`/quotations/${id}`);
-    }
-  };
+  //     // You can navigate to a detail page or open a modal
+  //     navigate(`/quotations/${id}`);
+  //   }
+  // };
 
-  const handleDownload = (id: number): void => {
-    const quotation = quotations.find(q => q.id === id);
-    if (quotation) {
-      // Generate PDF or download as JSON
-      const data = {
-        quotation: quotation,
-        products: quotation.details
-      };
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${quotation.quotation_no}.json`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-      toast.success('Quotation downloaded successfully');
-    }
-  };
+  // const handleDownload = (id: number): void => {
+  //   const quotation = quotations.find(q => q.id === id);
+  //   if (quotation) {
+  //     // Generate PDF or download as JSON
+  //     const data = {
+  //       quotation: quotation,
+  //       products: quotation.details
+  //     };
+  //     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  //     const url = window.URL.createObjectURL(blob);
+  //     const a = document.createElement('a');
+  //     a.href = url;
+  //     a.download = `${quotation.quotation_no}.json`;
+  //     a.click();
+  //     window.URL.revokeObjectURL(url);
+  //     toast.success('Quotation downloaded successfully');
+  //   }
+  // };
 
   // const handlePrint = (id: number): void => {
   //   window.print();
   // };
 
-  const handleEmail = (id: number): void => {
-    console.log('Email quotation:', id);
-    toast.success('Quotation sent to your email');
-  };
+  // const handleEmail = (id: number): void => {
+  //   console.log('Email quotation:', id);
+  //   toast.success('Quotation sent to your email');
+  // };
 
   if (loading) {
     return (

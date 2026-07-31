@@ -1,11 +1,11 @@
 // src/components/admin/AdminQuotations.tsx
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Eye, FileText, Download, CheckCircle, XCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Eye, FileText, CheckCircle, XCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+// import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
@@ -82,12 +82,12 @@ interface Quotation {
     notes?: string;
 }
 
-const statusColors: Record<QuotationStatus, string> = {
-    Pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-    Approved: 'bg-green-100 text-green-700 border-green-200',
-    Rejected: 'bg-red-100 text-red-700 border-red-200',
-    Sent: 'bg-blue-100 text-blue-700 border-blue-200',
-};
+// const statusColors: Record<QuotationStatus, string> = {
+//     Pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+//     Approved: 'bg-green-100 text-green-700 border-green-200',
+//     Rejected: 'bg-red-100 text-red-700 border-red-200',
+//     Sent: 'bg-blue-100 text-blue-700 border-blue-200',
+// };
 
 const statusIcons: Record<QuotationStatus, React.ReactNode> = {
     Pending: <Clock className="w-4 h-4" />,
@@ -205,10 +205,10 @@ export function AdminQuotations() {
         navigate(`/admin/quotations/view/${quotation.id}`);
     };
 
-    const handleDownloadPDF = (quotation: Quotation) => {
-        toast.success(`Downloading PDF for ${quotation.quotationNumber}`);
-        // In a real app, generate and download PDF
-    };
+    // const handleDownloadPDF = (quotation: Quotation) => {
+    //     toast.success(`Downloading PDF for ${quotation.quotationNumber}`);
+    //     // In a real app, generate and download PDF
+    // };
 
     // Handle page size change
     const handlePageSizeChange = (value: string): void => {

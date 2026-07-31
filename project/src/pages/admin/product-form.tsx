@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
-import { Pencil, Trash2, X, Plus, FileText, ExternalLink } from 'lucide-react';
+import { Pencil, Trash2, X, Plus, FileText, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
 import './product-form.css';
 import { baseurl } from '@/Baseurl/baseurl';
 
@@ -11,16 +11,11 @@ const API_URL = baseurl;
 interface Category {
   id: number;
   category_name: string;
-  created_at?: string;
-  updated_at?: string;
 }
 
 interface Brand {
   id: number;
   name: string;
-  description?: string;
-  created_at?: string;
-  updated_at?: string;
 }
 
 interface FormData {
@@ -37,6 +32,22 @@ interface FormData {
   warranty: string;
   product_details_pdf: File | null;
   existing_pdf?: string;
+  // New fields
+  bandwidth: string;
+  max_data_rate: string;
+  internal_design: string;
+  typical_applications: string;
+  conductor_type: string;
+  cable_od: string;
+  jacket_material: string;
+  operating_temperature: string;
+  poe_support: string;
+  product_series: string;
+  rack_type: string;
+  static_load: string;
+  mounting_type: string;
+  rack_standard: string;
+  construction_type: string;
 }
 
 interface Variant {
@@ -47,7 +58,13 @@ interface Variant {
   stock: string;
   images: File[];
   existingImages?: string[];
-  _isNew?: boolean; // Flag to track if this is a new variant
+  _isNew?: boolean;
+  // New variant fields
+  variant_size: string;
+  part_code: string;
+  description: string;
+  datasheet_url: string;
+  availability: string;
 }
 
 const ProductForm = () => {
@@ -55,7 +72,6 @@ const ProductForm = () => {
   const { id } = useParams<{ id: string }>();
   const isEditMode = !!id;
 
-  // State for form data
   const [formData, setFormData] = useState<FormData>({
     product_name: '',
     product_code: '',
@@ -70,9 +86,23 @@ const ProductForm = () => {
     warranty: '',
     product_details_pdf: null,
     existing_pdf: '',
+    bandwidth: '',
+    max_data_rate: '',
+    internal_design: '',
+    typical_applications: '',
+    conductor_type: '',
+    cable_od: '',
+    jacket_material: '',
+    operating_temperature: '',
+    poe_support: '',
+    product_series: '',
+    rack_type: '',
+    static_load: '',
+    mounting_type: '',
+    rack_standard: '',
+    construction_type: ''
   });
 
-  // State for variants
   const [variants, setVariants] = useState<Variant[]>([]);
   const [currentVariant, setCurrentVariant] = useState<Variant>({
     color_name: '',
@@ -81,23 +111,25 @@ const ProductForm = () => {
     stock: '100',
     images: [],
     existingImages: [],
+    variant_size: '',
+    part_code: '',
+    description: '',
+    datasheet_url: '',
+    availability: ''
   });
   const [editingVariantIndex, setEditingVariantIndex] = useState<number | null>(null);
 
-  // State for dropdown data
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
-
-  // State to track if images are selected
   const [selectedFileNames, setSelectedFileNames] = useState<string>('');
+  const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
+  const [showVariantAdvanced, setShowVariantAdvanced] = useState<boolean>(false);
 
-  // Guard against double-submits
   const isSubmittingRef = useRef<boolean>(false);
 
-  // Fetch categories and brands on component mount
   useEffect(() => {
     fetchCategories();
     fetchBrands();
@@ -106,19 +138,14 @@ const ProductForm = () => {
     }
   }, [id]);
 
-  // Fetch product data for edit mode
   const fetchProductData = async () => {
     try {
       setLoading(true);
       setError('');
 
-      // Fetch product details
-      const productResponse = await axios.get(`${API_URL}/api/products/${id}`);
+      const productResponse = await axios.get(`${API_URL}/api/products/products-with-variants/${id}`);
       const productData = productResponse.data;
 
-      console.log('Product data:', productData);
-
-      // Populate form data
       setFormData({
         product_name: productData.product_name || '',
         product_code: productData.product_code || '',
@@ -133,30 +160,40 @@ const ProductForm = () => {
         warranty: productData.warranty || '',
         product_details_pdf: null,
         existing_pdf: productData.product_details_pdf || '',
+        bandwidth: productData.bandwidth || '',
+        max_data_rate: productData.max_data_rate || '',
+        internal_design: productData.internal_design || '',
+        typical_applications: productData.typical_applications || '',
+        conductor_type: productData.conductor_type || '',
+        cable_od: productData.cable_od || '',
+        jacket_material: productData.jacket_material || '',
+        operating_temperature: productData.operating_temperature || '',
+        poe_support: productData.poe_support || '',
+        product_series: productData.product_series || '',
+        rack_type: productData.rack_type || '',
+        static_load: productData.static_load || '',
+        mounting_type: productData.mounting_type || '',
+        rack_standard: productData.rack_standard || '',
+        construction_type: productData.construction_type || ''
       });
 
-      // Fetch variants
-      try {
-        const variantsResponse = await axios.get(`${API_URL}/api/products/variants/${id}`);
-        const variantsData = variantsResponse.data;
-
-        console.log('Variants data:', variantsData);
-
-        if (Array.isArray(variantsData) && variantsData.length > 0) {
-          const formattedVariants = variantsData.map((v: any) => ({
-            id: v.id,
-            color_name: v.color_name || '',
-            color_hex: v.color_hex || '#000000',
-            price: String(v.price) || '',
-            stock: String(v.stock) || '100',
-            images: [],
-            existingImages: v.image_url ? [v.image_url] : [],
-            _isNew: false,
-          }));
-          setVariants(formattedVariants);
-        }
-      } catch (variantError) {
-        console.error('Error fetching variants:', variantError);
+      if (productData.variants && Array.isArray(productData.variants) && productData.variants.length > 0) {
+        const formattedVariants = productData.variants.map((v: any) => ({
+          id: v.id,
+          color_name: v.color_name || '',
+          color_hex: v.color_hex || '#000000',
+          price: String(v.price) || '',
+          stock: String(v.stock) || '100',
+          images: [],
+          existingImages: v.image_url ? [v.image_url] : [],
+          _isNew: false,
+          variant_size: v.variant_size || '',
+          part_code: v.part_code || '',
+          description: v.description || '',
+          datasheet_url: v.datasheet_url || '',
+          availability: v.availability || ''
+        }));
+        setVariants(formattedVariants);
       }
 
     } catch (error) {
@@ -167,39 +204,28 @@ const ProductForm = () => {
     }
   };
 
-  // Fetch categories
   const fetchCategories = async (): Promise<void> => {
     try {
-      console.log('Fetching categories...');
       const response = await axios.get(`${API_URL}/api/categories/`);
       if (response.data.success) {
-        console.log('Categories loaded:', response.data.data.length);
         setCategories(response.data.data);
-      } else {
-        console.warn('Categories fetch returned success:false', response.data);
       }
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
   };
 
-  // Fetch brands
   const fetchBrands = async (): Promise<void> => {
     try {
-      console.log('Fetching brands...');
       const response = await axios.get(`${API_URL}/api/brands/`);
       if (response.data.success) {
-        console.log('Brands loaded:', response.data.data.length);
         setBrands(response.data.data);
-      } else {
-        console.warn('Brands fetch returned success:false', response.data);
       }
     } catch (error) {
       console.error('Error fetching brands:', error);
     }
   };
 
-  // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>): void => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -208,18 +234,15 @@ const ProductForm = () => {
     }));
   };
 
-  // Handle file input change
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const file = e.target.files?.[0] || null;
-    console.log('Product PDF selected:', file ? file.name : 'none');
     setFormData((prev) => ({
       ...prev,
       product_details_pdf: file,
     }));
   };
 
-  // Handle variant input changes
-  const handleVariantChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+  const handleVariantChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>): void => {
     const { name, value } = e.target;
     setCurrentVariant((prev) => ({
       ...prev,
@@ -227,10 +250,8 @@ const ProductForm = () => {
     }));
   };
 
-  // Handle variant image upload
   const handleVariantImages = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const files = Array.from(e.target.files || []);
-    console.log('Variant images selected:', files.map((f) => f.name));
     setCurrentVariant((prev) => ({
       ...prev,
       images: files,
@@ -243,10 +264,7 @@ const ProductForm = () => {
     }
   };
 
-  // Add or update variant
   const handleAddOrUpdateVariant = (): void => {
-    console.log('handleAddOrUpdateVariant called with:', currentVariant);
-
     if (!currentVariant.color_name || !currentVariant.price) {
       setError('Please fill in color name and price for the variant');
       return;
@@ -258,7 +276,6 @@ const ProductForm = () => {
     }
 
     if (editingVariantIndex !== null) {
-      // Update existing variant - keep the ID
       const updatedVariants = [...variants];
       updatedVariants[editingVariantIndex] = { 
         ...currentVariant, 
@@ -269,12 +286,10 @@ const ProductForm = () => {
       setEditingVariantIndex(null);
       setSuccess('Variant updated successfully');
     } else {
-      // Add new variant
       setVariants((prev) => [...prev, { ...currentVariant, _isNew: true }]);
       setSuccess('Variant added successfully');
     }
 
-    // Reset current variant form
     setCurrentVariant({
       color_name: '',
       color_hex: '#000000',
@@ -282,12 +297,16 @@ const ProductForm = () => {
       stock: '100',
       images: [],
       existingImages: [],
+      variant_size: '',
+      part_code: '',
+      description: '',
+      datasheet_url: '',
+      availability: ''
     });
     setSelectedFileNames('');
     setError('');
   };
 
-  // Edit variant - populate form with variant data
   const handleEditVariant = (index: number): void => {
     const variant = variants[index];
     setCurrentVariant({
@@ -296,11 +315,9 @@ const ProductForm = () => {
     });
     setEditingVariantIndex(index);
     setSelectedFileNames('');
-    // Scroll to variant form
     document.querySelector('.variant-form')?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Cancel editing
   const cancelEdit = (): void => {
     setEditingVariantIndex(null);
     setCurrentVariant({
@@ -310,14 +327,17 @@ const ProductForm = () => {
       stock: '100',
       images: [],
       existingImages: [],
+      variant_size: '',
+      part_code: '',
+      description: '',
+      datasheet_url: '',
+      availability: ''
     });
     setSelectedFileNames('');
     setError('');
   };
 
-  // Remove variant from list
   const removeVariant = (index: number): void => {
-    console.log('Removing variant at index', index);
     const newVariants = variants.filter((_, i) => i !== index);
     setVariants(newVariants);
     if (editingVariantIndex === index) {
@@ -329,11 +349,15 @@ const ProductForm = () => {
         stock: '100',
         images: [],
         existingImages: [],
+        variant_size: '',
+        part_code: '',
+        description: '',
+        datasheet_url: '',
+        availability: ''
       });
     }
   };
 
-  // Get image URL for display
   const getImageUrl = (imagePath: string): string => {
     if (!imagePath) return '';
     if (imagePath.startsWith('http')) return imagePath;
@@ -341,22 +365,24 @@ const ProductForm = () => {
     return `${API_URL}${cleanPath}`;
   };
 
-  // Get PDF URL
   const getPdfUrl = (pdfPath: string): string => {
     if (!pdfPath) return '';
     if (pdfPath.startsWith('http')) return pdfPath;
     return `${API_URL}/uploads/pdfs/${pdfPath}`;
   };
 
-  // Submit a single variant with POST
   const submitVariant = async (productId: number, variant: Variant) => {
     const fd = new FormData();
-
     fd.append("product_id", String(productId));
     fd.append("color_name", variant.color_name);
     fd.append("color_hex", variant.color_hex);
     fd.append("price", variant.price);
     fd.append("stock", variant.stock);
+    fd.append("variant_size", variant.variant_size || '');
+    fd.append("part_code", variant.part_code || '');
+    fd.append("description", variant.description || '');
+    fd.append("datasheet_url", variant.datasheet_url || '');
+    fd.append("availability", variant.availability || '');
 
     if (variant.images && variant.images.length > 0) {
       variant.images.forEach((img) => {
@@ -365,23 +391,23 @@ const ProductForm = () => {
     }
 
     const response = await axios.post(`${API_URL}/api/products/variants`, fd, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
+      headers: { "Content-Type": "multipart/form-data" },
     });
-    
     return response;
   };
 
-  // Update existing variant with PUT
   const updateVariant = async (variantId: number, variant: Variant, keepImage: boolean = true) => {
     const fd = new FormData();
-
     fd.append("color_name", variant.color_name);
     fd.append("color_hex", variant.color_hex);
     fd.append("price", variant.price);
     fd.append("stock", variant.stock);
     fd.append("keep_image", String(keepImage));
+    fd.append("variant_size", variant.variant_size || '');
+    fd.append("part_code", variant.part_code || '');
+    fd.append("description", variant.description || '');
+    fd.append("datasheet_url", variant.datasheet_url || '');
+    fd.append("availability", variant.availability || '');
 
     if (variant.images && variant.images.length > 0) {
       variant.images.forEach((img) => {
@@ -390,20 +416,15 @@ const ProductForm = () => {
     }
 
     const response = await axios.put(`${API_URL}/api/products/variants/${variantId}`, fd, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
+      headers: { "Content-Type": "multipart/form-data" },
     });
-    
     return response;
   };
 
-  // Delete variant
   const deleteVariant = async (variantId: number) => {
     return axios.delete(`${API_URL}/api/products/variants/${variantId}`);
   };
 
-  // Handle form submission
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
 
@@ -415,135 +436,72 @@ const ProductForm = () => {
     setSuccess("");
 
     try {
-      console.log("========== PRODUCT SUBMIT ==========");
-      console.log("Mode:", isEditMode ? "Edit" : "Create");
-      console.log("Variants:", variants);
-
       let productId: number;
 
       if (isEditMode) {
-        // Update Product
         const productFormData = new FormData();
-
-        if (formData.product_name) productFormData.append("product_name", formData.product_name);
-        if (formData.product_code) productFormData.append("product_code", formData.product_code);
-        if (formData.product_category_id) productFormData.append("product_category_id", String(formData.product_category_id));
-        if (formData.product_brand) productFormData.append("product_brand", formData.product_brand);
-        if (formData.price) productFormData.append("price", formData.price);
-        if (formData.dimensions) productFormData.append("dimensions", formData.dimensions);
-        if (formData.specifications) productFormData.append("specifications", formData.specifications);
-        if (formData.weight) productFormData.append("weight", formData.weight);
-        if (formData.discount) productFormData.append("discount", formData.discount);
-        if (formData.product_description) productFormData.append("product_description", formData.product_description);
-        if (formData.warranty) productFormData.append("warranty", formData.warranty);
+        Object.entries(formData).forEach(([key, value]) => {
+          if (value !== null && value !== "" && key !== 'existing_pdf') {
+            productFormData.append(key, value as any);
+          }
+        });
         if (formData.existing_pdf) productFormData.append("existing_pdf", formData.existing_pdf);
-        
         if (formData.product_details_pdf) {
           productFormData.append("product_details_pdf", formData.product_details_pdf);
         }
 
-        console.log("Updating product...");
-
         const productResponse = await axios.put(
           `${API_URL}/api/products/${id}`,
           productFormData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
+          { headers: { "Content-Type": "multipart/form-data" } }
         );
-
-        console.log("Product Update Response:", productResponse.data);
-
-        if (productResponse.status !== 200 && !productResponse.data.message) {
-          throw new Error("Product update failed");
-        }
 
         productId = parseInt(id!);
         setSuccess("Product updated successfully.");
 
-        // Get existing variants from database
         const existingVariantsResponse = await axios.get(`${API_URL}/api/products/variants/${productId}`);
         const existingVariants = existingVariantsResponse.data;
-        console.log("Existing variants in DB:", existingVariants);
-
-        // Track which variants to keep
         const existingIds = existingVariants.map((v: any) => v.id);
         const currentIds = variants.filter(v => v.id).map(v => v.id);
 
-        console.log("Existing IDs:", existingIds);
-        console.log("Current IDs:", currentIds);
-
-        // Delete variants that are in DB but not in current list
         for (const existingId of existingIds) {
           if (!currentIds.includes(existingId)) {
-            console.log(`Deleting variant ${existingId}`);
             await deleteVariant(existingId);
           }
         }
 
-        // Update or create variants
         for (const variant of variants) {
           if (variant.id) {
-            // Update existing variant
-            console.log(`Updating variant ${variant.id}`);
             const keepImage = !(variant.images && variant.images.length > 0);
             await updateVariant(variant.id, variant, keepImage);
           } else {
-            // Create new variant
-            console.log("Creating new variant");
             await submitVariant(productId, variant);
           }
         }
 
       } else {
-        // Create Product
         const productFormData = new FormData();
-
         Object.entries(formData).forEach(([key, value]) => {
           if (value !== null && value !== "" && key !== 'existing_pdf') {
             productFormData.append(key, value as any);
           }
         });
 
-        console.log("Creating product...");
-
         const productResponse = await axios.post(
           `${API_URL}/api/products`,
           productFormData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
+          { headers: { "Content-Type": "multipart/form-data" } }
         );
-
-        console.log("Product Response:", productResponse.data);
-
-        if (!productResponse.data.success) {
-          throw new Error("Product creation failed");
-        }
 
         productId = productResponse.data.id;
 
-        if (!productId) {
-          throw new Error("Product id missing from response");
-        }
-
-        setSuccess("Product added successfully.");
-
-        // Upload Variants
         if (variants.length > 0) {
-          console.log("Uploading variants...");
-          for (let i = 0; i < variants.length; i++) {
-            const variant = variants[i];
+          for (const variant of variants) {
             await submitVariant(productId, variant);
           }
         }
       }
 
-      // Navigate to products page after success
       setTimeout(() => {
         navigate('/admin/products');
       }, 1500);
@@ -551,8 +509,6 @@ const ProductForm = () => {
     } catch (err: any) {
       console.error("Error in handleSubmit:", err);
       if (axios.isAxiosError(err)) {
-        console.log("Response data:", err.response?.data);
-        console.log("Status:", err.response?.status);
         setError(
           err.response?.data?.error ||
             err.response?.data?.message ||
@@ -653,6 +609,18 @@ const ProductForm = () => {
             </div>
 
             <div className="form-group">
+              <label htmlFor="product_series">Product Series</label>
+              <input
+                type="text"
+                id="product_series"
+                name="product_series"
+                value={formData.product_series}
+                onChange={handleInputChange}
+                placeholder="e.g., GigaSPEED X10D, TX6A-28"
+              />
+            </div>
+
+            <div className="form-group">
               <label htmlFor="price">Price *</label>
               <input
                 type="number"
@@ -682,7 +650,7 @@ const ProductForm = () => {
             </div>
 
             <div className="form-group">
-              <label htmlFor="weight">Weight</label>
+              <label htmlFor="weight">Weight (kg)</label>
               <input
                 type="number"
                 id="weight"
@@ -738,7 +706,7 @@ const ProductForm = () => {
                 name="warranty"
                 value={formData.warranty}
                 onChange={handleInputChange}
-                placeholder="e.g., 1 Year"
+                placeholder="e.g., 2 Years"
               />
             </div>
 
@@ -775,6 +743,194 @@ const ProductForm = () => {
           </div>
         </div>
 
+        {/* Advanced Product Specifications Section */}
+        <div className="form-section">
+          <button
+            type="button"
+            className="section-toggle"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+          >
+            <span>Advanced Specifications</span>
+            {showAdvanced ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+          </button>
+
+          {showAdvanced && (
+            <div className="form-grid advanced-grid">
+              <div className="form-group">
+                <label htmlFor="bandwidth">Bandwidth</label>
+                <input
+                  type="text"
+                  id="bandwidth"
+                  name="bandwidth"
+                  value={formData.bandwidth}
+                  onChange={handleInputChange}
+                  placeholder="e.g., 500 MHz"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="max_data_rate">Max Data Rate</label>
+                <input
+                  type="text"
+                  id="max_data_rate"
+                  name="max_data_rate"
+                  value={formData.max_data_rate}
+                  onChange={handleInputChange}
+                  placeholder="e.g., 10 Gbps (100 m)"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="conductor_type">Conductor Type</label>
+                <input
+                  type="text"
+                  id="conductor_type"
+                  name="conductor_type"
+                  value={formData.conductor_type}
+                  onChange={handleInputChange}
+                  placeholder="e.g., 24 AWG Solid, 28 AWG Stranded"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="cable_od">Cable OD</label>
+                <input
+                  type="text"
+                  id="cable_od"
+                  name="cable_od"
+                  value={formData.cable_od}
+                  onChange={handleInputChange}
+                  placeholder="e.g., 7.24 mm"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="jacket_material">Jacket Material</label>
+                <input
+                  type="text"
+                  id="jacket_material"
+                  name="jacket_material"
+                  value={formData.jacket_material}
+                  onChange={handleInputChange}
+                  placeholder="e.g., PVC, LSZH"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="operating_temperature">Operating Temperature</label>
+                <input
+                  type="text"
+                  id="operating_temperature"
+                  name="operating_temperature"
+                  value={formData.operating_temperature}
+                  onChange={handleInputChange}
+                  placeholder="e.g., -10°C to +60°C"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="poe_support">PoE Support</label>
+                <input
+                  type="text"
+                  id="poe_support"
+                  name="poe_support"
+                  value={formData.poe_support}
+                  onChange={handleInputChange}
+                  placeholder="e.g., IEEE 802.3bt Type 4 (90W)"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="rack_type">Rack Type</label>
+                <select
+                  id="rack_type"
+                  name="rack_type"
+                  value={formData.rack_type}
+                  onChange={handleInputChange}
+                >
+                  <option value="">Select Rack Type</option>
+                  <option value="floor_mount">Floor Mount</option>
+                  <option value="wall_mount">Wall Mount</option>
+                  <option value="open_rack">Open Rack</option>
+                  <option value="closed_rack">Closed Rack</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="static_load">Static Load</label>
+                <input
+                  type="text"
+                  id="static_load"
+                  name="static_load"
+                  value={formData.static_load}
+                  onChange={handleInputChange}
+                  placeholder="e.g., 1500 Kg"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="mounting_type">Mounting Type</label>
+                <input
+                  type="text"
+                  id="mounting_type"
+                  name="mounting_type"
+                  value={formData.mounting_type}
+                  onChange={handleInputChange}
+                  placeholder="e.g., Grouting, Wall Mount"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="rack_standard">Rack Standard</label>
+                <input
+                  type="text"
+                  id="rack_standard"
+                  name="rack_standard"
+                  value={formData.rack_standard}
+                  onChange={handleInputChange}
+                  placeholder="e.g., EIA/DIN 41494"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="construction_type">Construction Type</label>
+                <input
+                  type="text"
+                  id="construction_type"
+                  name="construction_type"
+                  value={formData.construction_type}
+                  onChange={handleInputChange}
+                  placeholder="e.g., CRCA Steel, Aluminium"
+                />
+              </div>
+
+              <div className="form-group full-width">
+                <label htmlFor="internal_design">Internal Design</label>
+                <textarea
+                  id="internal_design"
+                  name="internal_design"
+                  value={formData.internal_design}
+                  onChange={handleInputChange}
+                  rows={2}
+                  placeholder="e.g., Standard pair separation, Improved pair separation and crosstalk control"
+                />
+              </div>
+
+              <div className="form-group full-width">
+                <label htmlFor="typical_applications">Typical Applications</label>
+                <textarea
+                  id="typical_applications"
+                  name="typical_applications"
+                  value={formData.typical_applications}
+                  onChange={handleInputChange}
+                  rows={2}
+                  placeholder="e.g., Data Centers, High-Speed Networks, Enterprise Backbone"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Variants Section */}
         <div className="form-section">
           <h3>Product Variants</h3>
@@ -788,7 +944,7 @@ const ProductForm = () => {
                   name="color_name"
                   value={currentVariant.color_name}
                   onChange={handleVariantChange}
-                  placeholder="e.g., Black"
+                  placeholder="e.g., Black, Red, Blue"
                 />
               </div>
 
@@ -822,6 +978,61 @@ const ProductForm = () => {
                   value={currentVariant.stock}
                   onChange={handleVariantChange}
                   placeholder="100"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Variant Size</label>
+                <input
+                  type="text"
+                  name="variant_size"
+                  value={currentVariant.variant_size}
+                  onChange={handleVariantChange}
+                  placeholder="e.g., 1M, 2M, 3M, 5M, 22U, 42U"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Part Code</label>
+                <input
+                  type="text"
+                  name="part_code"
+                  value={currentVariant.part_code}
+                  onChange={handleVariantChange}
+                  placeholder="e.g., CPCSSX2-01M001"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Availability</label>
+                <input
+                  type="text"
+                  name="availability"
+                  value={currentVariant.availability}
+                  onChange={handleVariantChange}
+                  placeholder="e.g., In Stock, 2-4 Weeks"
+                />
+              </div>
+
+              <div className="form-group full-width">
+                <label>Variant Description</label>
+                <input
+                  type="text"
+                  name="description"
+                  value={currentVariant.description}
+                  onChange={handleVariantChange}
+                  placeholder="e.g., GigaSPEED X10D Cat 6A U/UTP Patch Cord, Non-Plenum 1 Mtr Black"
+                />
+              </div>
+
+              <div className="form-group full-width">
+                <label>Datasheet URL</label>
+                <input
+                  type="url"
+                  name="datasheet_url"
+                  value={currentVariant.datasheet_url}
+                  onChange={handleVariantChange}
+                  placeholder="https://example.com/datasheet.pdf"
                 />
               </div>
 
@@ -898,8 +1109,11 @@ const ProductForm = () => {
                     <div className="variant-color" style={{ backgroundColor: variant.color_hex }}></div>
                     <div className="variant-info">
                       <strong>{variant.color_name}</strong>
+                      {variant.variant_size && <span>Size: {variant.variant_size}</span>}
+                      {variant.part_code && <span>Part: {variant.part_code}</span>}
                       <span>Price: ₹{parseFloat(variant.price).toLocaleString('en-IN')}</span>
                       <span>Stock: {variant.stock}</span>
+                      {variant.availability && <span className="availability-badge">{variant.availability}</span>}
                       {variant.existingImages && variant.existingImages.length > 0 && (
                         <div className="variant-images-preview">
                           <span className="image-count">Images: {variant.existingImages.length}</span>
@@ -953,7 +1167,6 @@ const ProductForm = () => {
           )}
         </div>
 
-        {/* Submit Button */}
         <div className="form-actions">
           <button
             type="submit"

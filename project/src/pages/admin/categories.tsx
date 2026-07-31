@@ -1,7 +1,7 @@
 // src/components/admin/AdminCategories.tsx
 import { useState, useEffect, ChangeEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus, Edit, Trash2, Loader2, X, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+// import { useNavigate } from 'react-router-dom';
+import { Plus, Edit, Trash2, Loader2, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,7 +29,7 @@ interface ApiResponse<T> {
 }
 
 export function AdminCategories() {
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);

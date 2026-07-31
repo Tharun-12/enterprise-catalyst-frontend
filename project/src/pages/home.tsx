@@ -377,9 +377,9 @@
 
 
 import { CompanyIntroSection } from "@/components/HomeCompo/CompanyIntroSection";
-import { CTASection } from "@/components/HomeCompo/CTASection";
+// import { CTASection } from "@/components/HomeCompo/CTASection";
 import FeaturedCategories from "@/components/HomeCompo/FeaturedCategories";
-import { FeaturedCategoriesSection } from "@/components/HomeCompo/FeaturedCategoriesSection";
+// import { FeaturedCategoriesSection } from "@/components/HomeCompo/FeaturedCategoriesSection";
 import { FeaturedProductsSection } from "@/components/HomeCompo/FeaturedProductsSection";
 import { HeroSection } from "@/components/HomeCompo/HeroSection";
 import { ContactInfoSection } from "@/components/HomeCompo/infrosection";

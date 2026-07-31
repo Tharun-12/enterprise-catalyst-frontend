@@ -1,14 +1,14 @@
 // src/pages/admin/quotation-view.tsx
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, Building, Download, FileText, CheckCircle, XCircle, Clock, Printer } from 'lucide-react';
+import { ArrowLeft, Phone, Mail} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
+// import { cn } from '@/lib/utils';
 import axios from 'axios';
 import { baseurl } from '@/Baseurl/baseurl';
 
@@ -61,42 +61,42 @@ interface ApiQuotationDetail {
     created_at: string;
 }
 
-interface ApiQuotation {
-    id: number;
-    quotation_no: string;
-    user_id: number;
-    customer_name: string;
-    customer_mobile: string;
-    customer_email: string;
-    total_items: number;
-    total_amount: string;
-    total_discount: string;
-    grand_total: string;
-    status: string;
-    remarks: string;
-    created_at: string;
-    updated_at: string;
-}
+// interface ApiQuotation {
+//     id: number;
+//     quotation_no: string;
+//     user_id: number;
+//     customer_name: string;
+//     customer_mobile: string;
+//     customer_email: string;
+//     total_items: number;
+//     total_amount: string;
+//     total_discount: string;
+//     grand_total: string;
+//     status: string;
+//     remarks: string;
+//     created_at: string;
+//     updated_at: string;
+// }
 
-interface ApiResponse {
-    success: boolean;
-    quotation: ApiQuotation;
-    items: ApiQuotationDetail[];
-}
+// interface ApiResponse {
+//     success: boolean;
+//     quotation: ApiQuotation;
+//     items: ApiQuotationDetail[];
+// }
 
-const statusColors: Record<QuotationStatus, string> = {
-    Pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-    Approved: 'bg-green-100 text-green-700 border-green-200',
-    Rejected: 'bg-red-100 text-red-700 border-red-200',
-    Sent: 'bg-blue-100 text-blue-700 border-blue-200',
-};
+// const statusColors: Record<QuotationStatus, string> = {
+//     Pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+//     Approved: 'bg-green-100 text-green-700 border-green-200',
+//     Rejected: 'bg-red-100 text-red-700 border-red-200',
+//     Sent: 'bg-blue-100 text-blue-700 border-blue-200',
+// };
 
-const statusIcons: Record<QuotationStatus, React.ReactNode> = {
-    Pending: <Clock className="w-4 h-4" />,
-    Approved: <CheckCircle className="w-4 h-4" />,
-    Rejected: <XCircle className="w-4 h-4" />,
-    Sent: <FileText className="w-4 h-4" />,
-};
+// const statusIcons: Record<QuotationStatus, React.ReactNode> = {
+//     Pending: <Clock className="w-4 h-4" />,
+//     Approved: <CheckCircle className="w-4 h-4" />,
+//     Rejected: <XCircle className="w-4 h-4" />,
+//     Sent: <FileText className="w-4 h-4" />,
+// };
 
 export function QuotationView() {
     const { id } = useParams<{ id: string }>();
@@ -191,15 +191,15 @@ export function QuotationView() {
         return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
 
-    const formatDate = (dateString: string): string => {
-        return new Date(dateString).toLocaleString('en-IN', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-        });
-    };
+    // const formatDate = (dateString: string): string => {
+    //     return new Date(dateString).toLocaleString('en-IN', {
+    //         day: '2-digit',
+    //         month: '2-digit',
+    //         year: 'numeric',
+    //         hour: '2-digit',
+    //         minute: '2-digit',
+    //     });
+    // };
 
     // const handleDownloadPDF = () => {
     //     if (quotation) {
