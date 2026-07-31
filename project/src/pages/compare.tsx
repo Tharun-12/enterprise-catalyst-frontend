@@ -12,14 +12,25 @@ import { PageBreadcrumb as Breadcrumb } from '@/layouts/customer-layout-wrapper'
 import axios from 'axios';
 import { baseurl } from '@/Baseurl/baseurl';
 
+// Updated interface to match actual API response
 interface Variant {
   id: number;
   product_id: number;
-  color_name: string;
-  color_hex: string;
+  variant_name: string;
+  part_code: string;
+  category: string;
+  brand: string;
+  description: string;
+  spec_type: string;
+  color: string;  // Changed from color_name/color_hex
+  size: string;
   price: string;
+  availability: string;
+  datasheet_url: string;
   stock: number;
   image_url: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface Product {
@@ -36,6 +47,21 @@ interface Product {
   discount: string;
   product_description: string;
   warranty: string;
+  bandwidth: string;
+  max_data_rate: string;
+  internal_design: string;
+  typical_applications: string;
+  conductor_type: string;
+  cable_od: string;
+  jacket_material: string;
+  operating_temperature: string;
+  poe_support: string;
+  product_series: string;
+  rack_type: string;
+  static_load: string | null;
+  mounting_type: string | null;
+  rack_standard: string | null;
+  construction_type: string | null;
   created_at: string;
   updated_at: string;
   category_name: string;
@@ -102,44 +128,13 @@ export function ComparePage() {
     return totalStock > 0 ? 'In Stock' : 'Out of Stock';
   };
 
-  // Parse specifications into key-value pairs
-  const parseSpecifications = (specs: string) => {
-    const specPairs = specs.split(',').map(s => s.trim());
-    const specMap: { [key: string]: string } = {};
-    specPairs.forEach(pair => {
-      const [key, value] = pair.split(':').map(s => s.trim());
-      if (key && value) {
-        specMap[key] = value;
-      }
-    });
-    return specMap;
-  };
-
-  // Get all unique specification keys
-  const getAllSpecKeys = () => {
-    const allKeys = new Set<string>();
-    products.forEach(product => {
-      const specMap = parseSpecifications(product.specifications);
-      Object.keys(specMap).forEach(key => allKeys.add(key));
-    });
-    return Array.from(allKeys);
-  };
-
-  // Get specification value for a product
-  const getSpecValue = (product: Product, key: string) => {
-    const specMap = parseSpecifications(product.specifications);
-    return specMap[key] || '—';
-  };
-
-  // Check if a spec value is different across products
-  const isSpecDifferent = (key: string) => {
-    const values = products.map(p => getSpecValue(p, key));
+  // Check if a value is different across products
+  const isValueDifferent = (values: any[]) => {
     return new Set(values).size > 1;
   };
 
   // Find best value for numeric specs
-  const findBestValue = (key: string) => {
-    const values = products.map(p => getSpecValue(p, key));
+  const findBestValue = (values: string[]) => {
     const numeric = values.map(v => {
       const match = v.match(/[\d.]+/);
       return match ? parseFloat(match[0]) : null;
@@ -163,33 +158,74 @@ export function ComparePage() {
     }).format(numPrice);
   };
 
-  // Get general info items
+  // Get general info items - Updated to match first image
   const getGeneralInfoItems = () => {
     const items = [
-      { label: 'Brand', key: 'brand', value: (p: Product) => p.product_brand },
-      { label: 'Category', key: 'category', value: (p: Product) => p.category_name },
-      { label: 'Dimensions', key: 'dimensions', value: (p: Product) => p.dimensions },
-      { label: 'Weight', key: 'weight', value: (p: Product) => `${p.weight} kg` },
-      { label: 'Warranty', key: 'warranty', value: (p: Product) => p.warranty },
-      { label: 'Stock Status', key: 'stock', value: (p: Product) => getStockStatus(p) },
+      { 
+        label: 'Brand', 
+        value: (p: Product) => p.product_brand || '—' 
+      },
+      { 
+        label: 'Category', 
+        value: (p: Product) => p.category_name || '—' 
+      },
+      { 
+        label: 'Dimensions', 
+        value: (p: Product) => p.dimensions || '—' 
+      },
+      { 
+        label: 'Weight', 
+        value: (p: Product) => p.weight ? `${p.weight} kg` : '—' 
+      },
+      { 
+        label: 'Warranty', 
+        value: (p: Product) => p.warranty ? `${p.warranty} years` : '—' 
+      },
+      { 
+        label: 'Stock Status', 
+        value: (p: Product) => getStockStatus(p) 
+      },
     ];
 
     if (showOnlyDifferences) {
       return items.filter(item => {
         const values = products.map(p => item.value(p));
-        return new Set(values).size > 1;
+        return isValueDifferent(values);
       });
     }
     return items;
   };
 
-  // Get filtered spec keys based on show differences
-  const getFilteredSpecKeys = () => {
-    const allKeys = getAllSpecKeys();
+  // Get specification items - Updated to match first image
+  const getSpecificationItems = () => {
+    const specKeys = [
+      { label: 'Product Series', key: 'product_series' },
+      { label: 'Conductor Type', key: 'conductor_type' },
+      { label: 'Cable OD', key: 'cable_od' },
+      { label: 'Jacket Material', key: 'jacket_material' },
+      { label: 'Bandwidth', key: 'bandwidth' },
+      { label: 'Max Data Rate', key: 'max_data_rate' },
+      { label: 'Internal Design', key: 'internal_design' },
+      { label: 'Typical Applications', key: 'typical_applications' },
+      { label: 'Operating Temperature', key: 'operating_temperature' },
+      { label: 'PoE Support', key: 'poe_support' },
+    ];
+
+    const items = specKeys.map(spec => ({
+      label: spec.label,
+      value: (p: Product) => {
+        const val = (p as any)[spec.key];
+        return val && val !== 'null' ? val : '—';
+      }
+    }));
+
     if (showOnlyDifferences) {
-      return allKeys.filter(key => isSpecDifferent(key));
+      return items.filter(item => {
+        const values = products.map(p => item.value(p));
+        return isValueDifferent(values);
+      });
     }
-    return allKeys;
+    return items;
   };
 
   if (loading) {
@@ -218,7 +254,7 @@ export function ComparePage() {
   }
 
   const generalInfoItems = getGeneralInfoItems();
-  const filteredSpecKeys = getFilteredSpecKeys();
+  const specItems = getSpecificationItems();
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -282,7 +318,7 @@ export function ComparePage() {
                 loading="lazy"
                 className="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x400';
+                  (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x400?text=No+Image';
                 }}
               />
               {parseFloat(product.discount) > 0 && (
@@ -296,10 +332,10 @@ export function ComparePage() {
             <div className="p-4 flex flex-col flex-1">
               <div className="flex items-center gap-1.5 mb-2">
                 <Badge className="text-[10px] font-semibold bg-primary/10 text-primary border-0">
-                  {product.product_brand}
+                  {product.product_brand || 'N/A'}
                 </Badge>
                 <span className="text-xs text-muted-foreground/50">·</span>
-                <span className="text-xs text-muted-foreground">{product.category_name}</span>
+                <span className="text-xs text-muted-foreground">{product.category_name || 'Uncategorized'}</span>
               </div>
 
               <Link to={`/products/${getProductSlug(product.product_name)}`}>
@@ -320,7 +356,7 @@ export function ComparePage() {
               </div>
 
               <p className="text-xs text-muted-foreground line-clamp-2 mt-2 flex-1">
-                {product.product_description}
+                {product.product_description?.substring(0, 100) || ''}
               </p>
 
               {/* Stock Status */}
@@ -354,12 +390,12 @@ export function ComparePage() {
         )}
       </div>
 
-      {/* General Information Section */}
+      {/* General Information Section - Updated to match first image */}
       {generalInfoItems.length > 0 && (
         <div className="mb-6">
           <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 rounded-t-lg font-semibold text-sm flex items-center justify-between">
             <span>General Information</span>
-            {showOnlyDifferences && (
+            {showOnlyDifferences && generalInfoItems.length > 0 && (
               <Badge variant="secondary" className="bg-white/20 text-white border-0">
                 Showing differences only
               </Badge>
@@ -368,16 +404,18 @@ export function ComparePage() {
           <div className="border border-t-0 rounded-b-lg overflow-hidden">
             {generalInfoItems.map((item, index) => {
               const values = products.map(p => item.value(p));
-              const isDifferent = new Set(values).size > 1;
+              const isDifferent = isValueDifferent(values);
+              const bestValue = findBestValue(values);
+              
               return (
                 <div 
-                  key={item.key}
+                  key={item.label}
                   className={cn(
-                    'grid gap-4',
+                    'grid gap-0',
                     index % 2 === 0 ? 'bg-muted/30' : 'bg-card',
                     isDifferent && showOnlyDifferences && 'border-l-4 border-primary'
                   )}
-                  style={{ gridTemplateColumns: `200px repeat(${products.length}, minmax(200px, 1fr))` }}
+                  style={{ gridTemplateColumns: `200px repeat(${products.length}, 1fr)` }}
                 >
                   <div className="p-3 text-sm font-medium text-muted-foreground border-r flex items-center gap-2">
                     {isDifferent && showOnlyDifferences && (
@@ -385,69 +423,29 @@ export function ComparePage() {
                     )}
                     {item.label}
                   </div>
-                  {products.map((product) => (
-                    <div key={product.id} className={cn(
-                      "p-3 text-sm",
-                      isDifferent && showOnlyDifferences && "font-semibold"
-                    )}>
-                      {item.key === 'stock' ? (
-                        <Badge variant={item.value(product) === 'In Stock' ? 'default' : 'destructive'}>
-                          {item.value(product)}
-                        </Badge>
-                      ) : (
-                        item.value(product)
-                      )}
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Specifications Section */}
-      {filteredSpecKeys.length > 0 && (
-        <div className="mb-6">
-          <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 rounded-t-lg font-semibold text-sm flex items-center justify-between">
-            <span>Specifications</span>
-            {showOnlyDifferences && (
-              <Badge variant="secondary" className="bg-white/20 text-white border-0">
-                Showing differences only
-              </Badge>
-            )}
-          </div>
-          <div className="border border-t-0 rounded-b-lg overflow-hidden">
-            {filteredSpecKeys.map((specKey, index) => {
-              const bestValue = findBestValue(specKey);
-              const isDifferent = isSpecDifferent(specKey);
-              return (
-                <div
-                  key={specKey}
-                  className={cn(
-                    'grid gap-4',
-                    index % 2 === 0 ? 'bg-muted/30' : 'bg-card',
-                    isDifferent && showOnlyDifferences && 'border-l-4 border-primary'
-                  )}
-                  style={{ gridTemplateColumns: `200px repeat(${products.length}, minmax(200px, 1fr))` }}
-                >
-                  <div className="p-3 text-sm font-medium text-muted-foreground border-r flex items-center gap-2">
-                    {isDifferent && showOnlyDifferences && (
-                      <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                    )}
-                    {specKey}
-                  </div>
-                  {products.map((product) => {
-                    const value = getSpecValue(product, specKey);
-                    const isBest = bestValue !== null && value === bestValue;
+                  {products.map((product, idx) => {
+                    const value = item.value(product);
+                    const isBest = bestValue && value === bestValue && isDifferent;
                     return (
                       <div key={product.id} className={cn(
-                        "p-3 text-sm relative",
-                        isDifferent && showOnlyDifferences && "font-semibold"
+                        "p-3 text-sm border-l first:border-l-0",
+                        isBest && "bg-green-50 dark:bg-green-950/20"
                       )}>
-                        <span className={cn(isBest && 'text-green-600')}>{value}</span>
-                        {isBest && (
-                          <Badge className="ml-1.5 text-[9px] bg-green-100 text-green-700 border-0">BEST</Badge>
+                        {item.label === 'Stock Status' ? (
+                          <Badge variant={value === 'In Stock' ? 'default' : 'destructive'}>
+                            {value}
+                          </Badge>
+                        ) : (
+                          <span className={cn(
+                            isBest && "font-semibold text-green-600 dark:text-green-400"
+                          )}>
+                            {value}
+                            {isBest && (
+                              <Badge className="ml-1.5 text-[9px] bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-0">
+                                BEST
+                              </Badge>
+                            )}
+                          </span>
                         )}
                       </div>
                     );
@@ -459,28 +457,89 @@ export function ComparePage() {
         </div>
       )}
 
-      {/* Variants Section */}
+      {/* Specifications Section - Updated to match first image */}
+      {specItems.length > 0 && (
+        <div className="mb-6">
+          <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 rounded-t-lg font-semibold text-sm flex items-center justify-between">
+            <span>Specifications</span>
+            {showOnlyDifferences && specItems.length > 0 && (
+              <Badge variant="secondary" className="bg-white/20 text-white border-0">
+                Showing differences only
+              </Badge>
+            )}
+          </div>
+          <div className="border border-t-0 rounded-b-lg overflow-hidden">
+            {specItems.map((item, index) => {
+              const values = products.map(p => item.value(p));
+              const isDifferent = isValueDifferent(values);
+              const bestValue = findBestValue(values);
+              
+              return (
+                <div
+                  key={item.label}
+                  className={cn(
+                    'grid gap-0',
+                    index % 2 === 0 ? 'bg-muted/30' : 'bg-card',
+                    isDifferent && showOnlyDifferences && 'border-l-4 border-primary'
+                  )}
+                  style={{ gridTemplateColumns: `200px repeat(${products.length}, 1fr)` }}
+                >
+                  <div className="p-3 text-sm font-medium text-muted-foreground border-r flex items-center gap-2">
+                    {isDifferent && showOnlyDifferences && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                    )}
+                    {item.label}
+                  </div>
+                  {products.map((product) => {
+                    const value = item.value(product);
+                    const isBest = bestValue && value === bestValue && isDifferent;
+                    return (
+                      <div key={product.id} className={cn(
+                        "p-3 text-sm border-l first:border-l-0",
+                        isBest && "bg-green-50 dark:bg-green-950/20"
+                      )}>
+                        <span className={cn(
+                          isBest && "font-semibold text-green-600 dark:text-green-400"
+                        )}>
+                          {value}
+                          {isBest && (
+                            <Badge className="ml-1.5 text-[9px] bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-0">
+                              BEST
+                            </Badge>
+                          )}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Variants Section - Updated to use color field */}
       <div className="mb-6">
         <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 rounded-t-lg font-semibold text-sm">
           Available Variants
         </div>
         <div className="border border-t-0 rounded-b-lg overflow-hidden">
           <div 
-            className={cn('grid gap-4', 'bg-muted/30')}
-            style={{ gridTemplateColumns: `200px repeat(${products.length}, minmax(200px, 1fr))` }}
+            className={cn('grid gap-0', 'bg-muted/30')}
+            style={{ gridTemplateColumns: `200px repeat(${products.length}, 1fr)` }}
           >
             <div className="p-3 text-sm font-medium text-muted-foreground border-r">Variants</div>
             {products.map((product) => (
-              <div key={product.id} className="p-3">
+              <div key={product.id} className="p-3 border-l first:border-l-0">
                 {product.variants && product.variants.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {product.variants.map((variant) => (
                       <div key={variant.id} className="flex items-center gap-1.5 bg-card px-2.5 py-1 rounded-full border text-xs">
                         <div 
                           className="w-3.5 h-3.5 rounded-full border"
-                          style={{ backgroundColor: variant.color_hex }}
+                          style={{ backgroundColor: variant.color || '#cccccc' }}
                         />
-                        <span>{variant.color_name}</span>
+                        <span>{variant.color || 'N/A'}</span>
                       </div>
                     ))}
                   </div>

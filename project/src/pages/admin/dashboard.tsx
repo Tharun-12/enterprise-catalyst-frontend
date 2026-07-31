@@ -194,10 +194,10 @@ export function AdminDashboard() {
     const fetchDashboardData = async () => {
       try {
         const [productsRes, categoriesRes, brandsRes, wishlistRes, inquiriesRes] = await Promise.all([
-          axios.get(`${API_BASE_URL}/products/only-products`),
+          axios.get(`${API_BASE_URL}/products/products-with-variants`),
           axios.get(`${API_BASE_URL}/categories/`),
           axios.get(`${API_BASE_URL}/brands/`),
-          axios.get(`${API_BASE_URL}/wishlist/with-all-users`),
+          axios.get(`${API_BASE_URL}/wishlist/all-with-users`),
           axios.get(`${API_BASE_URL}/inquiries`)
         ]);
 
