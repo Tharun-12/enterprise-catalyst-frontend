@@ -1,7 +1,7 @@
 // src/components/admin/AdminBrands.tsx
 import { useState, useEffect, ChangeEvent } from 'react';
-// import { useNavigate } from 'react-router-dom';
-import { Plus, Edit, Trash2, Loader2, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Edit, Trash2, Loader2, Search, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,10 +14,24 @@ import { baseurl } from '@/Baseurl/baseurl';
 const API_URL = `${baseurl}/api`;
 
 // Define types
+interface Category {
+  id: number;
+  category_name: string;
+}
+
 interface Brand {
   id: string;
-  name: string;
+  brand_name: string;
   description?: string;
+  product_series?: string;
+  conductor_type?: string;
+  cable_od?: string;
+  jacket_material?: string;
+  bandwidth?: string;
+  operating_temperature?: string;
+  poe_support?: string;
+  category_id?: number;
+  category_name?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -27,39 +41,34 @@ interface BrandsResponse {
   data: Brand[];
 }
 
+interface CategoriesResponse {
+  success: boolean;
+  data: Category[];
+}
+
 interface DeleteResponse {
   success: boolean;
   message?: string;
 }
 
-interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  message?: string;
-}
-
 export function AdminBrands() {
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
   const [brands, setBrands] = useState<Brand[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [deleteTarget, setDeleteTarget] = useState<Brand | null>(null);
-  
-  // State for add/edit modal
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
-  const [brandName, setBrandName] = useState<string>('');
-  const [brandDescription, setBrandDescription] = useState<string>('');
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [viewingBrand, setViewingBrand] = useState<Brand | null>(null);
 
   // Pagination and search
   const [search, setSearch] = useState<string>('');
   const [page, setPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
 
-  // Fetch brands from API
+  // Fetch brands and categories from API
   useEffect(() => {
     fetchBrands();
+    fetchCategories();
   }, [page, pageSize]);
 
   const fetchBrands = async (): Promise<void> => {
@@ -77,9 +86,21 @@ export function AdminBrands() {
     }
   };
 
+  const fetchCategories = async (): Promise<void> => {
+    try {
+      const response = await axios.get<CategoriesResponse>(`${API_URL}/categories`);
+      if (response.data.success) {
+        setCategories(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      toast.error('Failed to load categories');
+    }
+  };
+
   // Filter brands based on search
-  const filteredBrands = brands.filter(brand =>
-    brand.name.toLowerCase().includes(search.toLowerCase()) ||
+  const filteredBrands = brands.filter((brand: Brand) =>
+    brand.brand_name.toLowerCase().includes(search.toLowerCase()) ||
     (brand.description && brand.description.toLowerCase().includes(search.toLowerCase()))
   );
 
@@ -91,86 +112,14 @@ export function AdminBrands() {
 
   const totalPages = Math.ceil(filteredBrands.length / pageSize);
 
-  // Open modal for adding new brand
-  const handleOpenAddModal = (): void => {
-    setEditingBrand(null);
-    setBrandName('');
-    setBrandDescription('');
-    setIsModalOpen(true);
+  // Navigate to add brand page
+  const handleAddBrand = (): void => {
+    navigate('/admin/brands/add');
   };
 
-  // Open modal for editing brand
-  const handleOpenEditModal = (brand: Brand): void => {
-    setEditingBrand(brand);
-    setBrandName(brand.name);
-    setBrandDescription(brand.description || '');
-    setIsModalOpen(true);
-  };
-
-  // Close modal
-  const handleCloseModal = (): void => {
-    setIsModalOpen(false);
-    setEditingBrand(null);
-    setBrandName('');
-    setBrandDescription('');
-  };
-
-  // Handle form submit for add/edit
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
-    e.preventDefault();
-    
-    const trimmedName = brandName.trim();
-    if (!trimmedName) {
-      toast.error('Brand name is required');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      if (editingBrand) {
-        // Update existing brand
-        const response = await axios.put<ApiResponse<Brand>>(
-          `${API_URL}/brands/${editingBrand.id}`,
-          { 
-            name: trimmedName,
-            description: brandDescription.trim() || undefined
-          }
-        );
-
-        if (response.data.success) {
-          toast.success('Brand updated successfully!');
-          await fetchBrands();
-          handleCloseModal();
-        } else {
-          toast.error(response.data.message || 'Failed to update brand');
-        }
-      } else {
-        // Add new brand
-        const response = await axios.post<ApiResponse<Brand>>(
-          `${API_URL}/brands`,
-          { 
-            name: trimmedName,
-            description: brandDescription.trim() || undefined
-          }
-        );
-
-        if (response.data.success) {
-          toast.success('Brand added successfully!');
-          await fetchBrands();
-          // Go to last page to show new brand
-          const newTotalPages = Math.ceil((filteredBrands.length + 1) / pageSize);
-          setPage(newTotalPages);
-          handleCloseModal();
-        } else {
-          toast.error(response.data.message || 'Failed to add brand');
-        }
-      }
-    } catch (error) {
-      console.error('Error saving brand:', error);
-      toast.error('Failed to save brand');
-    } finally {
-      setIsSubmitting(false);
-    }
+  // Navigate to edit brand page
+  const handleEditBrand = (brand: Brand): void => {
+    navigate(`/admin/brands/add/${brand.id}`);
   };
 
   const handleDelete = async (): Promise<void> => {
@@ -197,7 +146,12 @@ export function AdminBrands() {
   // Handle page size change
   const handlePageSizeChange = (value: string): void => {
     setPageSize(Number(value));
-    setPage(1); // Reset to first page when changing page size
+    setPage(1);
+  };
+
+  // View brand details
+  const handleViewBrand = (brand: Brand): void => {
+    setViewingBrand(brand);
   };
 
   if (isLoading) {
@@ -217,9 +171,9 @@ export function AdminBrands() {
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold">Brand Management</h2>
-          <p className="text-sm text-muted-foreground">Manage brands and manufacturers</p>
+          <p className="text-sm text-muted-foreground">Manage brands and their specifications</p>
         </div>
-        <Button onClick={handleOpenAddModal}>
+        <Button onClick={handleAddBrand}>
           <Plus className="w-4 h-4 mr-1.5" /> Add Brand
         </Button>
       </div>
@@ -251,15 +205,16 @@ export function AdminBrands() {
               <tr>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">#</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Brand Name</th>
-                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Description</th>
-                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Created At</th>
+                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Category</th>
+                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Product Series</th>
+                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden xl:table-cell">Conductor Type</th>
                 <th className="p-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody>
               {paginatedBrands.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                  <td colSpan={6} className="p-8 text-center text-muted-foreground">
                     {search ? 'No brands match your search.' : 'No brands found. Click "Add Brand" to create one.'}
                   </td>
                 </tr>
@@ -270,17 +225,16 @@ export function AdminBrands() {
                       {(page - 1) * pageSize + index + 1}
                     </td>
                     <td className="p-3">
-                      <span className="font-medium">{brand.name}</span>
+                      <span className="font-medium">{brand.brand_name}</span>
                     </td>
-                    <td className="p-3 hidden md:table-cell text-sm text-muted-foreground max-w-[200px] truncate">
-                      {brand.description || '—'}
+                    <td className="p-3 hidden md:table-cell text-sm text-muted-foreground">
+                      {brand.category_name || '—'}
                     </td>
-                    <td className="p-3 hidden lg:table-cell text-sm text-muted-foreground">
-                      {brand.created_at ? new Date(brand.created_at).toLocaleDateString('en-IN', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric'
-                      }) : '—'}
+                    <td className="p-3 hidden lg:table-cell text-sm text-muted-foreground max-w-[150px] truncate">
+                      {brand.product_series || '—'}
+                    </td>
+                    <td className="p-3 hidden xl:table-cell text-sm text-muted-foreground max-w-[150px] truncate">
+                      {brand.conductor_type || '—'}
                     </td>
                     <td className="p-3">
                       <div className="flex items-center justify-end gap-1">
@@ -288,8 +242,17 @@ export function AdminBrands() {
                           variant="ghost" 
                           size="icon" 
                           className="h-8 w-8" 
-                          onClick={() => handleOpenEditModal(brand)}
-                          aria-label={`Edit ${brand.name}`}
+                          onClick={() => handleViewBrand(brand)}
+                          aria-label={`View ${brand.brand_name}`}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8" 
+                          onClick={() => handleEditBrand(brand)}
+                          aria-label={`Edit ${brand.brand_name}`}
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
@@ -298,7 +261,7 @@ export function AdminBrands() {
                           size="icon" 
                           className="h-8 w-8 text-destructive hover:text-destructive" 
                           onClick={() => setDeleteTarget(brand)}
-                          aria-label={`Delete ${brand.name}`}
+                          aria-label={`Delete ${brand.brand_name}`}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -356,85 +319,13 @@ export function AdminBrands() {
         )}
       </Card>
 
-      {/* Add/Edit Brand Modal */}
-      <Dialog open={isModalOpen} onOpenChange={(open: boolean) => !open && handleCloseModal()}>
-        <DialogContent className="sm:max-w-[450px]">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold text-gray-900">
-              {editingBrand ? 'Edit Brand' : 'Add New Brand'}
-            </DialogTitle>
-            <DialogDescription className="text-gray-600">
-              {editingBrand 
-                ? `Update the brand information for "${editingBrand.name}"` 
-                : 'Enter the brand details'}
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-4 py-4">
-              <div>
-                <label htmlFor="brandName" className="block text-sm font-medium text-gray-700 mb-1">
-                  Brand Name <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  id="brandName"
-                  placeholder="Enter brand name..."
-                  value={brandName}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setBrandName(e.target.value)}
-                  disabled={isSubmitting}
-                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label htmlFor="brandDescription" className="block text-sm font-medium text-gray-700 mb-1">
-                  Description <span className="text-gray-400 text-xs">(optional)</span>
-                </label>
-                <Input
-                  id="brandDescription"
-                  placeholder="Enter brand description..."
-                  value={brandDescription}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setBrandDescription(e.target.value)}
-                  disabled={isSubmitting}
-                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-            <div className="flex gap-3 pt-4 border-t">
-              <Button 
-                type="button"
-                variant="outline" 
-                className="flex-1 border-gray-300 hover:bg-gray-50" 
-                onClick={handleCloseModal}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                disabled={isSubmitting || !brandName.trim()}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {editingBrand ? 'Updating...' : 'Adding...'}
-                  </>
-                ) : (
-                  editingBrand ? 'Update Brand' : 'Add Brand'
-                )}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!deleteTarget} onOpenChange={(v: boolean) => !v && setDeleteTarget(null)}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-gray-900">Delete Brand</DialogTitle>
             <DialogDescription className="text-gray-600">
-              Are you sure you want to delete "<span className="font-semibold text-gray-900">{deleteTarget?.name}</span>"? 
+              Are you sure you want to delete "<span className="font-semibold text-gray-900">{deleteTarget?.brand_name}</span>"? 
               This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
@@ -461,6 +352,69 @@ export function AdminBrands() {
               ) : (
                 'Delete'
               )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Brand Dialog */}
+      <Dialog open={!!viewingBrand} onOpenChange={(v: boolean) => !v && setViewingBrand(null)}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900">
+              Brand Details
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Complete specifications for {viewingBrand?.brand_name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Brand Name</p>
+                <p className="text-sm text-gray-900 mt-1">{viewingBrand?.brand_name || '—'}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Category</p>
+                <p className="text-sm text-gray-900 mt-1">{viewingBrand?.category_name || '—'}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Product Series</p>
+                <p className="text-sm text-gray-900 mt-1">{viewingBrand?.product_series || '—'}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Conductor Type</p>
+                <p className="text-sm text-gray-900 mt-1">{viewingBrand?.conductor_type || '—'}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Cable OD</p>
+                <p className="text-sm text-gray-900 mt-1">{viewingBrand?.cable_od || '—'}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Jacket Material</p>
+                <p className="text-sm text-gray-900 mt-1">{viewingBrand?.jacket_material || '—'}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Bandwidth</p>
+                <p className="text-sm text-gray-900 mt-1">{viewingBrand?.bandwidth || '—'}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Operating Temperature</p>
+                <p className="text-sm text-gray-900 mt-1">{viewingBrand?.operating_temperature || '—'}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">PoE Support</p>
+                <p className="text-sm text-gray-900 mt-1">{viewingBrand?.poe_support || '—'}</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-sm font-medium text-gray-500">Description</p>
+                <p className="text-sm text-gray-900 mt-1">{viewingBrand?.description || 'No description available'}</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end pt-4 border-t">
+            <Button onClick={() => setViewingBrand(null)}>
+              Close
             </Button>
           </div>
         </DialogContent>
