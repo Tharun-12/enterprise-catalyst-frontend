@@ -24,7 +24,8 @@ import { ProductView } from '@/pages/admin/productview-details';
 import { AdminCategories } from '@/pages/admin/categories';
 // import { CategoryForm } from '@/pages/admin/categories-form';
 import { AdminBrands } from '@/pages/admin/brands';
-import { AdminSpecifications } from '@/pages/admin/specifications';
+import {  AdminSpecifications } from '@/pages/admin/specifications';
+import {  SpecificationsForm } from '@/pages/admin/specialization-form';
 import { AdminLeads } from '@/pages/admin/leads';
 import { AdminQuotations } from '@/pages/admin/quotation';
 import { QuotationView } from '@/pages/admin/quotationview-details';
@@ -105,6 +106,8 @@ export default function App() {
 
 
             <Route path="specifications" element={<AdminSpecifications />} />
+            <Route path="specializations/add" element={<SpecificationsForm />} />
+            <Route path="specializations/edit/:id" element={<SpecificationsForm />} />
             <Route path="leads" element={<AdminLeads />} />
             <Route path="quotations" element={<AdminQuotations />} />
             <Route path="quotations/view/:id" element={<QuotationView />} />
