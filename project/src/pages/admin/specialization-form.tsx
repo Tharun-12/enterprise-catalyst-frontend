@@ -270,10 +270,10 @@ export function SpecificationsForm() {
       toast.error('Specification name is required');
       return;
     }
-    if (!formData.spec_value.trim()) {
-      toast.error('Specification value is required');
-      return;
-    }
+    // if (!formData.spec_value.trim()) {
+    //   toast.error('Specification value is required');
+    //   return;
+    // }
     
     const colors = Object.keys(formData.color_brand_mapping);
     if (colors.length === 0) {
@@ -406,9 +406,9 @@ export function SpecificationsForm() {
                 />
               </div>
 
-              <div className="space-y-2 md:col-span-2">
+              {/* <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="spec_value" className="text-sm font-medium text-gray-700">
-                  Specification Value <span className="text-red-500">*</span>
+                  Specification Value 
                 </Label>
                 <Input
                   id="spec_value"
@@ -417,10 +417,9 @@ export function SpecificationsForm() {
                   onChange={handleChange}
                   placeholder="e.g., CAT6, CAT6A, etc."
                   className="w-full h-10 bg-white border-gray-200"
-                  required
                   disabled={isLoading}
                 />
-              </div>
+              </div> */}
             </div>
           </div>
 

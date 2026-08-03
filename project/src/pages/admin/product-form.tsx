@@ -31,9 +31,7 @@ interface Specialization {
 
 interface FormData {
     product_name: string;
-    product_code: string;
-    product_category_id: string | number;
-    product_brand: string;
+    // REMOVED: product_code, product_category_id, product_brand
     price: string;
     dimensions: string;
     specifications: string;
@@ -81,9 +79,7 @@ const ProductForm = () => {
 
     const [formData, setFormData] = useState<FormData>({
         product_name: '',
-        product_code: '',
-        product_category_id: '',
-        product_brand: '',
+        // REMOVED: product_code, product_category_id, product_brand
         price: '',
         dimensions: '',
         specifications: '',
@@ -152,24 +148,7 @@ const ProductForm = () => {
         }
     }, [id]);
 
-    // Filter brands and specs when category changes
-    useEffect(() => {
-        if (formData.product_category_id) {
-            const categoryId = parseInt(String(formData.product_category_id));
-            const filtered = brands.filter(
-                brand => brand.category_id === categoryId
-            );
-            setFilteredBrands(filtered);
-            
-            const specs = specializations.filter(
-                spec => spec.category_id === categoryId
-            );
-            setFilteredSpecs(specs);
-        } else {
-            setFilteredBrands([]);
-            setFilteredSpecs([]);
-        }
-    }, [formData.product_category_id, brands, specializations]);
+    // REMOVED: Filter brands and specs when category changes (no longer needed for main form)
 
     // Extract spec types from specializations for comparison dropdown
     useEffect(() => {
@@ -220,9 +199,7 @@ const ProductForm = () => {
 
             setFormData({
                 product_name: productData.product_name || '',
-                product_code: productData.product_code || '',
-                product_category_id: productData.product_category_id || '',
-                product_brand: productData.product_brand || '',
+                // REMOVED: product_code, product_category_id, product_brand
                 price: productData.price || '',
                 dimensions: productData.dimensions || '',
                 specifications: productData.specifications || '',
@@ -738,57 +715,7 @@ const ProductForm = () => {
                             />
                         </div>
 
-                        <div className="form-group">
-                            <label htmlFor="product_code">Part Code *</label>
-                            <input
-                                type="text"
-                                id="product_code"
-                                name="product_code"
-                                value={formData.product_code}
-                                onChange={handleInputChange}
-                                required
-                                placeholder="e.g., CPC3312-01M001"
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label htmlFor="product_category_id">Category *</label>
-                            <select
-                                id="product_category_id"
-                                name="product_category_id"
-                                value={String(formData.product_category_id)}
-                                onChange={handleInputChange}
-                                required
-                            >
-                                <option value="">Select Category</option>
-                                {categories.map(category => (
-                                    <option key={category.id} value={category.id}>
-                                        {category.category_name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="form-group">
-                            <label htmlFor="product_brand">Brand *</label>
-                            <select
-                                id="product_brand"
-                                name="product_brand"
-                                value={formData.product_brand}
-                                onChange={handleInputChange}
-                                required
-                            >
-                                <option value="">Select Brand</option>
-                                {filteredBrands.map(brand => (
-                                    <option key={brand.id} value={brand.brand_name}>
-                                        {brand.brand_name}
-                                    </option>
-                                ))}
-                            </select>
-                            {filteredBrands.length === 0 && formData.product_category_id && (
-                                <small className="text-gray-500">No brands available for this category</small>
-                            )}
-                        </div>
+                        {/* REMOVED: product_code, product_category_id, product_brand fields */}
 
                         <div className="form-group">
                             <label htmlFor="product_series">Product Series</label>
