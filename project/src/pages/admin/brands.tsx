@@ -1,6 +1,6 @@
 // src/components/admin/AdminBrands.tsx
 import { useState, useEffect, ChangeEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+// import { useNavigate } from 'react-router-dom';
 import { Plus, Edit, Trash2, Loader2, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,7 +39,7 @@ interface ApiResponse<T> {
 }
 
 export function AdminBrands() {
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
   const [brands, setBrands] = useState<Brand[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);

@@ -1315,12 +1315,10 @@
 // }
 
 
-
-
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { 
-  Menu, Search, Heart, GitCompare, ChevronDown, Building2, Phone, Mail, 
+  Menu, Search, Heart, GitCompare, ChevronDown, Building2, 
   User, LogOut, Home, Package, Info, PhoneCall, ShoppingBag, 
   LayoutGrid, Headphones, Truck, Award, Shield 
 } from 'lucide-react';
@@ -1336,9 +1334,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import { NAV_LINKS, COMPANY } from '@/constants';
+import { NAV_LINKS } from '@/constants';
 import { useApp } from '@/hooks/use-app';
-import { products } from '@/data';
+// import { products } from '@/data';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useSettings } from '@/hooks/use-settings';
@@ -1373,7 +1371,7 @@ export function CustomerHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showResults, setShowResults] = useState(false);
+  // REMOVED: const [showResults, setShowResults] = useState(false);
   const [user, setUser] = useState<UserSession | null>(null);
   const { wishlist, compareList } = useApp();
   const navigate = useNavigate();
@@ -1418,22 +1416,22 @@ export function CustomerHeader() {
     navigate('/');
   };
 
-  const searchResults = searchQuery
-    ? products
-        .filter(
-          (p) =>
-            p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            p.brandName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            p.categoryName.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-        .slice(0, 5)
-    : [];
+  // const searchResults = searchQuery
+  //   ? products
+  //       .filter(
+  //         (p) =>
+  //           p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  //           p.brandName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  //           p.categoryName.toLowerCase().includes(searchQuery.toLowerCase())
+  //       )
+  //       .slice(0, 5)
+  //   : [];
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/products?search=${encodeURIComponent(searchQuery)}`);
-      setShowResults(false);
+      // REMOVED: setShowResults(false);
       setSearchQuery('');
     }
   };

@@ -77,9 +77,9 @@ const transformProduct = (
   const gallery = galleryImages.length > 0 ? galleryImages : [defaultImage];
 
   // Use variant price if available, otherwise use product price
-  const variantPrices = product.variants?.map(v => parseFloat(v.price)) || [];
-  const lowestVariantPrice = variantPrices.length > 0 ? Math.min(...variantPrices) : parseFloat(product.price);
-  const highestVariantPrice = variantPrices.length > 0 ? Math.max(...variantPrices) : parseFloat(product.price);
+  // const variantPrices = product.variants?.map(v => parseFloat(v.price)) || [];
+  // const lowestVariantPrice = variantPrices.length > 0 ? Math.min(...variantPrices) : parseFloat(product.price);
+  // const highestVariantPrice = variantPrices.length > 0 ? Math.max(...variantPrices) : parseFloat(product.price);
   
   const priceNum = parseFloat(product.price);
   const discountNum = parseFloat(product.discount || '0');

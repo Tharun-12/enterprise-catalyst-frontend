@@ -35,7 +35,7 @@
 
 
 import { SectionHeader } from '@/components/shared';
-import { COMPANY } from '@/constants';
+// import { COMPANY } from '@/constants';
 
 export function AboutStory() {
   return (

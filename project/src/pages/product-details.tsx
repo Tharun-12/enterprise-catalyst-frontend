@@ -14,7 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { ProductCard } from '@/components/product-card';
 import { EmptyState } from '@/components/shared';
 import { WishlistLeadModal } from '@/components/wishlist-modal';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+// import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useApp } from '@/hooks/use-app';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';

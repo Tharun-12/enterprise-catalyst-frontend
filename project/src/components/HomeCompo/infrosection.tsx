@@ -44,7 +44,7 @@
 
 import { Card } from '@/components/ui/card';
 import { MapPin, Phone, Mail } from 'lucide-react';
-import { COMPANY } from '@/constants';
+// import { COMPANY } from '@/constants';
 
 export function ContactInfoSection() {
   return (
