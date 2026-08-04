@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link} from 'react-router-dom';
 import { Heart, GitCompare, Eye, Star, BadgeCheck } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -84,7 +84,7 @@ export function ProductCard({ product }: ProductCardProps) {
     e.preventDefault();
     e.stopPropagation();
     
-    const userId = getUserId(); // Keep for potential future use, but don't pass it
+    // const userId = getUserId(); // Keep for potential future use, but don't pass it
     
     if (inCompare) {
       await removeFromCompare(product.id); // Only 1 argument

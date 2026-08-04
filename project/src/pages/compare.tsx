@@ -1,3 +1,4 @@
+// ComparePage.tsx - Fixed to allow comparing different types and show proper UI
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { X, GitCompare, Plus, ArrowRight, AlertCircle, Loader2, Check, Minus } from 'lucide-react';
@@ -9,10 +10,12 @@ import { useApp } from '@/hooks/use-app';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { PageBreadcrumb as Breadcrumb } from '@/layouts/customer-layout-wrapper';
+import { ProductCard } from '@/components/product-card';
+import type { Product as AppProduct, ProductStatus } from '@/types';
 import axios from 'axios';
 import { baseurl } from '@/Baseurl/baseurl';
 
-// Updated interface to match actual API response
+// Interface to match API response
 interface Variant {
   id: number;
   product_id: number;
@@ -45,7 +48,7 @@ interface SpecComparison {
   updated_at: string;
 }
 
-interface Product {
+interface ApiProduct {
   id: number;
   product_name: string;
   product_code: string;
@@ -65,44 +68,44 @@ interface Product {
   spec_comparison?: SpecComparison[];
 }
 
+type Product = AppProduct;
+
 export function ComparePage() {
   const { compareList, removeFromCompare, clearCompare } = useApp();
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ApiProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [showOnlyDifferences, setShowOnlyDifferences] = useState(false);
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [relatedProducts, setRelatedProducts] = useState<ApiProduct[]>([]);
+  const [allProductsData, setAllProductsData] = useState<ApiProduct[]>([]);
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
+        
+        // Fetch all products with variants
         const response = await axios.get(`${baseurl}/api/products/products-with-variants`);
-        const allProductsData = response.data;
-        setAllProducts(allProductsData);
+        const allProducts = response.data;
+        setAllProductsData(allProducts);
         
-        // Get the product_type of the first product in compare list
-        const firstProductId = compareList[0];
-        const firstProduct = allProductsData.find((p: Product) => String(p.id) === firstProductId);
-        
-        if (!firstProduct) {
+        // If no products in compare list, return
+        if (compareList.length === 0) {
           setProducts([]);
+          setRelatedProducts([]);
           return;
         }
         
-        const firstProductType = firstProduct.product_type;
-        
-        // Filter products: only those in compareList AND same product_type
-        const filteredProducts = allProductsData.filter((p: Product) => 
-          compareList.includes(String(p.id)) && p.product_type === firstProductType
+        // Get products that are in the compare list
+        const compareProducts = allProducts.filter((p: ApiProduct) => 
+          compareList.includes(String(p.id))
         );
         
-        // Fetch spec comparison for each product
+        // Fetch spec comparison for each product in compare list
         const productsWithSpecs = await Promise.all(
-          filteredProducts.map(async (product: Product) => {
+          compareProducts.map(async (product: ApiProduct) => {
             try {
               const specRes = await axios.get(`${baseurl}/api/products/spec-comparison/${product.id}`);
               if (specRes.data && Object.keys(specRes.data).length > 0) {
-                // Convert spec comparison object to array
                 const specArray = Object.values(specRes.data);
                 return { ...product, spec_comparison: specArray };
               }
@@ -115,6 +118,22 @@ export function ComparePage() {
         );
         
         setProducts(productsWithSpecs);
+
+        // Get related products based on the first product's type (for "Related Products" section)
+        if (compareProducts.length > 0) {
+          const firstProductType = compareProducts[0].product_type;
+          
+          // Related products: same type, NOT in compare list
+          const related = allProducts
+            .filter((p: ApiProduct) => 
+              p.product_type === firstProductType && 
+              !compareList.includes(String(p.id))
+            )
+            .slice(0, 4);
+          
+          setRelatedProducts(related);
+        }
+        
       } catch (error) {
         console.error('Error fetching products:', error);
         toast.error('Failed to load products for comparison');
@@ -123,16 +142,11 @@ export function ComparePage() {
       }
     };
 
-    if (compareList.length > 0) {
-      fetchProducts();
-    } else {
-      setLoading(false);
-      setProducts([]);
-    }
+    fetchProducts();
   }, [compareList]);
 
   // Helper function to get product image with full URL
-  const getProductImage = (product: Product) => {
+  const getProductImage = (product: ApiProduct) => {
     if (product.variants && product.variants.length > 0 && product.variants[0].image_url) {
       return `${baseurl}${product.variants[0].image_url}`;
     }
@@ -145,7 +159,7 @@ export function ComparePage() {
   };
 
   // Helper function to get product price with discount
-  const getDiscountedPrice = (product: Product) => {
+  const getDiscountedPrice = (product: ApiProduct) => {
     const originalPrice = parseFloat(product.price);
     const discount = parseFloat(product.discount) || 0;
     const discountedPrice = originalPrice * (1 - discount / 100);
@@ -153,7 +167,7 @@ export function ComparePage() {
   };
 
   // Helper function to get stock status
-  const getStockStatus = (product: Product) => {
+  const getStockStatus = (product: ApiProduct) => {
     const totalStock = product.variants?.reduce((sum, v) => sum + v.stock, 0) || 0;
     return totalStock > 0 ? 'In Stock' : 'Out of Stock';
   };
@@ -189,7 +203,7 @@ export function ComparePage() {
   };
 
   // Get spec value from product (check both product fields and spec_comparison)
-  const getSpecValue = (product: Product, specKey: string): string => {
+  const getSpecValue = (product: ApiProduct, specKey: string): string => {
     // First check if the product has the field directly
     const directValue = (product as any)[specKey];
     if (directValue && directValue !== 'null' && directValue !== '') {
@@ -198,7 +212,6 @@ export function ComparePage() {
     
     // If not, check spec_comparison
     if (product.spec_comparison && product.spec_comparison.length > 0) {
-      // Try to find the spec in the first spec_comparison entry
       const spec = product.spec_comparison[0];
       const specValue = (spec as any)[specKey];
       if (specValue && specValue !== 'null' && specValue !== '') {
@@ -214,23 +227,23 @@ export function ComparePage() {
     const items = [
       { 
         label: 'Brand', 
-        value: (p: Product) => p.product_brand || '—' 
+        value: (p: ApiProduct) => p.product_brand || '—' 
       },
       { 
         label: 'Category', 
-        value: (p: Product) => p.category_name || '—' 
+        value: (p: ApiProduct) => p.category_name || '—' 
       },
       { 
         label: 'Product Type', 
-        value: (p: Product) => p.product_type || '—' 
+        value: (p: ApiProduct) => p.product_type || '—' 
       },
       { 
         label: 'Warranty', 
-        value: (p: Product) => p.warranty || '—' 
+        value: (p: ApiProduct) => p.warranty || '—' 
       },
       { 
         label: 'Stock Status', 
-        value: (p: Product) => getStockStatus(p) 
+        value: (p: ApiProduct) => getStockStatus(p) 
       },
     ];
 
@@ -256,7 +269,7 @@ export function ComparePage() {
 
     const items = specKeys.map(spec => ({
       label: spec.label,
-      value: (p: Product) => getSpecValue(p, spec.key)
+      value: (p: ApiProduct) => getSpecValue(p, spec.key)
     }));
 
     if (showOnlyDifferences) {
@@ -268,11 +281,100 @@ export function ComparePage() {
     return items;
   };
 
-  // Get variant spec types
-  const getVariantSpecTypes = (product: Product) => {
-    if (!product.variants || product.variants.length === 0) return [];
-    const types = product.variants.map(v => v.spec_type).filter(Boolean);
-    return [...new Set(types)];
+  // Transform API product to the Product type expected by ProductCard
+  const transformForProductCard = (product: ApiProduct): Product => {
+    const gallery = product.variants?.map(v => 
+      v.image_url ? `${baseurl}${v.image_url}` : null
+    ).filter(Boolean) as string[] || ['https://via.placeholder.com/400x400'];
+
+    // Build spec groups from product
+    const specFields = [];
+    if (product.product_series) {
+      specFields.push({ key: 'series', label: 'Series', value: product.product_series });
+    }
+    if (product.product_type) {
+      specFields.push({ key: 'type', label: 'Type', value: product.product_type });
+    }
+    if (product.warranty) {
+      specFields.push({ key: 'warranty', label: 'Warranty', value: product.warranty });
+    }
+
+    // Add variant spec types
+    if (product.variants && product.variants.length > 0) {
+      const variant = product.variants[0];
+      if (variant.spec_type) {
+        specFields.push({ key: 'spec_type', label: 'Spec Type', value: variant.spec_type });
+      }
+      if (variant.size) {
+        specFields.push({ key: 'size', label: 'Size', value: variant.size });
+      }
+      if (variant.color) {
+        specFields.push({ key: 'color', label: 'Color', value: variant.color });
+      }
+    }
+
+    // Determine product status based on stock
+    const totalStock = product.variants?.reduce((sum, v) => sum + v.stock, 0) || 0;
+    let status: ProductStatus = 'active';
+    if (totalStock === 0) {
+      status = 'archived';
+    }
+
+    const variants = product.variants?.map(v => ({
+      id: v.id,
+      color_name: v.color || '',
+      color_hex: v.color || '#cccccc',
+      price: v.price,
+      stock: v.stock,
+      image_url: v.image_url || '',
+      variant_name: v.variant_name,
+      part_code: v.part_code,
+      spec_type: v.spec_type,
+      size: v.size,
+      availability: v.availability,
+      datasheet_url: v.datasheet_url,
+      description: v.description,
+    })) || [];
+
+    return {
+      id: String(product.id),
+      name: product.product_name,
+      slug: getProductSlug(product.product_name),
+      sku: product.product_code,
+      brandId: String(product.product_category_id),
+      brandName: product.product_brand || 'Unknown',
+      categoryId: String(product.product_category_id),
+      categoryName: product.category_name || 'Uncategorized',
+      shortDescription: product.product_description?.substring(0, 150) || '',
+      description: product.product_description || '',
+      features: [],
+      specifications: {},
+      specGroups: [
+        {
+          groupName: 'Specifications',
+          fields: specFields
+        }
+      ],
+      gallery,
+      price: parseFloat(product.price) || 0,
+      currency: 'INR',
+      status: status,
+      isPopular: false,
+      isNew: false,
+      rating: 4.5,
+      reviewCount: 0,
+      downloads: product.product_details_pdf 
+        ? [{ name: 'Product Details', type: 'pdf' as const, size: 'PDF', url: product.product_details_pdf }]
+        : [],
+      relatedProductIds: [],
+      createdAt: product.created_at,
+      warranty: product.warranty || 'Standard warranty',
+      originalPrice: parseFloat(product.price) * (1 + parseFloat(product.discount || '0') / 100) || 0,
+      discountPercentage: parseFloat(product.discount || '0'),
+      variants: variants,
+      hasVariants: (product.variants?.length || 0) > 0,
+      stock: totalStock,
+    };
   };
 
   if (loading) {
@@ -300,51 +402,11 @@ export function ComparePage() {
     );
   }
 
-  // Check if all products have same product_type
-  const productTypes = products.map(p => p.product_type);
-  const allSameType = new Set(productTypes).size === 1;
-
-  if (!allSameType && products.length > 1) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <Breadcrumb items={[{ label: 'Home', path: '/' }, { label: 'Compare' }]} />
-        <div className="flex items-center gap-3 p-4 rounded-lg bg-yellow-50 border border-yellow-200 mb-4">
-          <AlertCircle className="w-5 h-5 text-yellow-600 shrink-0" />
-          <div>
-            <p className="font-medium text-yellow-800">Cannot compare different product types</p>
-            <p className="text-sm text-yellow-700">
-              Only products with the same type can be compared. Please remove products with different types.
-            </p>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {products.map((product) => (
-            <Card key={product.id} className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium">{product.product_name}</h4>
-                  <p className="text-sm text-muted-foreground">Type: {product.product_type || 'Unknown'}</p>
-                </div>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => {
-                    removeFromCompare(String(product.id));
-                    toast.success('Removed from comparison');
-                  }}
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   const generalInfoItems = getGeneralInfoItems();
   const specItems = getSpecificationItems();
+  
+  // Get product type for related products section
+  const productType = products[0]?.product_type || '';
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -354,10 +416,7 @@ export function ComparePage() {
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold">Compare Products</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Compare {products.length} products side by side
-            {products.length > 0 && products[0].product_type && (
-              <span className="ml-2 text-primary">({products[0].product_type})</span>
-            )}
+            Comparing {products.length} product{products.length > 1 ? 's' : ''}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -485,8 +544,8 @@ export function ComparePage() {
         )}
       </div>
 
-      {/* General Information Section */}
-      {generalInfoItems.length > 0 && (
+      {/* General Information Section - Only show if we have at least 2 products */}
+      {products.length >= 2 && generalInfoItems.length > 0 && (
         <div className="mb-6">
           <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 rounded-t-lg font-semibold text-sm flex items-center justify-between">
             <span>General Information</span>
@@ -518,7 +577,7 @@ export function ComparePage() {
                     )}
                     {item.label}
                   </div>
-                  {products.map((product, idx) => {
+                  {products.map((product) => {
                     const value = item.value(product);
                     const isBest = bestValue && value === bestValue && isDifferent;
                     return (
@@ -552,8 +611,8 @@ export function ComparePage() {
         </div>
       )}
 
-      {/* Specifications Section */}
-      {specItems.length > 0 && (
+      {/* Specifications Section - Only show if we have at least 2 products */}
+      {products.length >= 2 && specItems.length > 0 && (
         <div className="mb-6">
           <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 rounded-t-lg font-semibold text-sm flex items-center justify-between">
             <span>Specifications</span>
@@ -613,72 +672,62 @@ export function ComparePage() {
         </div>
       )}
 
-      {/* Variants Section */}
-      <div className="mb-6">
-        <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 rounded-t-lg font-semibold text-sm">
-          Available Variants
-        </div>
-        <div className="border border-t-0 rounded-b-lg overflow-hidden">
-          <div 
-            className={cn('grid gap-0', 'bg-muted/30')}
-            style={{ gridTemplateColumns: `200px repeat(${products.length}, 1fr)` }}
-          >
-            <div className="p-3 text-sm font-medium text-muted-foreground border-r">Variants</div>
-            {products.map((product) => (
-              <div key={product.id} className="p-3 border-l first:border-l-0">
-                {product.variants && product.variants.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {product.variants.map((variant) => (
-                      <div key={variant.id} className="flex items-center gap-1.5 bg-card px-2.5 py-1 rounded-full border text-xs">
-                        <div 
-                          className="w-3.5 h-3.5 rounded-full border"
-                          style={{ backgroundColor: variant.color || '#cccccc' }}
-                        />
-                        <span>{variant.variant_name || variant.color || 'N/A'}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <span className="text-sm text-muted-foreground">No variants available</span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Spec Comparison from spec_comparison table */}
-      {products.some(p => p.spec_comparison && p.spec_comparison.length > 0) && (
+      {/* Variants Section - Only show if we have at least 2 products */}
+      {products.length >= 2 && (
         <div className="mb-6">
           <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 rounded-t-lg font-semibold text-sm">
-            Specification Comparison Details
+            Available Variants
           </div>
           <div className="border border-t-0 rounded-b-lg overflow-hidden">
-            {products.map((product, idx) => {
-              if (!product.spec_comparison || product.spec_comparison.length === 0) return null;
-              
-              return (
-                <div key={product.id} className={cn(
-                  'p-4',
-                  idx % 2 === 0 ? 'bg-muted/30' : 'bg-card'
-                )}>
-                  <h4 className="font-semibold text-sm mb-2">{product.product_name}</h4>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    {product.spec_comparison.map((spec, specIdx) => (
-                      <div key={specIdx} className="flex justify-between p-1.5 border-b border-dashed">
-                        <span className="text-muted-foreground">{spec.spec_type || 'Spec'}:</span>
-                        <span className="font-medium">
-                          {spec.bandwidth && `Bandwidth: ${spec.bandwidth} | `}
-                          {spec.max_data_rate && `Data Rate: ${spec.max_data_rate} | `}
-                          {spec.internal_design && `Design: ${spec.internal_design}`}
-                          {spec.typical_applications && ` | Applications: ${spec.typical_applications}`}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+            <div 
+              className={cn('grid gap-0', 'bg-muted/30')}
+              style={{ gridTemplateColumns: `200px repeat(${products.length}, 1fr)` }}
+            >
+              <div className="p-3 text-sm font-medium text-muted-foreground border-r">Variants</div>
+              {products.map((product) => (
+                <div key={product.id} className="p-3 border-l first:border-l-0">
+                  {product.variants && product.variants.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {product.variants.map((variant) => (
+                        <div key={variant.id} className="flex items-center gap-1.5 bg-card px-2.5 py-1 rounded-full border text-xs">
+                          <div 
+                            className="w-3.5 h-3.5 rounded-full border"
+                            style={{ backgroundColor: variant.color || '#cccccc' }}
+                          />
+                          <span>{variant.variant_name || variant.color || 'N/A'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">No variants available</span>
+                  )}
                 </div>
-              );
-            })}
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Related Products Section - Same product_type as first product */}
+      {relatedProducts.length > 0 && (
+        <div className="mt-12">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-xl font-bold">
+              Related {productType} Products
+            </h2>
+            <Button asChild variant="ghost" size="sm">
+              <Link to={`/products?type=${encodeURIComponent(productType)}`}>
+                View More <ArrowRight className="w-4 h-4 ml-1" />
+              </Link>
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {relatedProducts.map((rp) => (
+              <ProductCard 
+                key={rp.id} 
+                product={transformForProductCard(rp)} 
+              />
+            ))}
           </div>
         </div>
       )}

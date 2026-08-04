@@ -1,4 +1,4 @@
-// product-details.tsx - Fixed to remove N/A fields
+// product-details.tsx - Fixed to only show same product_type, no fallback
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -21,6 +21,11 @@ import { cn } from '@/lib/utils';
 import { PageBreadcrumb as Breadcrumb } from '@/layouts/customer-layout-wrapper';
 import { baseurl } from '@/Baseurl/baseurl';
 import type { Product } from '@/types';
+
+// Extend the Product type locally to include productType
+interface ExtendedProduct extends Product {
+  productType?: string;
+}
 
 // ---- Raw API response shapes ----
 interface ApiCategory {
@@ -110,7 +115,7 @@ const transformProduct = (
   product: ApiProduct,
   categories: ApiCategory[],
   brands: ApiBrand[]
-): Product => {
+): ExtendedProduct => {
   const category = categories.find(c => c.id === product.product_category_id);
   const brand = brands.find(b => b.brand_name === product.product_brand);
 
@@ -239,6 +244,7 @@ const transformProduct = (
     variants: transformedVariants as any[],
     hasVariants: (product.variants?.length || 0) > 0,
     stock: product.variants?.reduce((sum, v) => sum + v.stock, 0) || 0,
+    productType: product.product_type || '',
   };
 };
 
@@ -354,16 +360,49 @@ export function ProductDetailsPage() {
     return transformProduct(productData, categories, brands);
   }, [productData, categories, brands]);
 
+  // FIXED: Related products - ONLY show products with same product_type, no fallback
   const relatedProducts = useMemo(() => {
     if (!product || allProducts.length === 0) return [];
 
-    return allProducts
-      .filter(p =>
-        String(p.product_category_id) === product.categoryId &&
-        String(p.id) !== product.id
-      )
-      .slice(0, 4)
-      .map(p => transformProduct(p, categories, brands));
+    // Cast product to ExtendedProduct
+    const extendedProduct = product as ExtendedProduct;
+    const productType = extendedProduct.productType;
+
+    // Check if product has a valid product_type
+    const hasValidProductType = productType && 
+                                productType !== 'N/A' && 
+                                productType.trim() !== '';
+
+    // If product doesn't have a product_type, don't show related products
+    if (!hasValidProductType) {
+      return [];
+    }
+
+    // Filter: same category, same product_type, exclude current product
+    const sameTypeProducts = allProducts.filter(p => 
+      String(p.product_category_id) === product.categoryId &&
+      String(p.id) !== product.id &&
+      p.product_type === productType
+    );
+
+    // If no products with same product_type, return empty (don't show anything)
+    if (sameTypeProducts.length === 0) {
+      return [];
+    }
+
+    // Sort: prefer products with variants, then by price
+    sameTypeProducts.sort((a, b) => {
+      const aHasVariant = (a.variants?.length || 0) > 0;
+      const bHasVariant = (b.variants?.length || 0) > 0;
+      if (aHasVariant && !bHasVariant) return -1;
+      if (!aHasVariant && bHasVariant) return 1;
+      return parseFloat(a.price) - parseFloat(b.price);
+    });
+
+    // Take only top 4
+    const topRelated = sameTypeProducts.slice(0, 4);
+    
+    return topRelated.map(p => transformProduct(p, categories, brands));
   }, [product, allProducts, categories, brands]);
 
   const getUserId = () => {
@@ -411,22 +450,19 @@ export function ProductDetailsPage() {
     }
   };
 
-// Then update handleCompare function
-const handleCompare = async () => {
-  if (!product) return;
-  // const userId = getUserId();
-  
-  if (isInCompare(product.id)) {
-    await removeFromCompare(product.id); // Only 1 argument
-  } else {
-    if (compareList.length >= 4) {
-      toast.error('You can compare up to 4 products at a time');
-      return;
+  const handleCompare = async () => {
+    if (!product) return;
+    
+    if (isInCompare(product.id)) {
+      await removeFromCompare(product.id);
+    } else {
+      if (compareList.length >= 4) {
+        toast.error('You can compare up to 4 products at a time');
+        return;
+      }
+      await addToCompare(product.id);
     }
-    await addToCompare(product.id); // Only 1 argument
-    // No navigation - just stay on the page
-  }
-};
+  };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -535,6 +571,9 @@ const handleCompare = async () => {
   // Get only the first 4 non-empty spec fields for preview
   const previewSpecs = product.specGroups[0]?.fields.slice(0, 6) || [];
 
+  // Cast product to ExtendedProduct for accessing productType
+  const extendedProduct = product as ExtendedProduct;
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <Breadcrumb items={[
@@ -599,6 +638,12 @@ const handleCompare = async () => {
             </Link>
             <span className="text-muted-foreground/50">·</span>
             <span className="text-sm text-muted-foreground">{product.categoryName}</span>
+            {extendedProduct.productType && extendedProduct.productType !== 'N/A' && extendedProduct.productType.trim() !== '' && (
+              <>
+                <span className="text-muted-foreground/50">·</span>
+                <span className="text-sm text-muted-foreground">{extendedProduct.productType}</span>
+              </>
+            )}
           </div>
 
           <h1 className="text-2xl lg:text-3xl font-bold mb-3">{product.name}</h1>
@@ -873,11 +918,13 @@ const handleCompare = async () => {
         </TabsContent>
       </Tabs>
 
-      {/* Related Products */}
+      {/* Related Products - Only show if there are products with same product_type */}
       {relatedProducts.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-xl font-bold">Related Products</h2>
+            <h2 className="text-xl font-bold">
+              Related {extendedProduct.productType || 'Products'}
+            </h2>
             <Button asChild variant="ghost" size="sm">
               <Link to={`/products?category=${product.categoryName.toLowerCase().replace(/\s+/g, '-').replace(/&/g, '')}`}>
                 View More <ChevronRight className="w-4 h-4 ml-1" />
