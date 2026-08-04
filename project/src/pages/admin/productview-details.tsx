@@ -112,6 +112,19 @@ export function ProductView() {
     navigate(`/admin/products/edit/${id}`);
   };
 
+  // Helper function to check if a value is empty or N/A
+  const hasValidValue = (value: string | null | undefined): boolean => {
+    if (!value) return false;
+    const trimmed = value.trim();
+    return trimmed !== '' && trimmed !== 'N/A' && trimmed !== 'n/a' && trimmed !== 'NA';
+  };
+
+  // Helper to get display value
+  const getDisplayValue = (value: string | null | undefined, suffix: string = ''): string => {
+    if (!hasValidValue(value)) return '';
+    return `${value}${suffix}`;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -221,14 +234,20 @@ export function ProductView() {
                 </Badge>
               </div>
             )}
-            <div className="flex justify-between items-center py-2 border-b">
-              <span className="text-sm text-muted-foreground">Weight</span>
-              <span className="font-medium">{product.weight || 'N/A'} kg</span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b">
-              <span className="text-sm text-muted-foreground">Dimensions</span>
-              <span className="font-medium text-sm">{product.dimensions || 'N/A'}</span>
-            </div>
+            {/* Only show Weight if it has a valid value */}
+            {hasValidValue(product.weight) && (
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="text-sm text-muted-foreground">Weight</span>
+                <span className="font-medium">{getDisplayValue(product.weight, ' kg')}</span>
+              </div>
+            )}
+            {/* Only show Dimensions if it has a valid value */}
+            {hasValidValue(product.dimensions) && (
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="text-sm text-muted-foreground">Dimensions</span>
+                <span className="font-medium text-sm">{product.dimensions}</span>
+              </div>
+            )}
             <div className="flex justify-between items-center py-2">
               <span className="text-sm text-muted-foreground">PDF Document</span>
               {product.product_details_pdf ? (
@@ -260,7 +279,7 @@ export function ProductView() {
       </Card>
 
       {/* Specifications */}
-      {product.specifications && (
+      {hasValidValue(product.specifications) && (
         <Card>
           <CardHeader>
             <CardTitle>Specifications</CardTitle>
@@ -294,11 +313,13 @@ export function ProductView() {
                   <div className="flex items-center gap-3">
                     <div 
                       className="w-8 h-8 rounded-full border-2 border-gray-200 shrink-0"
-                      style={{ backgroundColor: variant.color_hex }}
+                      style={{ backgroundColor: variant.color_hex || '#808080' }}
                     />
                     <div>
-                      <p className="font-medium">{variant.color_name}</p>
-                      <p className="text-xs text-muted-foreground">Hex: {variant.color_hex}</p>
+                      <p className="font-medium">{variant.color_name || 'Default'}</p>
+                      {variant.color_hex && (
+                        <p className="text-xs text-muted-foreground">Hex: {variant.color_hex}</p>
+                      )}
                     </div>
                   </div>
                   
@@ -322,7 +343,7 @@ export function ProductView() {
                     <div className="relative h-32 w-full rounded-lg overflow-hidden bg-gray-100">
                       <img
                         src={getImageUrl(variant.image_url)}
-                        alt={`${variant.color_name} variant`}
+                        alt={`${variant.color_name || 'Default'} variant`}
                         className="w-full h-full object-cover"
                         onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
                           (e.target as HTMLImageElement).src = '/placeholder-image.jpg';

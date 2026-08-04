@@ -82,35 +82,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('compareList', JSON.stringify(compareList));
   }, [compareList]);
 
-  // Listen for auth changes
-  useEffect(() => {
-    const handleAuthChange = () => {
-      const session = localStorage.getItem('userSession');
-      if (session) {
-        try {
-          const user = JSON.parse(session);
-          setCurrentUserId(user.userId);
-          if (user.userId) {
-            fetchWishlistFromAPI(user.userId);
-          }
-        } catch (e) {
-          console.error('Error handling auth change:', e);
-        }
-      } else {
-        setCurrentUserId(null);
-        setWishlist([]);
-        setWishlistProducts([]);
+  // Update the useEffect to fetch compare list when user logs in
+useEffect(() => {
+  const session = localStorage.getItem('userSession');
+  if (session) {
+    try {
+      const user = JSON.parse(session);
+      setCurrentUserId(user.userId);
+      if (user.userId) {
+        fetchWishlistFromAPI(user.userId);
+        fetchCompareFromAPI(user.userId);
       }
-    };
+    } catch (e) {
+      console.error('Error loading user session:', e);
+    }
+  }
+}, []);
 
-    window.addEventListener('authChange', handleAuthChange);
-    window.addEventListener('storage', handleAuthChange);
-    
-    return () => {
-      window.removeEventListener('authChange', handleAuthChange);
-      window.removeEventListener('storage', handleAuthChange);
-    };
-  }, []);
+// Add compareLoading state
+// const [compareLoading, setCompareLoading] = useState(false);
+  
 
 const fetchWishlistFromAPI = useCallback(async (userId: number) => {
   try {
@@ -231,26 +222,131 @@ const fetchWishlistFromAPI = useCallback(async (userId: number) => {
 
   const isInWishlist = useCallback((productId: string) => wishlist.includes(productId), [wishlist]);
 
-  const addToCompare = useCallback((productId: string) => {
+ const addToCompare = useCallback(async (productId: string, userId?: number) => {
+  const uid = userId || currentUserId;
+  
+  // If user is not logged in, store in localStorage only
+  if (!uid) {
     setCompareList((prev) => {
       if (prev.includes(productId)) return prev;
       if (prev.length >= 4) {
         toast.warning('You can compare up to 4 products');
         return prev;
       }
-      toast.success('Added to compare');
       return [...prev, productId];
     });
-  }, []);
+    toast.success('Added to compare (login to sync)');
+    return;
+  }
 
-  const removeFromCompare = useCallback((productId: string) => {
+  try {
+    const response = await fetch(`${API_BASE}/compare`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id: uid,
+        product_id: parseInt(productId),
+      }),
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      setCompareList((prev) => {
+        if (prev.includes(productId)) return prev;
+        if (prev.length >= 4) {
+          toast.warning('You can compare up to 4 products');
+          return prev;
+        }
+        return [...prev, productId];
+      });
+      toast.success(result.message || 'Added to compare');
+    } else {
+      toast.error(result.message || 'Failed to add to compare');
+    }
+  } catch (error) {
+    console.error('Error adding to compare:', error);
+    toast.error('Failed to add to compare');
+  }
+}, [currentUserId]);
+
+  const removeFromCompare = useCallback(async (productId: string, userId?: number) => {
+  const uid = userId || currentUserId;
+
+  if (!uid) {
     setCompareList((prev) => prev.filter((id) => id !== productId));
     toast.success('Removed from compare');
-  }, []);
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `${API_BASE}/compare/${uid}/${parseInt(productId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
+
+    const result = await response.json();
+
+    if (result.success) {
+      setCompareList((prev) => prev.filter((id) => id !== productId));
+      toast.success(result.message || 'Removed from compare');
+    } else {
+      toast.error(result.message || 'Failed to remove from compare');
+    }
+  } catch (error) {
+    console.error('Error removing from compare:', error);
+    toast.error('Failed to remove from compare');
+  }
+}, [currentUserId]);
 
   const isInCompare = useCallback((productId: string) => compareList.includes(productId), [compareList]);
 
-  const clearCompare = useCallback(() => setCompareList([]), []);
+  const clearCompare = useCallback(async (userId?: number) => {
+  const uid = userId || currentUserId;
+
+  if (!uid) {
+    setCompareList([]);
+    toast.success('Compare list cleared');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/compare/clear/${uid}`, {
+      method: 'DELETE',
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      setCompareList([]);
+      toast.success(result.message || 'Compare list cleared');
+    } else {
+      toast.error(result.message || 'Failed to clear compare list');
+    }
+  } catch (error) {
+    console.error('Error clearing compare:', error);
+    toast.error('Failed to clear compare list');
+  }
+}, [currentUserId]);
+
+// Add this function to sync compare from API when user logs in
+const fetchCompareFromAPI = useCallback(async (userId: number) => {
+  try {
+    const response = await fetch(`${API_BASE}/compare/${userId}`);
+    const result = await response.json();
+    
+    if (result.success) {
+      const productIds = result.data.map((item: any) => String(item.product_id));
+      setCompareList(productIds);
+    }
+  } catch (error) {
+    console.error('Error fetching compare list:', error);
+  }
+}, []);
 
   const addLead = useCallback((lead: Omit<WishlistLead, 'id' | 'status' | 'assignedTo' | 'notes' | 'createdAt'>) => {
     const newLead: WishlistLead = {

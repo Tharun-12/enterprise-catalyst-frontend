@@ -258,7 +258,7 @@ export function ProductDetailsPage() {
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
   const [wishlistOpen, setWishlistOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const { addToWishlist, removeFromWishlist, isInWishlist, addToCompare, removeFromCompare, isInCompare } = useApp();
+  const { addToWishlist, removeFromWishlist, isInWishlist, addToCompare, removeFromCompare, isInCompare , compareList } = useApp();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -411,14 +411,22 @@ export function ProductDetailsPage() {
     }
   };
 
-  const handleCompare = () => {
-    if (!product) return;
-    if (isInCompare(product.id)) {
-      removeFromCompare(product.id);
-    } else {
-      addToCompare(product.id);
+// Then update handleCompare function
+const handleCompare = async () => {
+  if (!product) return;
+  // const userId = getUserId();
+  
+  if (isInCompare(product.id)) {
+    await removeFromCompare(product.id); // Only 1 argument
+  } else {
+    if (compareList.length >= 4) {
+      toast.error('You can compare up to 4 products at a time');
+      return;
     }
-  };
+    await addToCompare(product.id); // Only 1 argument
+    // No navigation - just stay on the page
+  }
+};
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();

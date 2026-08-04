@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, GitCompare, Eye, Star, BadgeCheck } from 'lucide-react'; // Removed unused IndianRupee
+import { Heart, GitCompare, Eye, Star, BadgeCheck } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,8 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product }: ProductCardProps) {
-  const navigate = useNavigate();
+  // Remove unused navigate
+  // const navigate = useNavigate();
   
   const { 
     compareList, 
@@ -54,13 +55,14 @@ export function ProductCard({ product }: ProductCardProps) {
     if (isLoading) return;
     
     setIsLoading(true);
+    // Remove userId parameter - only pass product ID
     const userId = getUserId();
     
     try {
       if (inWishlist) {
-        await removeFromWishlist(product.id, userId || undefined);
+        await removeFromWishlist(product.id); // Only 1 argument
       } else {
-        await addToWishlist(product.id, userId || undefined);
+        await addToWishlist(product.id); // Only 1 argument
         if (!userId) {
           toast.info('Please login to sync your wishlist across devices', {
             action: {
@@ -78,22 +80,21 @@ export function ProductCard({ product }: ProductCardProps) {
     }
   };
 
-  const handleCompare = (e: React.MouseEvent) => {
+  const handleCompare = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
+    const userId = getUserId(); // Keep for potential future use, but don't pass it
+    
     if (inCompare) {
-      removeFromCompare(product.id);
-      toast.success('Removed from comparison');
+      await removeFromCompare(product.id); // Only 1 argument
     } else {
       if (compareFull) {
         toast.error('You can compare up to 4 products at a time');
         return;
       }
-      addToCompare(product.id);
-      toast.success('Added to comparison');
-      // Navigate to compare page after adding
-      navigate('/compare');
+      await addToCompare(product.id); // Only 1 argument
+      // No navigation - just stay on the page
     }
   };
 
