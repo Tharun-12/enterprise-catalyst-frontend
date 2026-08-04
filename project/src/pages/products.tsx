@@ -1,7 +1,8 @@
+// products.tsx
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Search, Filter } from 'lucide-react'; // Removed unused SlidersHorizontal
+import { Search, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,7 +13,7 @@ import { EmptyState, ProductGridSkeleton } from '@/components/shared';
 import { Package } from 'lucide-react';
 import { PageBreadcrumb as Breadcrumb } from '@/layouts/customer-layout-wrapper';
 import { baseurl } from '@/Baseurl/baseurl';
-import type { Product } from '@/types';
+import type { Product, Category, Brand } from '@/types';
 
 // ---- Raw API response shapes ----
 interface ApiCategory {
@@ -24,8 +25,17 @@ interface ApiCategory {
 
 interface ApiBrand {
   id: number;
-  name: string;
+  brand_name: string;
   description: string;
+  product_series: string;
+  conductor_type: string;
+  cable_od: string;
+  jacket_material: string;
+  bandwidth: string;
+  operating_temperature: string;
+  poe_support: string;
+  category_id: number;
+  category_name: string;
   created_at: string;
   updated_at: string;
 }
@@ -33,11 +43,21 @@ interface ApiBrand {
 interface ApiVariant {
   id: number;
   product_id: number;
-  color_name: string;
-  color_hex: string;
+  color_name?: string;
+  color_hex?: string;
   price: string;
   stock: number;
   image_url: string;
+  variant_name?: string;
+  part_code?: string;
+  category?: string;
+  brand?: string;
+  description?: string;
+  spec_type?: string;
+  color?: string;
+  size?: string;
+  availability?: string;
+  datasheet_url?: string;
 }
 
 interface ApiProduct {
@@ -48,9 +68,9 @@ interface ApiProduct {
   product_brand: string;
   product_details_pdf: string;
   price: string;
-  dimensions: string;
-  specifications: string;
-  weight: string;
+  dimensions?: string;
+  specifications?: string;
+  weight?: string;
   discount: string;
   product_description: string;
   warranty: string;
@@ -67,7 +87,7 @@ const transformProduct = (
   brands: ApiBrand[]
 ): Product => {
   const category = categories.find(c => c.id === product.product_category_id);
-  const brand = brands.find(b => b.name === product.product_brand);
+  const brand = brands.find(b => b.brand_name === product.product_brand);
 
   const galleryImages = product.variants?.map(v =>
     v.image_url ? `${baseurl}${v.image_url}` : null
@@ -76,11 +96,6 @@ const transformProduct = (
   const defaultImage = 'https://via.placeholder.com/400x400';
   const gallery = galleryImages.length > 0 ? galleryImages : [defaultImage];
 
-  // Use variant price if available, otherwise use product price
-  // const variantPrices = product.variants?.map(v => parseFloat(v.price)) || [];
-  // const lowestVariantPrice = variantPrices.length > 0 ? Math.min(...variantPrices) : parseFloat(product.price);
-  // const highestVariantPrice = variantPrices.length > 0 ? Math.max(...variantPrices) : parseFloat(product.price);
-  
   const priceNum = parseFloat(product.price);
   const discountNum = parseFloat(product.discount || '0');
 
@@ -89,8 +104,8 @@ const transformProduct = (
     name: product.product_name,
     slug: product.product_name.toLowerCase().replace(/\s+/g, '-'),
     sku: product.product_code,
-    brandId: String(brand?.id ?? product.product_brand ?? 'unknown'),
-    brandName: brand?.name || product.product_brand || 'Unknown',
+    brandId: String(brand?.id ?? 'unknown'),
+    brandName: brand?.brand_name || product.product_brand || 'Unknown',
     categoryId: String(product.product_category_id),
     categoryName: category?.category_name || product.category_name || 'Uncategorized',
     shortDescription: product.product_description?.substring(0, 150) || '',
@@ -120,11 +135,18 @@ const transformProduct = (
     rating: 4.5,
     reviewCount: 0,
     downloads: product.product_details_pdf
-      ? [{ name: 'Product Details', type: 'pdf', size: 'PDF', url: product.product_details_pdf }]
+      ? [{ name: 'Product Details', type: 'pdf' as const, size: 'PDF', url: product.product_details_pdf }]
       : [],
     createdAt: product.created_at,
     warranty: product.warranty || 'Standard warranty',
-    variants: product.variants,
+    variants: product.variants?.map(v => ({
+      id: v.id,
+      color_name: v.color_name || v.color || 'Default',
+      color_hex: v.color_hex || '#000000',
+      price: v.price,
+      stock: v.stock,
+      image_url: v.image_url,
+    })),
     hasVariants: (product.variants?.length || 0) > 0,
     stock: product.variants?.reduce((sum, v) => sum + v.stock, 0) || 0,
   };
@@ -181,6 +203,33 @@ export function ProductsPage() {
 
     fetchData();
   }, []);
+
+  // Transform API brands to the format expected by FilterPanel and types
+  const transformedBrands = useMemo((): Brand[] => {
+    return brands.map(b => ({
+      id: String(b.id),
+      name: b.brand_name,
+      slug: createSlug(b.brand_name),
+      logoText: b.brand_name.charAt(0),
+      country: '',
+      description: b.description || '',
+      website: '',
+    }));
+  }, [brands]);
+
+  // Transform API categories to the format expected by FilterPanel and types
+  const transformedCategories = useMemo((): Category[] => {
+    return categories.map(c => ({
+      id: String(c.id),
+      name: c.category_name,
+      slug: createSlug(c.category_name),
+      icon: '',
+      description: '',
+      color: '#000000',
+      productCount: 0,
+      featured: false,
+    }));
+  }, [categories]);
 
   const transformedProducts = useMemo(() => {
     return products.map(p => transformProduct(p, categories, brands));
@@ -331,8 +380,8 @@ export function ProductsPage() {
             filters={filters}
             onFilterChange={setFilters}
             resultCount={filteredProducts.length}
-            brands={brands}
-            categories={categories}
+            brands={transformedBrands}
+            categories={transformedCategories}
           />
         </aside>
 
@@ -364,8 +413,8 @@ export function ProductsPage() {
                     filters={filters}
                     onFilterChange={setFilters}
                     resultCount={filteredProducts.length}
-                    brands={brands}
-                    categories={categories}
+                    brands={transformedBrands}
+                    categories={transformedCategories}
                   />
                 </SheetContent>
               </Sheet>
@@ -392,7 +441,13 @@ export function ProductsPage() {
               icon={<Package className="w-8 h-8" />}
               title="No products found"
               description="Try adjusting your filters or search query to find what you're looking for."
-              action={<Button variant="outline" onClick={() => setFilters({ category: filters.category, brands: [], specs: {}, search: '', sort: 'latest' })}>Clear Filters</Button>}
+              action={<Button variant="outline" onClick={() => setFilters({ 
+                category: filters.category, 
+                brands: [], 
+                specs: {}, 
+                search: '', 
+                sort: 'latest' 
+              })}>Clear Filters</Button>}
             />
           ) : (
             <>

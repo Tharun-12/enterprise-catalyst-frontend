@@ -1,3 +1,4 @@
+// product-details.tsx - Fixed to remove N/A fields
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -14,7 +15,6 @@ import { Separator } from '@/components/ui/separator';
 import { ProductCard } from '@/components/product-card';
 import { EmptyState } from '@/components/shared';
 import { WishlistLeadModal } from '@/components/wishlist-modal';
-// import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useApp } from '@/hooks/use-app';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -26,12 +26,23 @@ import type { Product } from '@/types';
 interface ApiCategory {
   id: number;
   category_name: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface ApiBrand {
   id: number;
-  name: string;
+  brand_name: string;
   description: string;
+  product_series: string;
+  conductor_type: string;
+  cable_od: string;
+  jacket_material: string;
+  bandwidth: string;
+  operating_temperature: string;
+  poe_support: string;
+  category_id: number;
+  category_name: string;
   created_at: string;
   updated_at: string;
 }
@@ -39,11 +50,23 @@ interface ApiBrand {
 interface ApiVariant {
   id: number;
   product_id: number;
-  color_name: string;
-  color_hex: string;
+  variant_name?: string;
+  part_code?: string;
+  category?: string;
+  brand?: string;
+  description?: string;
+  spec_type?: string;
+  color?: string;
+  size?: string;
   price: string;
-  stock: number;
+  availability?: string;
+  datasheet_url?: string;
   image_url: string;
+  stock: number;
+  color_name?: string;
+  color_hex?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface ApiProduct {
@@ -54,16 +77,32 @@ interface ApiProduct {
   product_brand: string;
   product_details_pdf: string;
   price: string;
-  dimensions: string;
-  specifications: string;
-  weight: string;
+  dimensions?: string;
+  specifications?: string;
+  weight?: string;
   discount: string;
   product_description: string;
   warranty: string;
+  product_series?: string;
+  product_type?: string;
   created_at: string;
   updated_at: string;
   category_name?: string;
   variants?: ApiVariant[];
+}
+
+interface SpecComparison {
+  [specType: string]: {
+    id: number;
+    product_id: number;
+    spec_type: string;
+    bandwidth: string;
+    max_data_rate: string;
+    internal_design: string;
+    typical_applications: string;
+    created_at: string;
+    updated_at: string;
+  };
 }
 
 // ---- Transform API product into the app-wide `Product` type ----
@@ -73,8 +112,9 @@ const transformProduct = (
   brands: ApiBrand[]
 ): Product => {
   const category = categories.find(c => c.id === product.product_category_id);
-  const brand = brands.find(b => b.name === product.product_brand);
+  const brand = brands.find(b => b.brand_name === product.product_brand);
 
+  // Get images from variants or use default
   const galleryImages = product.variants?.map(v =>
     v.image_url ? `${baseurl}${v.image_url}` : null
   ).filter(Boolean) as string[] || [];
@@ -82,16 +122,91 @@ const transformProduct = (
   const defaultImage = 'https://via.placeholder.com/400x400';
   const gallery = galleryImages.length > 0 ? galleryImages : [defaultImage];
 
+  // Use the product price directly from API
   const priceNum = parseFloat(product.price);
   const discountNum = parseFloat(product.discount || '0');
+
+  // Get unique spec types from variants
+  const specTypes = product.variants?.map(v => v.spec_type).filter(Boolean) as string[] || [];
+  const uniqueSpecTypes = [...new Set(specTypes)];
+
+  // Build specifications - only include fields that have actual values
+  const specFields: { key: string; label: string; value: string }[] = [];
+
+  // Only add fields if they have meaningful values (not N/A or empty)
+  if (product.dimensions && product.dimensions !== 'N/A' && product.dimensions.trim() !== '') {
+    specFields.push({ key: 'dimensions', label: 'Dimensions', value: product.dimensions });
+  }
+  
+  if (product.weight && product.weight !== 'N/A' && product.weight.trim() !== '') {
+    specFields.push({ key: 'weight', label: 'Weight', value: `${product.weight} kg` });
+  }
+  
+  if (product.specifications && product.specifications !== 'N/A' && product.specifications.trim() !== '') {
+    specFields.push({ key: 'specifications', label: 'Specifications', value: product.specifications });
+  }
+  
+  if (product.warranty && product.warranty !== 'N/A' && product.warranty.trim() !== '') {
+    specFields.push({ key: 'warranty', label: 'Warranty', value: product.warranty });
+  }
+  
+  if (product.product_series && product.product_series !== 'N/A' && product.product_series.trim() !== '') {
+    specFields.push({ key: 'series', label: 'Series', value: product.product_series });
+  }
+  
+  if (product.product_type && product.product_type !== 'N/A' && product.product_type.trim() !== '') {
+    specFields.push({ key: 'type', label: 'Type', value: product.product_type });
+  }
+
+  // Add variant spec types to spec fields
+  uniqueSpecTypes.forEach(type => {
+    if (type && type.trim() !== '') {
+      specFields.push({
+        key: `spec_${type}`,
+        label: `Spec Type`,
+        value: type
+      });
+    }
+  });
+
+  // Add variant details if available
+  if (product.variants && product.variants.length > 0) {
+    const variant = product.variants[0];
+    if (variant.size && variant.size.trim() !== '') {
+      specFields.push({ key: 'size', label: 'Size', value: variant.size });
+    }
+    if (variant.color && variant.color.trim() !== '') {
+      specFields.push({ key: 'color', label: 'Color', value: variant.color });
+    }
+    if (variant.availability && variant.availability.trim() !== '') {
+      specFields.push({ key: 'availability', label: 'Availability', value: variant.availability });
+    }
+  }
+
+  // Transform variants with all properties
+  const transformedVariants = product.variants?.map(v => ({
+    id: v.id,
+    color_name: v.color_name || v.color || 'Default',
+    color_hex: v.color_hex || '#000000',
+    price: v.price,
+    stock: v.stock,
+    image_url: v.image_url,
+    variant_name: v.variant_name,
+    part_code: v.part_code,
+    spec_type: v.spec_type,
+    size: v.size,
+    availability: v.availability,
+    datasheet_url: v.datasheet_url,
+    description: v.description,
+  })) || [];
 
   return {
     id: String(product.id),
     name: product.product_name,
     slug: product.product_name.toLowerCase().replace(/\s+/g, '-'),
     sku: product.product_code,
-    brandId: String(brand?.id ?? product.product_brand ?? 'unknown'),
-    brandName: brand?.name || product.product_brand || 'Unknown',
+    brandId: String(brand?.id ?? 'unknown'),
+    brandName: brand?.brand_name || product.product_brand || 'Unknown',
     brandDescription: brand?.description || '',
     categoryId: String(product.product_category_id),
     categoryName: category?.category_name || product.category_name || 'Uncategorized',
@@ -105,12 +220,7 @@ const transformProduct = (
     specGroups: [
       {
         groupName: 'Specifications',
-        fields: [
-          { key: 'dimensions', label: 'Dimensions', value: product.dimensions || 'N/A' },
-          { key: 'weight', label: 'Weight', value: product.weight ? `${product.weight} kg` : 'N/A' },
-          { key: 'specifications', label: 'Specifications', value: product.specifications || 'N/A' },
-          { key: 'warranty', label: 'Warranty', value: product.warranty || 'Standard' },
-        ]
+        fields: specFields
       }
     ],
     price: priceNum,
@@ -122,11 +232,11 @@ const transformProduct = (
     rating: 4.5,
     reviewCount: 0,
     downloads: product.product_details_pdf
-      ? [{ name: 'Product Details', type: 'pdf', size: 'PDF', url: product.product_details_pdf }]
+      ? [{ name: 'Product Details', type: 'pdf' as const, size: 'PDF', url: product.product_details_pdf }]
       : [],
     createdAt: product.created_at,
     warranty: product.warranty || 'Standard warranty',
-    variants: product.variants,
+    variants: transformedVariants as any[],
     hasVariants: (product.variants?.length || 0) > 0,
     stock: product.variants?.reduce((sum, v) => sum + v.stock, 0) || 0,
   };
@@ -139,7 +249,9 @@ export function ProductDetailsPage() {
   const [categories, setCategories] = useState<ApiCategory[]>([]);
   const [brands, setBrands] = useState<ApiBrand[]>([]);
   const [allProducts, setAllProducts] = useState<ApiProduct[]>([]);
+  const [specComparison, setSpecComparison] = useState<SpecComparison | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingSpecs, setLoadingSpecs] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeImage, setActiveImage] = useState(0);
   const [zoomed, setZoomed] = useState(false);
@@ -154,28 +266,70 @@ export function ProductDetailsPage() {
         setLoading(true);
         setError(null);
 
+        // Fetch categories
         const categoriesRes = await fetch(`${baseurl}/api/categories/`);
         const categoriesData = await categoriesRes.json();
-        if (!categoriesData.success) throw new Error('Failed to fetch categories');
-        setCategories(categoriesData.data);
+        if (categoriesData.success) {
+          setCategories(categoriesData.data);
+        }
 
+        // Fetch brands
         const brandsRes = await fetch(`${baseurl}/api/brands/`);
         const brandsData = await brandsRes.json();
-        if (!brandsData.success) throw new Error('Failed to fetch brands');
-        setBrands(brandsData.data);
+        if (brandsData.success) {
+          setBrands(brandsData.data);
+        }
 
+        // Fetch all products
         const productsRes = await fetch(`${baseurl}/api/products/products-with-variants`);
         const productsData = await productsRes.json();
 
-        if (Array.isArray(productsData)) {
+        if (Array.isArray(productsData) && productsData.length > 0) {
           setAllProducts(productsData);
 
-          const foundProduct = productsData.find((p: ApiProduct) =>
-            p.product_name.toLowerCase().replace(/\s+/g, '-') === slug
-          );
+          // Find the product by slug - decode the slug first
+          const decodedSlug = decodeURIComponent(slug || '');
+          
+          // Try multiple matching strategies
+          let foundProduct = productsData.find((p: ApiProduct) => {
+            const productSlug = p.product_name.toLowerCase().replace(/\s+/g, '-');
+            return productSlug === decodedSlug;
+          });
+
+          // If not found by slug, try by ID
+          if (!foundProduct) {
+            const idMatch = decodedSlug.match(/^(\d+)/);
+            if (idMatch) {
+              foundProduct = productsData.find((p: ApiProduct) => String(p.id) === idMatch[1]);
+            }
+          }
+
+          // If still not found, try partial match
+          if (!foundProduct) {
+            foundProduct = productsData.find((p: ApiProduct) => {
+              const productSlug = p.product_name.toLowerCase().replace(/\s+/g, '-');
+              return productSlug.includes(decodedSlug) || decodedSlug.includes(productSlug);
+            });
+          }
 
           if (foundProduct) {
             setProductData(foundProduct);
+            
+            // Fetch spec comparison if product has variants
+            if (foundProduct.variants && foundProduct.variants.length > 0) {
+              setLoadingSpecs(true);
+              try {
+                const specRes = await fetch(`${baseurl}/api/products/spec-comparison/${foundProduct.id}`);
+                if (specRes.ok) {
+                  const specData = await specRes.json();
+                  setSpecComparison(specData);
+                }
+              } catch (specErr) {
+                console.error('Error fetching spec comparison:', specErr);
+              } finally {
+                setLoadingSpecs(false);
+              }
+            }
           } else {
             setError('Product not found');
           }
@@ -314,7 +468,6 @@ export function ProductDetailsPage() {
 
       if (data.success) {
         toast.success(`Quotation #${data.quotation_no} generated successfully!`);
-        // Navigate to quotations page after successful generation
         navigate('/wishlist/quotation');
       } else {
         toast.error(data.message || 'Failed to submit quotation request');
@@ -362,8 +515,20 @@ export function ProductDetailsPage() {
   const inWishlist = isInWishlist(product.id);
   const inCompare = isInCompare(product.id);
 
+  // Get variant spec types for display - Use type assertion to access spec_type
+  const variantSpecTypes = product.variants?.map(v => (v as any).spec_type).filter(Boolean) as string[] || [];
+  const uniqueSpecTypes = [...new Set(variantSpecTypes)];
+
+  // Get the first variant for price display
+  const firstVariant = product.variants && product.variants.length > 0 ? product.variants[0] : null;
+  const displayPrice = firstVariant ? parseFloat(firstVariant.price) : product.price;
+  const displayOriginalPrice = displayPrice * (1 + (product.discountPercentage || 0) / 100);
+
+  // Get only the first 4 non-empty spec fields for preview
+  const previewSpecs = product.specGroups[0]?.fields.slice(0, 6) || [];
+
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
       <Breadcrumb items={[
         { label: 'Home', path: '/' },
         { label: 'Products', path: '/products' },
@@ -394,6 +559,9 @@ export function ProductDetailsPage() {
             <div className="absolute top-4 left-4 flex flex-col gap-1.5">
               {product.isPopular && <Badge className="bg-accent text-accent-foreground shadow-sm">POPULAR</Badge>}
               {product.isNew && <Badge className="bg-secondary text-secondary-foreground shadow-sm">NEW</Badge>}
+              {(product.discountPercentage ?? 0) > 0 && (
+                <Badge variant="destructive">{product.discountPercentage}% OFF</Badge>
+              )}
             </div>
           </div>
 
@@ -418,7 +586,7 @@ export function ProductDetailsPage() {
         <div>
           <div className="flex items-center gap-2 mb-3">
             <BadgeCheck className="w-4 h-4 text-primary" />
-            <Link to={`/products?category=${product.categoryName.toLowerCase()}`} className="text-sm font-medium text-primary hover:underline">
+            <Link to={`/products?brand=${product.brandName}`} className="text-sm font-medium text-primary hover:underline">
               {product.brandName}
             </Link>
             <span className="text-muted-foreground/50">·</span>
@@ -430,7 +598,7 @@ export function ProductDetailsPage() {
           <div className="flex items-center gap-4 mb-5">
             <div className="flex items-center gap-1.5">
               {[1, 2, 3, 4, 5].map((s) => (
-                <Star key={s} className={cn('w-4 h-4', s <= Math.floor(product.rating) ? 'text-accent fill-accent' : 'text-muted-foreground/30')} />
+                <Star key={s} className={cn('w-4 h-4', s <= Math.floor(product.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30')} />
               ))}
               <span className="text-sm font-medium ml-1">{product.rating.toFixed(1)}</span>
             </div>
@@ -444,43 +612,27 @@ export function ProductDetailsPage() {
           {/* Price */}
           <div className="mb-6">
             <div className="flex items-center gap-3">
-              {product.variants && product.variants.length > 0 ? (
-                (() => {
-                  const variantPrices = product.variants.map(v => parseFloat(v.price));
-                  const minPrice = Math.min(...variantPrices);
-                  const maxPrice = Math.max(...variantPrices);
-                  
-                  if (minPrice === maxPrice) {
-                    return <span className="text-3xl font-bold">₹{minPrice.toLocaleString()}</span>;
-                  }
-                  
-                  return (
-                    <span className="text-3xl font-bold">
-                      ₹{minPrice.toLocaleString()} - ₹{maxPrice.toLocaleString()}
-                    </span>
-                  );
-                })()
-              ) : (
-                <span className="text-3xl font-bold">₹{product.price.toLocaleString()}</span>
-              )}
+              <span className="text-3xl font-bold text-primary">₹{displayPrice.toLocaleString()}</span>
               {(product.discountPercentage ?? 0) > 0 && (
                 <>
-                  <span className="text-lg text-muted-foreground line-through">₹{(product.originalPrice ?? 0).toLocaleString()}</span>
+                  <span className="text-lg text-muted-foreground line-through">₹{displayOriginalPrice.toLocaleString()}</span>
                   <Badge variant="destructive" className="text-sm">{product.discountPercentage}% OFF</Badge>
                 </>
               )}
             </div>
           </div>
 
-          {/* Key specs preview */}
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            {product.specGroups[0]?.fields.slice(0, 4).map((field) => (
-              <div key={field.key} className="bg-muted/40 rounded-lg p-3">
-                <div className="text-xs text-muted-foreground mb-0.5">{field.label}</div>
-                <div className="text-sm font-semibold">{field.value}</div>
-              </div>
-            ))}
-          </div>
+          {/* Key specs preview - only show if there are specs */}
+          {previewSpecs.length > 0 && (
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              {previewSpecs.map((field) => (
+                <div key={field.key} className="bg-muted/40 rounded-lg p-3">
+                  <div className="text-xs text-muted-foreground mb-0.5">{field.label}</div>
+                  <div className="text-sm font-semibold">{field.value}</div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Trust badges */}
           <div className="flex flex-wrap gap-4 mb-6 text-sm">
@@ -516,7 +668,7 @@ export function ProductDetailsPage() {
             <Button
               size="lg"
               variant={inWishlist ? 'default' : 'outline'}
-              className={cn(inWishlist && 'bg-accent hover:bg-accent/90 text-accent-foreground')}
+              className={cn(inWishlist && 'bg-red-500 hover:bg-red-600 text-white')}
               onClick={handleWishlist}
             >
               <Heart className={cn('w-4 h-4 mr-2', inWishlist && 'fill-current')} />
@@ -533,7 +685,10 @@ export function ProductDetailsPage() {
           </div>
 
           <div className="flex gap-3">
-            <Button variant="ghost" size="sm" onClick={() => { navigator.clipboard?.writeText(window.location.href); toast.success('Link copied to clipboard'); }}>
+            <Button variant="ghost" size="sm" onClick={() => { 
+              navigator.clipboard?.writeText(window.location.href); 
+              toast.success('Link copied to clipboard'); 
+            }}>
               <Share2 className="w-4 h-4 mr-1.5" /> Share
             </Button>
             <Button asChild variant="ghost" size="sm">
@@ -551,6 +706,9 @@ export function ProductDetailsPage() {
           <TabsTrigger value="description">Description</TabsTrigger>
           <TabsTrigger value="specifications">Specifications</TabsTrigger>
           <TabsTrigger value="features">Features</TabsTrigger>
+          {uniqueSpecTypes.length > 0 && (
+            <TabsTrigger value="spec-comparison">Spec Comparison</TabsTrigger>
+          )}
           <TabsTrigger value="downloads">Downloads</TabsTrigger>
         </TabsList>
 
@@ -570,65 +728,139 @@ export function ProductDetailsPage() {
         <TabsContent value="specifications" className="mt-6">
           <Card className="p-6">
             <h2 className="text-xl font-bold mb-6">Technical Specifications</h2>
-            <div className="space-y-8">
-              {product.specGroups.map((group) => (
-                <div key={group.groupName}>
-                  <h3 className="font-semibold text-primary mb-3 pb-2 border-b">{group.groupName}</h3>
-                  <div className="grid sm:grid-cols-2 gap-x-8 gap-y-0">
-                    {group.fields.map((field, idx) => (
-                      <div key={field.key} className={cn('flex justify-between py-2.5 border-b border-dashed', idx % 2 === 1 && 'sm:border-l sm:pl-8 sm:border-b-0 sm:border-dashed')}>
-                        <span className="text-sm text-muted-foreground">{field.label}</span>
-                        <span className="text-sm font-medium text-right">{field.value}</span>
-                      </div>
-                    ))}
+            {product.specGroups[0]?.fields.length > 0 ? (
+              <div className="space-y-8">
+                {product.specGroups.map((group) => (
+                  <div key={group.groupName}>
+                    <h3 className="font-semibold text-primary mb-3 pb-2 border-b">{group.groupName}</h3>
+                    <div className="grid sm:grid-cols-2 gap-x-8 gap-y-0">
+                      {group.fields.map((field, idx) => (
+                        <div key={field.key} className={cn('flex justify-between py-2.5 border-b border-dashed', idx % 2 === 1 && 'sm:border-l sm:pl-8 sm:border-b-0 sm:border-dashed')}>
+                          <span className="text-sm text-muted-foreground">{field.label}</span>
+                          <span className="text-sm font-medium text-right">{field.value}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-8">
+                No specifications available for this product.
+              </p>
+            )}
           </Card>
         </TabsContent>
 
         <TabsContent value="features" className="mt-6">
           <Card className="p-6">
             <h2 className="text-xl font-bold mb-6">Key Features</h2>
-            <div className="grid sm:grid-cols-2 gap-4">
-              {product.features.map((feature, idx) => (
-                <motion.div
-                  key={idx}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: idx * 0.05 }}
-                  className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-                >
-                  <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-3.5 h-3.5 text-green-600" />
-                  </div>
-                  <span className="text-sm font-medium">{feature}</span>
-                </motion.div>
-              ))}
-            </div>
+            {product.features.length > 0 ? (
+              <div className="grid sm:grid-cols-2 gap-4">
+                {product.features.map((feature, idx) => (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center shrink-0 mt-0.5">
+                      <Check className="w-3.5 h-3.5 text-green-600" />
+                    </div>
+                    <span className="text-sm font-medium">{feature}</span>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-8">
+                No features listed for this product.
+              </p>
+            )}
           </Card>
         </TabsContent>
+
+        {uniqueSpecTypes.length > 0 && (
+          <TabsContent value="spec-comparison" className="mt-6">
+            <Card className="p-6">
+              <h2 className="text-xl font-bold mb-6">Specification Comparison</h2>
+              {loadingSpecs ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : specComparison && Object.keys(specComparison).length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-muted/50">
+                        <th className="p-3 text-left text-sm font-semibold border">Feature</th>
+                        {Object.keys(specComparison).map((specType) => (
+                          <th key={specType} className="p-3 text-left text-sm font-semibold border">
+                            {specType}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.keys(specComparison[Object.keys(specComparison)[0]] || {}).map((key) => {
+                        if (['id', 'product_id', 'spec_type', 'created_at', 'updated_at'].includes(key)) return null;
+                        const label = key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+                        return (
+                          <tr key={key} className="hover:bg-muted/30 transition-colors">
+                            <td className="p-3 text-sm font-medium border">{label}</td>
+                            {Object.keys(specComparison).map((specType) => (
+                              <td key={`${specType}-${key}`} className="p-3 text-sm border">
+                                {specComparison[specType]?.[key as keyof typeof specComparison[typeof specType]] || 'N/A'}
+                              </td>
+                            ))}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-center py-8">
+                  No specification comparison available for this product.
+                </p>
+              )}
+            </Card>
+          </TabsContent>
+        )}
 
         <TabsContent value="downloads" className="mt-6">
           <Card className="p-6">
             <h2 className="text-xl font-bold mb-6">Downloads & Resources</h2>
-            <div className="grid sm:grid-cols-2 gap-4">
-              {product.downloads.map((dl, idx) => (
-                <div key={idx} className="flex items-center gap-4 p-4 rounded-xl border hover:shadow-md transition-all hover:border-primary/30 group">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                    <FileText className="w-6 h-6 text-primary group-hover:text-primary-foreground transition-colors" />
+            {product.downloads.length > 0 ? (
+              <div className="grid sm:grid-cols-2 gap-4">
+                {product.downloads.map((dl, idx) => (
+                  <div key={idx} className="flex items-center gap-4 p-4 rounded-xl border hover:shadow-md transition-all hover:border-primary/30 group">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                      <FileText className="w-6 h-6 text-primary group-hover:text-primary-foreground transition-colors" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm">{dl.name}</div>
+                      <div className="text-xs text-muted-foreground">{dl.size}</div>
+                    </div>
+                    <Button size="icon" variant="outline" onClick={() => {
+                      const link = document.createElement('a');
+                      link.href = `${baseurl}${dl.url}`;
+                      link.download = dl.name;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      toast.success('Download started');
+                    }}>
+                      <Download className="w-4 h-4" />
+                    </Button>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm">{dl.name}</div>
-                    <div className="text-xs text-muted-foreground">{dl.size}</div>
-                  </div>
-                  <Button size="icon" variant="outline" onClick={() => toast.info('Download started (demo)')}>
-                    <Download className="w-4 h-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-8">
+                No downloads available for this product.
+              </p>
+            )}
           </Card>
         </TabsContent>
       </Tabs>

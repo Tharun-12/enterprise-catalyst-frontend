@@ -13,19 +13,18 @@ import { cn } from '@/lib/utils';
 import axios from 'axios';
 import { baseurl } from '@/Baseurl/baseurl';
 
-// Define the API product type (matches what the API returns)
+// Define the API product type
 interface ApiProduct {
   id: number;
   product_name: string;
   product_code: string;
   product_brand: string;
   price: string;
-  dimensions: string;
-  specifications: string;
-  weight: string;
   discount: string;
   product_description: string;
   warranty: string;
+  product_series: string | null;
+  product_type: string | null;
   created_at: string;
   updated_at: string;
   product_category_id: number;
@@ -42,7 +41,6 @@ interface ApiProduct {
   }>;
 }
 
-// Display product type (what we show in the UI)
 interface DisplayProduct {
   id: string;
   name: string;
@@ -63,7 +61,6 @@ interface DisplayProduct {
   variants: ApiProduct['variants'];
 }
 
-// Type guard to check if an item is an ApiProduct
 function isApiProduct(item: any): item is ApiProduct {
   return item && typeof item === 'object' && 'product_name' in item && 'product_code' in item;
 }
@@ -77,7 +74,6 @@ export function WishlistPage() {
   const [isClearing, setIsClearing] = useState(false);
   const [isGeneratingQuotation, setIsGeneratingQuotation] = useState(false);
 
-  // Get user ID and fetch wishlist - only once on mount
   useEffect(() => {
     const session = localStorage.getItem('userSession');
     if (session) {
@@ -98,29 +94,23 @@ export function WishlistPage() {
     } else {
       setInitialLoad(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Transform wishlist products to match display format - memoized
   const displayProducts = useMemo((): DisplayProduct[] => {
-    // Check if wishlistProducts exists and has items
     if (!wishlistProducts || wishlistProducts.length === 0) {
       return [];
     }
 
-    // Use type assertion to handle the data
     const products = wishlistProducts as any[];
     
     return products
-      .filter(isApiProduct) // Filter out any items that don't match the ApiProduct shape
+      .filter(isApiProduct)
       .map((p: ApiProduct) => {
-        // Get image from variants
         let image = 'https://via.placeholder.com/400x400';
         if (p.variants && p.variants.length > 0 && p.variants[0].image_url) {
           image = `${baseurl}${p.variants[0].image_url}`;
         }
         
-        // Get all gallery images
         const galleryImages = p.variants?.map(v => 
           v.image_url ? `${baseurl}${v.image_url}` : null
         ).filter((url): url is string => Boolean(url)) || [];
@@ -153,7 +143,6 @@ export function WishlistPage() {
     setRemovingId(productId);
     try {
       await removeFromWishlist(productId, userId || undefined);
-      // Refresh wishlist after removal
       if (userId) {
         await fetchWishlist(userId);
       }
@@ -168,7 +157,6 @@ export function WishlistPage() {
   const handleClearAll = useCallback(async (): Promise<void> => {
     if (isClearing) return;
     
-    // Confirm before clearing
     if (!confirm('Are you sure you want to clear all items from your wishlist?')) {
       return;
     }
@@ -179,7 +167,6 @@ export function WishlistPage() {
         await clearWishlist(userId);
         await fetchWishlist(userId);
       } else {
-        // For guest users, clear local wishlist
         displayProducts.forEach(async (p) => {
           await removeFromWishlist(p.id, undefined);
         });
@@ -192,14 +179,12 @@ export function WishlistPage() {
     }
   }, [clearWishlist, userId, fetchWishlist, displayProducts, removeFromWishlist, isClearing]);
 
-  // Handle Generate Quotation
   const handleGenerateQuotation = useCallback(async (): Promise<void> => {
     if (displayProducts.length === 0) {
       toast.error('Your wishlist is empty. Add products to generate a quotation.');
       return;
     }
     
-    // Check if user is logged in
     const session = localStorage.getItem('userSession');
     if (!session) {
       toast.error('Please login to generate a quotation');
@@ -207,10 +192,9 @@ export function WishlistPage() {
       return;
     }
 
-    // Show a prompt for remarks
     const remarks = window.prompt('Enter any remarks for the quotation (optional):', '');
     if (remarks === null) {
-      return; // User cancelled
+      return;
     }
 
     setIsGeneratingQuotation(true);
@@ -223,11 +207,9 @@ export function WishlistPage() {
 
       if (response.data.success) {
         toast.success('Quotation generated successfully!');
-        // Refresh wishlist after generating quotation
         if (userId) {
           await fetchWishlist(userId);
         }
-        // Navigate to quotations page
         navigate('/wishlist/quotation');
       }
     } catch (error: unknown) {
@@ -240,7 +222,6 @@ export function WishlistPage() {
     }
   }, [displayProducts.length, userId, fetchWishlist, navigate]);
 
-  // Show loading spinner only during initial load
   if (initialLoad) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -305,14 +286,12 @@ export function WishlistPage() {
         </div>
       </div>
 
-      {/* Wishlist items - Card style like product cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
         {displayProducts.map((product: DisplayProduct) => (
           <Card 
             key={product.id} 
             className="group relative overflow-hidden border-border hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col"
           >
-            {/* Image with Heart icon at top right */}
             <Link to={`/products/${product.slug}`} className="block relative aspect-square overflow-hidden bg-muted/30">
               <img
                 src={product.image}
@@ -324,14 +303,13 @@ export function WishlistPage() {
                 }}
               />
               
-              {/* Heart icon at top right of image */}
               <Button
                 size="icon"
                 variant="ghost"
                 className={cn(
                   'absolute top-2 right-2 w-8 h-8 rounded-full transition-all duration-200',
                   'bg-white/80 hover:bg-white shadow-md backdrop-blur-sm',
-                  'border-accent text-accent hover:bg-accent/20',
+                  'border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600',
                   removingId === product.id && 'opacity-50 cursor-not-allowed'
                 )}
                 onClick={(e: React.MouseEvent) => {
@@ -345,12 +323,11 @@ export function WishlistPage() {
                 {removingId === product.id ? (
                   <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <Heart className="w-4 h-4 fill-accent" />
+                  <Heart className="w-4 h-4 fill-red-500" />
                 )}
               </Button>
             </Link>
 
-            {/* Content */}
             <div className="p-4 flex flex-col flex-1">
               <div className="flex items-center gap-1.5 mb-2">
                 <Badge className="text-[10px] font-semibold bg-primary/10 text-primary border-0">
@@ -370,7 +347,6 @@ export function WishlistPage() {
                 {product.shortDescription}
               </p>
 
-              {/* Rating */}
               <div className="flex items-center gap-1.5">
                 <div className="flex items-center">
                   {[1, 2, 3, 4, 5].map((star) => (
@@ -378,7 +354,7 @@ export function WishlistPage() {
                       key={star}
                       className={cn(
                         'text-sm',
-                        star <= Math.floor(product.rating) ? 'text-yellow-400' : 'text-muted-foreground/30'
+                        star <= Math.floor(product.rating) ? 'text-red-500' : 'text-muted-foreground/30'
                       )}
                     >
                       ★

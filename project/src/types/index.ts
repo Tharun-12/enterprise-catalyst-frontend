@@ -136,3 +136,15 @@ export interface Activity {
   message: string;
   timestamp: string;
 }
+
+
+// index.ts - Add this extended interface
+export interface ProductVariantExtended extends ProductVariant {
+  variant_name?: string;
+  part_code?: string;
+  spec_type?: string;
+  size?: string;
+  availability?: string;
+  datasheet_url?: string;
+  description?: string;
+}

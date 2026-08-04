@@ -18,6 +18,17 @@ interface Brand {
     id: number;
     brand_name: string;
     category_id: number;
+    description?: string;
+    product_series?: string;
+    conductor_type?: string;
+    cable_od?: string;
+    jacket_material?: string;
+    bandwidth?: string;
+    operating_temperature?: string;
+    poe_support?: string;
+    category_name?: string;
+    created_at?: string;
+    updated_at?: string;
 }
 
 interface Specialization {
@@ -31,17 +42,15 @@ interface Specialization {
 
 interface FormData {
     product_name: string;
-    // REMOVED: product_code, product_category_id, product_brand
+    product_code: string;
     price: string;
-    dimensions: string;
-    specifications: string;
-    weight: string;
     discount: string;
     product_description: string;
     warranty: string;
     product_details_pdf: File | null;
     existing_pdf?: string;
     product_series: string;
+    product_type: string;
 }
 
 interface Variant {
@@ -79,17 +88,15 @@ const ProductForm = () => {
 
     const [formData, setFormData] = useState<FormData>({
         product_name: '',
-        // REMOVED: product_code, product_category_id, product_brand
+        product_code: '',
         price: '',
-        dimensions: '',
-        specifications: '',
-        weight: '',
         discount: '0',
         product_description: '',
         warranty: '',
         product_details_pdf: null,
         existing_pdf: '',
-        product_series: ''
+        product_series: '',
+        product_type: ''
     });
 
     // Variants State
@@ -125,8 +132,6 @@ const ProductForm = () => {
     const [categories, setCategories] = useState<Category[]>([]);
     const [brands, setBrands] = useState<Brand[]>([]);
     const [specializations, setSpecializations] = useState<Specialization[]>([]);
-    const [filteredBrands, setFilteredBrands] = useState<Brand[]>([]);
-    const [filteredSpecs, setFilteredSpecs] = useState<Specialization[]>([]);
     const [specTypes, setSpecTypes] = useState<string[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string>('');
@@ -152,8 +157,8 @@ const ProductForm = () => {
 
     // Extract spec types from specializations for comparison dropdown
     useEffect(() => {
-        const types = specializations.map(spec => spec.spec_name);
-        setSpecTypes([...new Set(types)]);
+        const types = specializations.map((spec: Specialization) => spec.spec_name);
+        setSpecTypes([...new Set<string>(types)]);
     }, [specializations]);
 
     const fetchCategories = async (): Promise<void> => {
@@ -184,7 +189,7 @@ const ProductForm = () => {
             if (response.data.success) {
                 setSpecializations(response.data.data);
                 const types = response.data.data.map((spec: Specialization) => spec.spec_name);
-                setSpecTypes([...new Set(types)]);
+                setSpecTypes([...new Set<string>(types)]);
             }
         } catch (error) {
             console.error('Error fetching specializations:', error);
@@ -199,17 +204,15 @@ const ProductForm = () => {
 
             setFormData({
                 product_name: productData.product_name || '',
-                // REMOVED: product_code, product_category_id, product_brand
+                product_code: productData.product_code || '',
                 price: productData.price || '',
-                dimensions: productData.dimensions || '',
-                specifications: productData.specifications || '',
-                weight: productData.weight || '',
                 discount: productData.discount || '0',
                 product_description: productData.product_description || '',
                 warranty: productData.warranty || '',
                 product_details_pdf: null,
                 existing_pdf: productData.product_details_pdf || '',
-                product_series: productData.product_series || ''
+                product_series: productData.product_series || '',
+                product_type: productData.product_type || ''
             });
 
             if (productData.variants && Array.isArray(productData.variants)) {
@@ -323,7 +326,9 @@ const ProductForm = () => {
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
         const file = e.target.files?.[0] || null;
-        setFormData(prev => ({ ...prev, product_details_pdf: file }));
+        if (file) {
+            setFormData(prev => ({ ...prev, product_details_pdf: file }));
+        }
     };
 
     const handleVariantChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>): void => {
@@ -443,8 +448,8 @@ const ProductForm = () => {
         }
     };
 
-    // Get filtered brands for variant based on selected category
-    const getFilteredBrandsForVariant = (categoryId: string) => {
+    // Get filtered brands by category
+    const getFilteredBrandsByCategory = (categoryId: string) => {
         if (!categoryId) return brands;
         return brands.filter(brand => brand.category_id === parseInt(categoryId));
     };
@@ -493,7 +498,7 @@ const ProductForm = () => {
     };
 
     // ============================================
-    // SUBMIT HANDLER - FIXED VERSION
+    // SUBMIT HANDLER - UPDATED WITH PRODUCT_CODE
     // ============================================
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
         e.preventDefault();
@@ -508,17 +513,46 @@ const ProductForm = () => {
         try {
             let productId: number;
 
+            // Get category and brand from the first variant if available
+            const firstVariant = variants.length > 0 ? variants[0] : null;
+            const categoryId = firstVariant?.category || '';
+            const brand = firstVariant?.brand || '';
+
             if (isEditMode) {
                 // Update product
                 const productFormData = new FormData();
-                Object.entries(formData).forEach(([key, value]) => {
-                    if (value !== null && value !== "" && key !== 'existing_pdf') {
+                
+                // Add all form fields including product_code
+                const formFields = {
+                    product_name: formData.product_name,
+                    product_code: formData.product_code,
+                    price: formData.price,
+                    discount: formData.discount,
+                    product_description: formData.product_description,
+                    warranty: formData.warranty,
+                    product_series: formData.product_series,
+                    product_type: formData.product_type
+                };
+                
+                Object.entries(formFields).forEach(([key, value]) => {
+                    if (value !== null && value !== "") {
                         productFormData.append(key, String(value));
                     }
                 });
-                if (formData.existing_pdf) productFormData.append("existing_pdf", formData.existing_pdf);
+                
+                // Add category and brand from variant
+                if (categoryId) {
+                    productFormData.append('product_category_id', categoryId);
+                }
+                if (brand) {
+                    productFormData.append('product_brand', brand);
+                }
+                
+                // Handle PDF upload
                 if (formData.product_details_pdf) {
                     productFormData.append("product_details_pdf", formData.product_details_pdf);
+                } else if (formData.existing_pdf) {
+                    productFormData.append("existing_pdf", formData.existing_pdf);
                 }
 
                 await axios.put(
@@ -601,11 +635,37 @@ const ProductForm = () => {
             } else {
                 // Create new product
                 const productFormData = new FormData();
-                Object.entries(formData).forEach(([key, value]) => {
-                    if (value !== null && value !== "" && key !== 'existing_pdf') {
+                
+                // Add all form fields including product_code
+                const formFields = {
+                    product_name: formData.product_name,
+                    product_code: formData.product_code,
+                    price: formData.price,
+                    discount: formData.discount,
+                    product_description: formData.product_description,
+                    warranty: formData.warranty,
+                    product_series: formData.product_series,
+                    product_type: formData.product_type
+                };
+                
+                Object.entries(formFields).forEach(([key, value]) => {
+                    if (value !== null && value !== "") {
                         productFormData.append(key, String(value));
                     }
                 });
+                
+                // Add category and brand from variant
+                if (categoryId) {
+                    productFormData.append('product_category_id', categoryId);
+                }
+                if (brand) {
+                    productFormData.append('product_brand', brand);
+                }
+
+                // Handle PDF upload
+                if (formData.product_details_pdf) {
+                    productFormData.append("product_details_pdf", formData.product_details_pdf);
+                }
 
                 const productResponse = await axios.post(
                     `${API_URL}/api/products`,
@@ -715,7 +775,31 @@ const ProductForm = () => {
                             />
                         </div>
 
-                        {/* REMOVED: product_code, product_category_id, product_brand fields */}
+                        <div className="form-group">
+                            <label htmlFor="product_code">Product Code *</label>
+                            <input
+                                type="text"
+                                id="product_code"
+                                name="product_code"
+                                value={formData.product_code}
+                                onChange={handleInputChange}
+                                required
+                                placeholder="e.g., CPC3312-01M001"
+                            />
+                            <small>Enter a unique product code</small>
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="product_type">Product Type</label>
+                            <input
+                                type="text"
+                                id="product_type"
+                                name="product_type"
+                                value={formData.product_type}
+                                onChange={handleInputChange}
+                                placeholder="e.g., Patch Cord, Cable, Panel"
+                            />
+                        </div>
 
                         <div className="form-group">
                             <label htmlFor="product_series">Product Series</label>
@@ -743,10 +827,10 @@ const ProductForm = () => {
                         </div>
 
                         <div className="form-group">
-                            <label htmlFor="availability">Availability</label>
+                            <label htmlFor="warranty">Availability/Warranty</label>
                             <input
                                 type="text"
-                                id="availability"
+                                id="warranty"
                                 name="warranty"
                                 value={formData.warranty}
                                 onChange={handleInputChange}
@@ -1061,19 +1145,15 @@ const ProductForm = () => {
                                         required
                                     >
                                         <option value="">Select Brand</option>
-                                        {getBrandsForColor(
-                                            currentVariant.spec_type,
-                                            currentVariant.category,
-                                            currentVariant.color
-                                        ).map((brand) => (
-                                            <option key={brand} value={brand}>
-                                                {brand}
+                                        {/* Show all brands from the selected category */}
+                                        {getFilteredBrandsByCategory(currentVariant.category).map((brand) => (
+                                            <option key={brand.id} value={brand.brand_name}>
+                                                {brand.brand_name}
                                             </option>
                                         ))}
                                     </select>
-                                    {getBrandsForColor(currentVariant.spec_type, currentVariant.category, currentVariant.color).length === 0 && 
-                                     currentVariant.spec_type && currentVariant.color && (
-                                        <small className="text-gray-500">No brands available for this color</small>
+                                    {getFilteredBrandsByCategory(currentVariant.category).length === 0 && currentVariant.category && (
+                                        <small className="text-gray-500">No brands available for this category</small>
                                     )}
                                 </div>
 

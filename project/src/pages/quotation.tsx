@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, Package, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Calendar, Package, Loader2, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -44,18 +44,6 @@ interface Quotation {
   updated_at: string;
   details: QuotationDetail[];
 }
-
-// interface StatusColor {
-//   bg: string;
-//   text: string;
-//   label: string;
-// }
-
-// const statusColors: Record<QuotationStatus, StatusColor> = {
-//   Pending: { bg: 'bg-yellow-50', text: 'text-yellow-700', label: 'Pending' },
-//   Approved: { bg: 'bg-green-50', text: 'text-green-700', label: 'Approved' },
-//   Rejected: { bg: 'bg-red-50', text: 'text-red-700', label: 'Rejected' },
-// };
 
 export function QuotationPage() {
   const navigate = useNavigate();
@@ -106,44 +94,35 @@ export function QuotationPage() {
     setExpandedQuotation(expandedQuotation === id ? null : id);
   };
 
-  // const handleViewQuotation = (id: number): void => {
-  //   const quotation = quotations.find(q => q.id === id);
-  //   if (quotation) {
-  //     console.log('Quotation Details:', quotation);
-  //     console.log('Products:', quotation.details);
-      
-  //     // You can navigate to a detail page or open a modal
-  //     navigate(`/quotations/${id}`);
-  //   }
-  // };
+  // Calculate total discount percentage - SUM of all individual discount percentages
+  const calculateTotalDiscountPercentage = (quotation: Quotation) => {
+    if (!quotation.details || quotation.details.length === 0) return 0;
+    
+    let totalDiscountPercent = 0;
+    
+    quotation.details.forEach(detail => {
+      const discountPercent = parseFloat(detail.discount);
+      totalDiscountPercent += discountPercent;
+    });
+    
+    return totalDiscountPercent;
+  };
 
-  // const handleDownload = (id: number): void => {
-  //   const quotation = quotations.find(q => q.id === id);
-  //   if (quotation) {
-  //     // Generate PDF or download as JSON
-  //     const data = {
-  //       quotation: quotation,
-  //       products: quotation.details
-  //     };
-  //     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  //     const url = window.URL.createObjectURL(blob);
-  //     const a = document.createElement('a');
-  //     a.href = url;
-  //     a.download = `${quotation.quotation_no}.json`;
-  //     a.click();
-  //     window.URL.revokeObjectURL(url);
-  //     toast.success('Quotation downloaded successfully');
-  //   }
-  // };
-
-  // const handlePrint = (id: number): void => {
-  //   window.print();
-  // };
-
-  // const handleEmail = (id: number): void => {
-  //   console.log('Email quotation:', id);
-  //   toast.success('Quotation sent to your email');
-  // };
+  // Calculate total discount in rupees
+  const calculateTotalDiscountRupees = (quotation: Quotation) => {
+    if (!quotation.details || quotation.details.length === 0) return 0;
+    
+    let totalDiscountAmount = 0;
+    
+    quotation.details.forEach(detail => {
+      const price = parseFloat(detail.price);
+      const discountPercent = parseFloat(detail.discount);
+      const discountAmount = (price * discountPercent) / 100;
+      totalDiscountAmount += discountAmount;
+    });
+    
+    return totalDiscountAmount;
+  };
 
   if (loading) {
     return (
@@ -197,176 +176,168 @@ export function QuotationPage() {
             </Button>
           </Card>
         ) : (
-          quotations.map((quotation) => (
-            <Card key={quotation.id} className="p-6 hover:shadow-lg transition-shadow">
-              {/* Quotation Header */}
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-lg font-semibold">{quotation.quotation_no}</h3>
-                    {/* <Badge className={statusColors[quotation.status].bg + ' ' + statusColors[quotation.status].text}>
-                      {statusColors[quotation.status].label}
-                    </Badge> */}
-                  </div>
-                  <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
-                      {format(new Date(quotation.created_at), 'MMM d, yyyy')}
-                    </span>
-                    <span>({formatDistanceToNow(new Date(quotation.created_at), { addSuffix: true })})</span>
-                    <span className="font-medium text-foreground">₹{parseFloat(quotation.grand_total).toFixed(2)}</span>
+          quotations.map((quotation) => {
+            const discountPercentage = calculateTotalDiscountPercentage(quotation);
+            const discountRupees = calculateTotalDiscountRupees(quotation);
+            
+            return (
+              <Card key={quotation.id} className="p-6 hover:shadow-lg transition-shadow">
+                {/* Quotation Header */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-lg font-semibold">{quotation.quotation_no}</h3>
+                      <Badge variant={
+                        quotation.status === 'Pending' ? 'default' : 
+                        quotation.status === 'Approved' ? 'secondary' : 'destructive'
+                      }>
+                        {quotation.status}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        {format(new Date(quotation.created_at), 'MMM d, yyyy')}
+                      </span>
+                      <span>({formatDistanceToNow(new Date(quotation.created_at), { addSuffix: true })})</span>
+                      <span className="font-medium text-foreground">₹{parseFloat(quotation.grand_total).toFixed(2)}</span>
+                    </div>
                   </div>
                 </div>
-                {/* <div className="flex items-center gap-2">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8"
-                    onClick={() => handleViewQuotation(quotation.id)}
-                    title="View Details"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8"
-                    onClick={() => handleDownload(quotation.id)}
-                    title="Download"
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8"
-                    // onClick={() => handlePrint(quotation.id)}
-                    title="Print"
-                  >
-                    <Printer className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8"
-                    onClick={() => handleEmail(quotation.id)}
-                    title="Email"
-                  >
-                    <Mail className="h-4 w-4" />
-                  </Button>
-                </div> */}
-              </div>
 
-              {/* Customer Info */}
-              {/* <div className="mt-3 text-sm">
-                <span className="font-semibold">Customer:</span>
-                <span className="ml-2">{quotation.customer_name}</span>
-                <span className="mx-2">|</span>
-                <span>{quotation.customer_mobile}</span>
-                <span className="mx-2">|</span>
-                <span className="text-muted-foreground">{quotation.customer_email}</span>
-              </div> */}
-
-              {/* Order Summary */}
-              <div className="mt-4 pt-4 border-t">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div>
-                    <h4 className="font-semibold text-sm mb-1">Order Summary</h4>
-                    <div className="text-sm space-y-1">
-                      <p>Total Items: <span className="font-medium">{quotation.total_items}</span></p>
-                      <p>Total Amount: <span className="font-medium">₹{parseFloat(quotation.total_amount).toFixed(2)}</span></p>
-                      <p>Total Discount: <span className="font-medium text-green-600">-₹{parseFloat(quotation.total_discount).toFixed(2)}</span></p>
+                {/* Order Summary */}
+                <div className="mt-4 pt-4 border-t">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <h4 className="font-semibold text-sm mb-1">Order Summary</h4>
+                      <div className="text-sm space-y-1">
+                        <p>Total Items: <span className="font-medium">{quotation.total_items}</span></p>
+                        <p>Total Amount: <span className="font-medium">₹{parseFloat(quotation.total_amount).toFixed(2)}</span></p>
+                        <p>Total Discount: <span className="font-medium text-green-600">{discountPercentage.toFixed(1)}% off</span></p>
+                      </div>
+                      {quotation.remarks && (
+                        <div className="mt-2 p-2 bg-muted/30 rounded text-sm">
+                          <span className="font-semibold">Remarks:</span> {quotation.remarks}
+                        </div>
+                      )}
                     </div>
-                    {quotation.remarks && (
-                      <div className="mt-2 p-2 bg-muted/30 rounded text-sm">
-                        <span className="font-semibold">Remarks:</span> {quotation.remarks}
+                    <div className="flex items-center gap-6 text-sm">
+                      <div className="text-right">
+                        <p className="text-muted-foreground text-xs">Grand Total</p>
+                        <p className="text-xl font-bold text-primary">₹{parseFloat(quotation.grand_total).toFixed(2)}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Product Details - Expandable Section with Better UI */}
+                {quotation.details && quotation.details.length > 0 && (
+                  <div className="mt-4">
+                    {/* View Products Button - Improved Design */}
+                    <div 
+                      className={cn(
+                        "flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition-all duration-200",
+                        expandedQuotation === quotation.id 
+                          ? "border-primary bg-primary/5 hover:bg-primary/10" 
+                          : "border-dashed border-gray-300 dark:border-gray-600 hover:border-primary/50 hover:bg-muted/30"
+                      )}
+                      onClick={() => toggleExpand(quotation.id)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "p-2 rounded-full transition-colors",
+                          expandedQuotation === quotation.id 
+                            ? "bg-primary text-white" 
+                            : "bg-muted/50 text-muted-foreground"
+                        )}>
+                          <Eye className="w-4 h-4" />
+                        </div>
+                        <div className="text-left">
+                          <span className="font-semibold text-sm">
+                            View Products
+                          </span>
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            ({quotation.details.length} items)
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          {expandedQuotation === quotation.id ? 'Hide details' : 'Show details'}
+                        </span>
+                        {expandedQuotation === quotation.id ? (
+                          <ChevronUp className="h-4 w-4 text-primary" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Products List - Improved Design */}
+                    {expandedQuotation === quotation.id && (
+                      <div className="mt-4 space-y-3 animate-in slide-in-from-top-2 duration-200">
+                        {quotation.details.map((detail) => {
+                          // Calculate discount percentage for each product
+                          const discountPercent = parseFloat(detail.discount);
+                          
+                          return (
+                            <div key={detail.id} className="bg-gradient-to-r from-muted/10 to-muted/5 rounded-xl p-4 border border-muted/20 hover:border-primary/30 transition-all hover:shadow-sm">
+                              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h5 className="font-semibold text-sm">{detail.product_name}</h5>
+                                    <Badge variant="outline" className="text-xs bg-primary/5">
+                                      {detail.brand}
+                                    </Badge>
+                                  </div>
+                                  <div className="text-xs text-muted-foreground mt-1.5 flex items-center gap-3 flex-wrap">
+                                    <span className="flex items-center gap-1">
+                                      <span className="font-medium">Code:</span> {detail.product_code}
+                                    </span>
+                                    <span className="w-px h-3 bg-muted-foreground/20 hidden sm:block" />
+                                    <span className="flex items-center gap-1">
+                                      <span className="font-medium">Qty:</span> {detail.quantity}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm w-full md:w-auto">
+                                  <div className="bg-background/50 rounded-lg px-3 py-1.5 text-center">
+                                    <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Price</p>
+                                    <p className="font-semibold text-foreground">₹{parseFloat(detail.price).toFixed(2)}</p>
+                                  </div>
+                                  {discountPercent > 0 && (
+                                    <div className="bg-green-50 dark:bg-green-950/20 rounded-lg px-3 py-1.5 text-center">
+                                      <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Discount</p>
+                                      <p className="font-semibold text-green-600 dark:text-green-400">{discountPercent}%</p>
+                                    </div>
+                                  )}
+                                  <div className="bg-primary/5 rounded-lg px-3 py-1.5 text-center">
+                                    <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Final Price</p>
+                                    <p className="font-semibold text-primary">₹{parseFloat(detail.final_price).toFixed(2)}</p>
+                                  </div>
+                                  <div className="bg-muted/30 rounded-lg px-3 py-1.5 text-center">
+                                    <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Subtotal</p>
+                                    <p className="font-bold text-foreground">₹{parseFloat(detail.subtotal).toFixed(2)}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-6 text-sm">
-                    <div className="text-right">
-                      <p className="text-muted-foreground text-xs">Grand Total</p>
-                      <p className="text-xl font-bold text-primary">₹{parseFloat(quotation.grand_total).toFixed(2)}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Product Details - Expandable Section */}
-              {quotation.details && quotation.details.length > 0 && (
-                <div className="mt-4">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full flex items-center justify-between hover:bg-muted/50"
-                    onClick={() => toggleExpand(quotation.id)}
-                  >
-                    <span className="font-medium">
-                      View Products ({quotation.details.length} items)
-                    </span>
-                    {expandedQuotation === quotation.id ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                  </Button>
-
-                  {expandedQuotation === quotation.id && (
-                    <div className="mt-3 space-y-3">
-                      {quotation.details.map((detail) => (
-                        <div key={detail.id} className="bg-muted/20 rounded-lg p-4">
-                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <h5 className="font-semibold text-sm">{detail.product_name}</h5>
-                                <Badge variant="outline" className="text-xs">
-                                  {detail.brand}
-                                </Badge>
-                              </div>
-                              <div className="text-xs text-muted-foreground mt-1">
-                                <span>Code: {detail.product_code}</span>
-                                <span className="mx-2">|</span>
-                                <span>Qty: {detail.quantity}</span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-4 text-sm">
-                              <div>
-                                <p className="text-muted-foreground text-xs">Price</p>
-                                <p className="font-medium">₹{parseFloat(detail.price).toFixed(2)}</p>
-                              </div>
-                              {parseFloat(detail.discount) > 0 && (
-                                <div>
-                                  <p className="text-muted-foreground text-xs">Discount</p>
-                                  <p className="font-medium text-green-600">-₹{parseFloat(detail.discount).toFixed(2)}</p>
-                                </div>
-                              )}
-                              <div>
-                                <p className="text-muted-foreground text-xs">Final Price</p>
-                                <p className="font-medium text-primary">₹{parseFloat(detail.final_price).toFixed(2)}</p>
-                              </div>
-                              <div>
-                                <p className="text-muted-foreground text-xs">Subtotal</p>
-                                <p className="font-semibold">₹{parseFloat(detail.subtotal).toFixed(2)}</p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Archive Button */}
-              {/* <div className="mt-4 pt-4 border-t flex justify-end">
-                <Button variant="outline" size="sm" disabled>
-                  ARCHIVE ORDER
-                </Button>
-              </div> */}
-            </Card>
-          ))
+                )}
+              </Card>
+            );
+          })
         )}
       </div>
     </div>
   );
+}
+
+// Add this if you don't have cn utility
+function cn(...classes: (string | boolean | undefined)[]) {
+  return classes.filter(Boolean).join(' ');
 }

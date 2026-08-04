@@ -1,3 +1,4 @@
+// filter-panel.tsx
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ChevronDown, X, Filter } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import type { Brand, Category } from '@/types';
 
 export interface FilterState {
   category: string | null;
@@ -20,23 +22,8 @@ interface FilterPanelProps {
   filters: FilterState;
   onFilterChange: (filters: FilterState) => void;
   resultCount: number;
-  brands: Brand[]; // From API
-  categories: Category[]; // From API
-}
-
-interface Brand {
-  id: number;
-  name: string;
-  description: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface Category {
-  id: number;
-  category_name: string;
-  created_at: string;
-  updated_at: string;
+  brands: Brand[]; // From types/index.ts
+  categories: Category[]; // From types/index.ts
 }
 
 export function FilterPanel({ 
@@ -44,18 +31,13 @@ export function FilterPanel({
   onFilterChange, 
   resultCount, 
   brands,
-  // categories 
+  categories
 }: FilterPanelProps) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     brands: true
   });
 
-  // const currentCategory = categories.find((c) => 
-  //   c.category_name.toLowerCase().replace(/\s+/g, '-') === filters.category
-  // );
-
   // Get unique brand names from products for filtering
-  // Since we don't have spec fields from API yet, we'll use a simpler approach
   const categorySpecFields: any[] = []; // Empty for now
 
   const toggleSection = (key: string) => {
@@ -125,8 +107,8 @@ export function FilterPanel({
                       <div key={brand.id} className="flex items-center space-x-2">
                         <Checkbox
                           id={`brand-${brand.id}`}
-                          checked={filters.brands.includes(String(brand.id))}
-                          onCheckedChange={() => toggleBrand(String(brand.id))}
+                          checked={filters.brands.includes(brand.id)}
+                          onCheckedChange={() => toggleBrand(brand.id)}
                         />
                         <Label htmlFor={`brand-${brand.id}`} className="text-sm font-normal cursor-pointer flex-1">
                           {brand.name}
