@@ -76,7 +76,7 @@ export function ComparePage() {
   const [loading, setLoading] = useState(true);
   const [showOnlyDifferences, setShowOnlyDifferences] = useState(false);
   const [relatedProducts, setRelatedProducts] = useState<ApiProduct[]>([]);
-  const [allProductsData, setAllProductsData] = useState<ApiProduct[]>([]);
+  const [_allProductsData, setAllProductsData] = useState<ApiProduct[]>([]);
 
   useEffect(() => {
     const fetchProducts = async () => {

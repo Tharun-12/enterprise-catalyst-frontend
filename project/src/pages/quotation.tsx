@@ -109,20 +109,20 @@ export function QuotationPage() {
   };
 
   // Calculate total discount in rupees
-  const calculateTotalDiscountRupees = (quotation: Quotation) => {
-    if (!quotation.details || quotation.details.length === 0) return 0;
+  // const calculateTotalDiscountRupees = (quotation: Quotation) => {
+  //   if (!quotation.details || quotation.details.length === 0) return 0;
     
-    let totalDiscountAmount = 0;
+  //   let totalDiscountAmount = 0;
     
-    quotation.details.forEach(detail => {
-      const price = parseFloat(detail.price);
-      const discountPercent = parseFloat(detail.discount);
-      const discountAmount = (price * discountPercent) / 100;
-      totalDiscountAmount += discountAmount;
-    });
+  //   quotation.details.forEach(detail => {
+  //     const price = parseFloat(detail.price);
+  //     const discountPercent = parseFloat(detail.discount);
+  //     const discountAmount = (price * discountPercent) / 100;
+  //     totalDiscountAmount += discountAmount;
+  //   });
     
-    return totalDiscountAmount;
-  };
+  //   return totalDiscountAmount;
+  // };
 
   if (loading) {
     return (
@@ -178,7 +178,7 @@ export function QuotationPage() {
         ) : (
           quotations.map((quotation) => {
             const discountPercentage = calculateTotalDiscountPercentage(quotation);
-            const discountRupees = calculateTotalDiscountRupees(quotation);
+            // const discountRupees = calculateTotalDiscountRupees(quotation);
             
             return (
               <Card key={quotation.id} className="p-6 hover:shadow-lg transition-shadow">

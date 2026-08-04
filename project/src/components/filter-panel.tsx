@@ -30,8 +30,8 @@ export function FilterPanel({
   filters, 
   onFilterChange, 
   resultCount, 
-  brands,
-  categories
+  brands
+  // categories
 }: FilterPanelProps) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     brands: true

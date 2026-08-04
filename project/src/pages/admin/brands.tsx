@@ -54,7 +54,7 @@ interface DeleteResponse {
 export function AdminBrands() {
   const navigate = useNavigate();
   const [brands, setBrands] = useState<Brand[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [_categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [deleteTarget, setDeleteTarget] = useState<Brand | null>(null);

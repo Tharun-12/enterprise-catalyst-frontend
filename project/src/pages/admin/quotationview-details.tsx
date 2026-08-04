@@ -162,9 +162,9 @@ export function QuotationView() {
   };
 
   // Calculate discount amount in currency
-  const calculateDiscountAmount = (price: number, discountPercent: number): number => {
-    return (price * discountPercent) / 100;
-  };
+  // const calculateDiscountAmount = (price: number, discountPercent: number): number => {
+  //   return (price * discountPercent) / 100;
+  // };
 
   if (loading) {
     return (

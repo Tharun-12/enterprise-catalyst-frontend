@@ -64,7 +64,7 @@ export function SpecificationsForm() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [filteredBrands, setFilteredBrands] = useState<Brand[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState<boolean>(false);
-  const [isLoadingBrands, setIsLoadingBrands] = useState<boolean>(false);
+  const [_isLoadingBrands, setIsLoadingBrands] = useState<boolean>(false);
   const [formData, setFormData] = useState<SpecializationData>({
     category_id: '',
     spec_name: '',

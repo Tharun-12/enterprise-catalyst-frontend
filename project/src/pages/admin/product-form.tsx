@@ -473,16 +473,16 @@ const ProductForm = () => {
     };
 
     // Get brands for a specific color from spec
-    const getBrandsForColor = (specName: string, categoryId: string, color: string) => {
-        if (!specName || !categoryId || !color) return [];
-        const spec = specializations.find(
-            s => s.spec_name === specName && s.category_id === parseInt(categoryId)
-        );
-        if (spec && spec.color_brand_mapping && spec.color_brand_mapping[color]) {
-            return spec.color_brand_mapping[color];
-        }
-        return [];
-    };
+    // const getBrandsForColor = (specName: string, categoryId: string, color: string) => {
+    //     if (!specName || !categoryId || !color) return [];
+    //     const spec = specializations.find(
+    //         s => s.spec_name === specName && s.category_id === parseInt(categoryId)
+    //     );
+    //     if (spec && spec.color_brand_mapping && spec.color_brand_mapping[color]) {
+    //         return spec.color_brand_mapping[color];
+    //     }
+    //     return [];
+    // };
 
     const getImageUrl = (imagePath: string): string => {
         if (!imagePath) return '';

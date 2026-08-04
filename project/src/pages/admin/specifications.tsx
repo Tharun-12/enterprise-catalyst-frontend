@@ -48,7 +48,7 @@ interface DeleteResponse {
 export function AdminSpecifications() {
   const navigate = useNavigate();
   const [specializations, setSpecializations] = useState<Specialization[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [_categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [deleteTarget, setDeleteTarget] = useState<Specialization | null>(null);
