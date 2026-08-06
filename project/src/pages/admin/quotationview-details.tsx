@@ -1,3 +1,4 @@
+// src/components/admin/QuotationView.tsx
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, Phone } from 'lucide-react';
@@ -9,8 +10,9 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import axios from 'axios';
 import { baseurl } from '@/Baseurl/baseurl';
+import { cn } from '@/lib/utils'; // Add this import
 
- type QuotationStatus = 'Pending' | 'Approved' | 'Rejected' | 'Sent';
+type QuotationStatus = 'Pending' | 'Approved' | 'Rejected';
 
 interface QuotationItem {
   id: number;
@@ -19,7 +21,7 @@ interface QuotationItem {
   brand: string;
   quantity: number;
   price: number;
-  discount: number; // This is a percentage value (e.g., 5 for 5%)
+  discount: number;
   finalPrice: number;
   subtotal: number;
 }
@@ -30,12 +32,11 @@ interface Quotation {
   customerName: string;
   customerEmail: string;
   customerPhone: string;
-//   company: string;
   status: QuotationStatus;
   items: QuotationItem[];
   totalItems: number;
   totalAmount: number;
-  totalDiscount: number; // This is the total discount percentage
+  totalDiscount: number;
   grandTotal: number;
   createdAt: string;
   updatedAt: string;
@@ -55,6 +56,12 @@ interface ApiQuotationDetail {
   subtotal: string;
 }
 
+const statusBadgeStyles: Record<QuotationStatus, string> = {
+  Pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+  Approved: 'bg-green-100 text-green-700 border-green-200',
+  Rejected: 'bg-red-100 text-red-700 border-red-200',
+};
+
 export function QuotationView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -73,7 +80,6 @@ export function QuotationView() {
       'Pending': 'Pending',
       'Approved': 'Approved',
       'Rejected': 'Rejected',
-      'Sent': 'Sent',
     };
     return statusMap[apiStatus] || 'Pending';
   };
@@ -89,7 +95,6 @@ export function QuotationView() {
         const apiQuotation = response.data.quotation;
         const apiItems = response.data.items || [];
         
-        // Calculate total discount percentage from items
         const totalDiscountPercentage = apiItems.reduce((sum: number, item: ApiQuotationDetail) => {
           return sum + (parseFloat(item.discount) || 0);
         }, 0);
@@ -100,7 +105,6 @@ export function QuotationView() {
           customerName: apiQuotation.customer_name,
           customerEmail: apiQuotation.customer_email,
           customerPhone: apiQuotation.customer_mobile,
-        //   company: 'N/A',
           status: mapStatus(apiQuotation.status),
           items: apiItems.map((item: ApiQuotationDetail) => ({
             id: item.id,
@@ -109,13 +113,13 @@ export function QuotationView() {
             brand: item.brand || 'N/A',
             quantity: item.quantity,
             price: parseFloat(item.price) || 0,
-            discount: parseFloat(item.discount) || 0, // This is a percentage
+            discount: parseFloat(item.discount) || 0,
             finalPrice: parseFloat(item.final_price) || 0,
             subtotal: parseFloat(item.subtotal) || 0,
           })),
           totalItems: apiQuotation.total_items || apiItems.length || 0,
           totalAmount: parseFloat(apiQuotation.total_amount) || 0,
-          totalDiscount: totalDiscountPercentage, // Now this is the total discount percentage
+          totalDiscount: totalDiscountPercentage,
           grandTotal: parseFloat(apiQuotation.grand_total) || 0,
           createdAt: apiQuotation.created_at,
           updatedAt: apiQuotation.updated_at,
@@ -147,7 +151,6 @@ export function QuotationView() {
       .slice(0, 2);
   };
 
-  // Format currency with Indian Rupee symbol
   const formatCurrency = (amount: number): string => {
     return `₹${amount.toLocaleString('en-IN', { 
       minimumFractionDigits: 2, 
@@ -155,16 +158,10 @@ export function QuotationView() {
     })}`;
   };
 
-  // Format discount as percentage
   const formatDiscount = (discountPercent: number): string => {
     if (discountPercent === 0) return '0%';
     return `${discountPercent.toFixed(2)}%`;
   };
-
-  // Calculate discount amount in currency
-  // const calculateDiscountAmount = (price: number, discountPercent: number): number => {
-  //   return (price * discountPercent) / 100;
-  // };
 
   if (loading) {
     return (
@@ -209,18 +206,16 @@ export function QuotationView() {
             </p>
           </div>
         </div>
-        {/* <div className="flex gap-2">
+        <div className="flex gap-2">
           <Badge 
-            variant={
-              quotation.status === 'Approved' ? 'default' : 
-              quotation.status === 'Rejected' ? 'destructive' : 
-              'secondary'
-            }
-            className="text-sm px-4 py-1"
+            className={cn(
+              "text-sm px-4 py-1 border-2 font-medium",
+              statusBadgeStyles[quotation.status]
+            )}
           >
             {quotation.status}
           </Badge>
-        </div> */}
+        </div>
       </div>
 
       {/* Customer Information */}
@@ -250,13 +245,6 @@ export function QuotationView() {
                   </div>
                 </div>
               </div>
-              {/* <div>
-                <p className="text-sm font-semibold">Company</p>
-                <div className="flex items-center gap-2 text-sm mt-2">
-                  <Building className="w-4 h-4 text-muted-foreground" />
-                  <span>{quotation.company}</span>
-                </div>
-              </div> */}
             </div>
           </div>
         </CardContent>

@@ -1732,7 +1732,7 @@ import { useState, useEffect } from 'react';
 import { 
   Menu, Search, Heart, GitCompare, ChevronDown, Building2, 
   User, LogOut, Home, Package, Info, PhoneCall, ShoppingBag, 
-  LayoutGrid, Headphones, Truck, Award, Shield 
+  LayoutGrid, Headphones, Truck, Award, Shield, FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1849,7 +1849,6 @@ export function CustomerHeader() {
     }
   };
 
-  // Check if link is active
   const isActive = (path: string) => {
     if (path === '/') {
       return location.pathname === '/';
@@ -2019,10 +2018,20 @@ export function CustomerHeader() {
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
+                    
+                    {/* My Profile */}
                     <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer hover:bg-gradient-to-r hover:from-pink-50 hover:via-orange-50 hover:to-blue-50">
                       <User className="w-4 h-4 mr-2" />
                       My Profile
                     </DropdownMenuItem>
+                    
+                    {/* My Quotations - NEW ITEM BELOW MY PROFILE */}
+                    <DropdownMenuItem onClick={() => navigate('/my-quotations')} className="cursor-pointer hover:bg-gradient-to-r hover:from-pink-50 hover:via-orange-50 hover:to-blue-50">
+                      <FileText className="w-4 h-4 mr-2" />
+                      My Quotations
+                    </DropdownMenuItem>
+                    
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 hover:bg-red-50 focus:text-red-600">
                       <LogOut className="w-4 h-4 mr-2" />
                       Logout
@@ -2129,6 +2138,16 @@ export function CustomerHeader() {
                           <div className="text-xs text-gray-500 truncate">{user.email}</div>
                         </div>
                       </button>
+                      
+                      {/* My Quotations in mobile menu */}
+                      <button
+                        onClick={() => { setMobileOpen(false); navigate('/my-quotations'); }}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gradient-to-r hover:from-pink-50 hover:via-orange-50 hover:to-blue-50 transition-colors duration-300"
+                      >
+                        <FileText className="w-4 h-4" />
+                        My Quotations
+                      </button>
+                      
                       <button
                         onClick={() => { setMobileOpen(false); handleLogout(); }}
                         className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors duration-300"

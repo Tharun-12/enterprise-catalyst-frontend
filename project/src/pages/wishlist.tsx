@@ -192,17 +192,13 @@ export function WishlistPage() {
       return;
     }
 
-    const remarks = window.prompt('Enter any remarks for the quotation (optional):', '');
-    if (remarks === null) {
-      return;
-    }
-
+    // Remove the window.prompt - generate quotation directly
     setIsGeneratingQuotation(true);
 
     try {
       const response = await axios.post(`${baseurl}/api/quotations/generate`, {
         user_id: userId,
-        remarks: remarks.trim() || ''
+        remarks: '' // Empty remarks or you can use a default
       });
 
       if (response.data.success) {
@@ -222,6 +218,7 @@ export function WishlistPage() {
     }
   }, [displayProducts.length, userId, fetchWishlist, navigate]);
 
+  
   if (initialLoad) {
     return (
       <div className="container mx-auto px-4 py-8">

@@ -5,7 +5,6 @@ import { Search, Eye, FileText, CheckCircle, XCircle, Clock, ChevronLeft, Chevro
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-// import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
@@ -14,7 +13,7 @@ import axios from 'axios';
 import { baseurl } from '@/Baseurl/baseurl';
 
 // Types for quotations
-type QuotationStatus = 'Pending' | 'Approved' | 'Rejected' | 'Sent';
+type QuotationStatus = 'Pending' | 'Approved' | 'Rejected';
 
 // API Response Types
 interface ApiQuotationDetail {
@@ -82,18 +81,16 @@ interface Quotation {
     notes?: string;
 }
 
-// const statusColors: Record<QuotationStatus, string> = {
-//     Pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-//     Approved: 'bg-green-100 text-green-700 border-green-200',
-//     Rejected: 'bg-red-100 text-red-700 border-red-200',
-//     Sent: 'bg-blue-100 text-blue-700 border-blue-200',
-// };
+const statusColors: Record<QuotationStatus, string> = {
+    Pending: 'bg-yellow-100 text-yellow-700 border-yellow-200 hover:bg-yellow-200',
+    Approved: 'bg-green-100 text-green-700 border-green-200 hover:bg-green-200',
+    Rejected: 'bg-red-100 text-red-700 border-red-200 hover:bg-red-200',
+};
 
 const statusIcons: Record<QuotationStatus, React.ReactNode> = {
     Pending: <Clock className="w-4 h-4" />,
     Approved: <CheckCircle className="w-4 h-4" />,
     Rejected: <XCircle className="w-4 h-4" />,
-    Sent: <FileText className="w-4 h-4" />,
 };
 
 export function AdminQuotations() {
@@ -104,6 +101,7 @@ export function AdminQuotations() {
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState<number>(1);
     const [pageSize, setPageSize] = useState<number>(10);
+    const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
 
     // Fetch quotations data
     useEffect(() => {
@@ -148,7 +146,6 @@ export function AdminQuotations() {
             'Pending': 'Pending',
             'Approved': 'Approved',
             'Rejected': 'Rejected',
-            'Sent': 'Sent',
         };
         return statusMap[apiStatus] || 'Pending';
     };
@@ -172,6 +169,37 @@ export function AdminQuotations() {
             setQuotations([]);
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Update quotation status
+    const updateQuotationStatus = async (quotationId: string, newStatus: QuotationStatus) => {
+        try {
+            setUpdatingStatus(quotationId);
+            
+            const response = await axios.put(
+                `${baseurl}/api/quotations/${quotationId}/status`,
+                { status: newStatus }
+            );
+
+            if (response.data.success) {
+                // Update local state
+                setQuotations(prevQuotations =>
+                    prevQuotations.map(q =>
+                        q.id === quotationId
+                            ? { ...q, status: newStatus }
+                            : q
+                    )
+                );
+                toast.success(`Quotation status updated to ${newStatus}`);
+            } else {
+                toast.error('Failed to update status');
+            }
+        } catch (error) {
+            console.error('Error updating status:', error);
+            toast.error('Failed to update status');
+        } finally {
+            setUpdatingStatus(null);
         }
     };
 
@@ -205,15 +233,10 @@ export function AdminQuotations() {
         navigate(`/admin/quotations/view/${quotation.id}`);
     };
 
-    // const handleDownloadPDF = (quotation: Quotation) => {
-    //     toast.success(`Downloading PDF for ${quotation.quotationNumber}`);
-    //     // In a real app, generate and download PDF
-    // };
-
     // Handle page size change
     const handlePageSizeChange = (value: string): void => {
         setPageSize(Number(value));
-        setPage(1); // Reset to first page when changing page size
+        setPage(1);
     };
 
     // Helper function to safely get initials
@@ -231,7 +254,6 @@ export function AdminQuotations() {
     const stats = useMemo(() => {
         const counts = {
             Pending: 0,
-            Sent: 0,
             Approved: 0,
             Rejected: 0
         };
@@ -277,11 +299,11 @@ export function AdminQuotations() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {(['Pending', 'Sent', 'Approved', 'Rejected'] as QuotationStatus[]).map((status) => {
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
+                {(['Pending', 'Approved', 'Rejected'] as QuotationStatus[]).map((status) => {
                     const count = stats[status] || 0;
                     return (
-                        <Card key={status} className="p-4">
+                        <Card key={status} className="p-4 w-full">
                             <div className="flex items-center justify-between">
                                 <div>
                                     <div className="text-2xl font-bold">{count}</div>
@@ -289,7 +311,6 @@ export function AdminQuotations() {
                                 </div>
                                 <div className={cn('w-8 h-8 rounded-full flex items-center justify-center',
                                     status === 'Pending' && 'bg-yellow-100 text-yellow-700',
-                                    status === 'Sent' && 'bg-blue-100 text-blue-700',
                                     status === 'Approved' && 'bg-green-100 text-green-700',
                                     status === 'Rejected' && 'bg-red-100 text-red-700'
                                 )}>
@@ -326,7 +347,6 @@ export function AdminQuotations() {
                         <SelectContent>
                             <SelectItem value="all">All Status</SelectItem>
                             <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="sent">Sent</SelectItem>
                             <SelectItem value="approved">Approved</SelectItem>
                             <SelectItem value="rejected">Rejected</SelectItem>
                         </SelectContent>
@@ -348,6 +368,7 @@ export function AdminQuotations() {
                                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Email</th>
                                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Phone</th>
                                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
+                                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
                                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Date</th>
                                 <th className="p-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
                             </tr>
@@ -355,7 +376,7 @@ export function AdminQuotations() {
                         <tbody>
                             {paginatedQuotations.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                                    <td colSpan={8} className="p-8 text-center text-muted-foreground">
                                         No quotations found
                                     </td>
                                 </tr>
@@ -389,6 +410,52 @@ export function AdminQuotations() {
                                         </td>
                                         <td className="p-3">
                                             <div className="text-sm font-medium">₹{quotation.grandTotal.toLocaleString()}</div>
+                                        </td>
+                                        <td className="p-3">
+                                            <Select
+                                                value={quotation.status}
+                                                onValueChange={(value: QuotationStatus) => 
+                                                    updateQuotationStatus(quotation.id, value)
+                                                }
+                                                disabled={updatingStatus === quotation.id}
+                                            >
+                                                <SelectTrigger 
+                                                    className={cn(
+                                                        "w-[130px] h-8 text-xs font-medium border-2",
+                                                        statusColors[quotation.status]
+                                                    )}
+                                                >
+                                                    <SelectValue>
+                                                        <div className="flex items-center gap-2">
+                                                            {statusIcons[quotation.status]}
+                                                            <span>{quotation.status}</span>
+                                                            {updatingStatus === quotation.id && (
+                                                                <span className="ml-1 inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                                            )}
+                                                        </div>
+                                                    </SelectValue>
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Pending">
+                                                        <div className="flex items-center gap-2">
+                                                            <Clock className="w-4 h-4 text-yellow-600" />
+                                                            <span>Pending</span>
+                                                        </div>
+                                                    </SelectItem>
+                                                    <SelectItem value="Approved">
+                                                        <div className="flex items-center gap-2">
+                                                            <CheckCircle className="w-4 h-4 text-green-600" />
+                                                            <span>Approved</span>
+                                                        </div>
+                                                    </SelectItem>
+                                                    <SelectItem value="Rejected">
+                                                        <div className="flex items-center gap-2">
+                                                            <XCircle className="w-4 h-4 text-red-600" />
+                                                            <span>Rejected</span>
+                                                        </div>
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
                                         </td>
                                         <td className="p-3 hidden lg:table-cell text-sm text-muted-foreground">
                                             {new Date(quotation.createdAt).toLocaleDateString('en-IN')}
