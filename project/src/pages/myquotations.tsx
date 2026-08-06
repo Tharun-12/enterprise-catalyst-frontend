@@ -198,7 +198,7 @@ export function MyQuotations() {
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="space-y-2">
                       <div className="flex items-center gap-3 flex-wrap">
-                        <h3 className="text-lg font-semibold">{quotation.quotation_no}</h3>
+                        {/* <h3 className="text-lg font-semibold">{quotation.quotation_no}</h3> */}
                         {getStatusBadge(quotation.status)}
                       </div>
                       <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
@@ -231,7 +231,7 @@ export function MyQuotations() {
                           {formatCurrency(quotation.grand_total)}
                         </div>
                       </div>
-                      <Button
+                      {/* <Button
                         onClick={() => {
                           setSelectedQuotation(quotation);
                           setIsDetailOpen(true);
@@ -240,7 +240,7 @@ export function MyQuotations() {
                       >
                         <Eye className="w-4 h-4 mr-2" />
                         View Details
-                      </Button>
+                      </Button> */}
                     </div>
                   </div>
 

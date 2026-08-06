@@ -194,7 +194,7 @@ export function QuotationPage() {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                   <div>
                     <div className="flex items-center gap-3">
-                      <h3 className="text-lg font-semibold">{quotation.quotation_no}</h3>
+                      {/* <h3 className="text-lg font-semibold">{quotation.quotation_no}</h3> */}
                       <Badge variant={
                         quotation.status === 'Pending' ? 'default' : 
                         quotation.status === 'Approved' ? 'secondary' : 'destructive'
