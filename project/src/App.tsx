@@ -10,6 +10,8 @@ import { ProductDetailsPage } from '@/pages/product-details';
 import { ComparePage } from '@/pages/compare';
 import { WishlistPage } from '@/pages/wishlist';
 import { QuotationPage } from '@/pages/quotation';
+import { MyQuotations } from '@/pages/myquotations';
+import { Profile } from '@/pages/profile';
 import { ContactPage } from '@/pages/contact';
 import { AboutPage } from '@/pages/about';
 import { NotFoundPage } from '@/pages/not-found';
@@ -74,9 +76,14 @@ export default function App() {
             <Route path="/compare" element={<ComparePage />} />
             <Route path="/wishlist" element={<WishlistPage />} />
             <Route path="/wishlist/quotation" element={<QuotationPage />} />
+            <Route path="/my-quotations" element={<MyQuotations />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="*" element={<NotFoundPage />} />
+
+
+
           </Route>
 
           {/* Admin routes */}

@@ -186,13 +186,13 @@ export function QuotationPage() {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                   <div>
                     <div className="flex items-center gap-3">
-                      <h3 className="text-lg font-semibold">{quotation.quotation_no}</h3>
+                      {/* <h3 className="text-lg font-semibold">{quotation.quotation_no}</h3>
                       <Badge variant={
                         quotation.status === 'Pending' ? 'default' : 
                         quotation.status === 'Approved' ? 'secondary' : 'destructive'
                       }>
                         {quotation.status}
-                      </Badge>
+                      </Badge> */}
                     </div>
                     <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
@@ -300,7 +300,7 @@ export function QuotationPage() {
                                     </span>
                                   </div>
                                 </div>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm w-full md:w-auto">
+                                {/* <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm w-full md:w-auto">
                                   <div className="bg-background/50 rounded-lg px-3 py-1.5 text-center">
                                     <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Price</p>
                                     <p className="font-semibold text-foreground">₹{parseFloat(detail.price).toFixed(2)}</p>
@@ -319,7 +319,7 @@ export function QuotationPage() {
                                     <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Subtotal</p>
                                     <p className="font-bold text-foreground">₹{parseFloat(detail.subtotal).toFixed(2)}</p>
                                   </div>
-                                </div>
+                                </div> */}
                               </div>
                             </div>
                           );
