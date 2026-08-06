@@ -22,6 +22,7 @@ interface QuotationDetail {
   quantity: number;
   price: string;
   discount: string;
+  discount_amount?: string; // Added for the calculated discount amount
   final_price: string;
   subtotal: string;
   created_at: string;
@@ -108,21 +109,28 @@ export function QuotationPage() {
     return totalDiscountPercent;
   };
 
-  // Calculate total discount in rupees
-  // const calculateTotalDiscountRupees = (quotation: Quotation) => {
-  //   if (!quotation.details || quotation.details.length === 0) return 0;
+  // Calculate total discount amount in rupees
+  const calculateTotalDiscountAmount = (quotation: Quotation) => {
+    if (!quotation.details || quotation.details.length === 0) return 0;
     
-  //   let totalDiscountAmount = 0;
+    let totalDiscountAmount = 0;
     
-  //   quotation.details.forEach(detail => {
-  //     const price = parseFloat(detail.price);
-  //     const discountPercent = parseFloat(detail.discount);
-  //     const discountAmount = (price * discountPercent) / 100;
-  //     totalDiscountAmount += discountAmount;
-  //   });
+    quotation.details.forEach(detail => {
+      const price = parseFloat(detail.price);
+      const discountPercent = parseFloat(detail.discount);
+      const discountAmount = (price * discountPercent) / 100;
+      totalDiscountAmount += discountAmount;
+    });
     
-  //   return totalDiscountAmount;
-  // };
+    return totalDiscountAmount;
+  };
+
+  // Calculate discount amount for a single product
+  const calculateProductDiscountAmount = (detail: QuotationDetail) => {
+    const price = parseFloat(detail.price);
+    const discountPercent = parseFloat(detail.discount);
+    return (price * discountPercent) / 100;
+  };
 
   if (loading) {
     return (
@@ -178,7 +186,7 @@ export function QuotationPage() {
         ) : (
           quotations.map((quotation) => {
             const discountPercentage = calculateTotalDiscountPercentage(quotation);
-            // const discountRupees = calculateTotalDiscountRupees(quotation);
+            const discountAmount = calculateTotalDiscountAmount(quotation);
             
             return (
               <Card key={quotation.id} className="p-6 hover:shadow-lg transition-shadow">
@@ -186,13 +194,13 @@ export function QuotationPage() {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                   <div>
                     <div className="flex items-center gap-3">
-                      {/* <h3 className="text-lg font-semibold">{quotation.quotation_no}</h3>
+                      <h3 className="text-lg font-semibold">{quotation.quotation_no}</h3>
                       <Badge variant={
                         quotation.status === 'Pending' ? 'default' : 
                         quotation.status === 'Approved' ? 'secondary' : 'destructive'
                       }>
                         {quotation.status}
-                      </Badge> */}
+                      </Badge>
                     </div>
                     <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
@@ -213,7 +221,7 @@ export function QuotationPage() {
                       <div className="text-sm space-y-1">
                         <p>Total Items: <span className="font-medium">{quotation.total_items}</span></p>
                         <p>Total Amount: <span className="font-medium">₹{parseFloat(quotation.total_amount).toFixed(2)}</span></p>
-                        <p>Total Discount: <span className="font-medium text-green-600">{discountPercentage.toFixed(1)}% off</span></p>
+                        <p>Total Discount: <span className="font-medium text-green-600">{discountPercentage.toFixed(1)}% off (₹{discountAmount.toFixed(2)})</span></p>
                       </div>
                       {quotation.remarks && (
                         <div className="mt-2 p-2 bg-muted/30 rounded text-sm">
@@ -277,8 +285,11 @@ export function QuotationPage() {
                     {expandedQuotation === quotation.id && (
                       <div className="mt-4 space-y-3 animate-in slide-in-from-top-2 duration-200">
                         {quotation.details.map((detail) => {
-                          // Calculate discount percentage for each product
+                          // Calculate discount amount for each product
                           const discountPercent = parseFloat(detail.discount);
+                          const discountAmount = calculateProductDiscountAmount(detail);
+                          const price = parseFloat(detail.price);
+                          const finalPrice = parseFloat(detail.final_price);
                           
                           return (
                             <div key={detail.id} className="bg-gradient-to-r from-muted/10 to-muted/5 rounded-xl p-4 border border-muted/20 hover:border-primary/30 transition-all hover:shadow-sm">
@@ -300,26 +311,28 @@ export function QuotationPage() {
                                     </span>
                                   </div>
                                 </div>
-                                {/* <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm w-full md:w-auto">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm w-full md:w-auto">
                                   <div className="bg-background/50 rounded-lg px-3 py-1.5 text-center">
                                     <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Price</p>
-                                    <p className="font-semibold text-foreground">₹{parseFloat(detail.price).toFixed(2)}</p>
+                                    <p className="font-semibold text-foreground">₹{price.toFixed(2)}</p>
                                   </div>
                                   {discountPercent > 0 && (
                                     <div className="bg-green-50 dark:bg-green-950/20 rounded-lg px-3 py-1.5 text-center">
                                       <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Discount</p>
-                                      <p className="font-semibold text-green-600 dark:text-green-400">{discountPercent}%</p>
+                                      <p className="font-semibold text-green-600 dark:text-green-400">
+                                        {discountPercent}% (₹{discountAmount.toFixed(2)})
+                                      </p>
                                     </div>
                                   )}
                                   <div className="bg-primary/5 rounded-lg px-3 py-1.5 text-center">
                                     <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Final Price</p>
-                                    <p className="font-semibold text-primary">₹{parseFloat(detail.final_price).toFixed(2)}</p>
+                                    <p className="font-semibold text-primary">₹{finalPrice.toFixed(2)}</p>
                                   </div>
                                   <div className="bg-muted/30 rounded-lg px-3 py-1.5 text-center">
                                     <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Subtotal</p>
                                     <p className="font-bold text-foreground">₹{parseFloat(detail.subtotal).toFixed(2)}</p>
                                   </div>
-                                </div> */}
+                                </div>
                               </div>
                             </div>
                           );

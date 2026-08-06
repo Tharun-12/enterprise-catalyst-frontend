@@ -1320,7 +1320,7 @@ import { useState, useEffect } from 'react';
 import { 
   Menu, Search, Heart, GitCompare, ChevronDown, Building2, 
   User, LogOut, Home, Package, Info, PhoneCall, ShoppingBag, 
-  LayoutGrid, Headphones, Truck, Award, Shield 
+  LayoutGrid, Headphones, Truck, Award, Shield, FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1336,7 +1336,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { NAV_LINKS } from '@/constants';
 import { useApp } from '@/hooks/use-app';
-// import { products } from '@/data';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useSettings } from '@/hooks/use-settings';
@@ -1353,7 +1352,7 @@ interface UserSession {
   loginTime: string;
 }
 
-// Map of icons for navigation links - ICONS ARE ALWAYS VISIBLE
+// Map of icons for navigation links
 const navIcons: Record<string, React.ReactNode> = {
   '/': <Home className="w-4 h-4 flex-shrink-0" />,
   '/products': <Package className="w-4 h-4 flex-shrink-0" />,
@@ -1371,7 +1370,6 @@ export function CustomerHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  // REMOVED: const [showResults, setShowResults] = useState(false);
   const [user, setUser] = useState<UserSession | null>(null);
   const { wishlist, compareList } = useApp();
   const navigate = useNavigate();
@@ -1416,27 +1414,14 @@ export function CustomerHeader() {
     navigate('/');
   };
 
-  // const searchResults = searchQuery
-  //   ? products
-  //       .filter(
-  //         (p) =>
-  //           p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-  //           p.brandName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-  //           p.categoryName.toLowerCase().includes(searchQuery.toLowerCase())
-  //       )
-  //       .slice(0, 5)
-  //   : [];
-
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/products?search=${encodeURIComponent(searchQuery)}`);
-      // REMOVED: setShowResults(false);
       setSearchQuery('');
     }
   };
 
-  // Check if link is active
   const isActive = (path: string) => {
     if (path === '/') {
       return location.pathname === '/';
@@ -1483,7 +1468,7 @@ export function CustomerHeader() {
               </div>
             </Link>
 
-            {/* Navigation Links - Desktop - ICONS ALWAYS VISIBLE */}
+            {/* Navigation Links - Desktop */}
             <nav className="hidden lg:flex items-center gap-1">
               {NAV_LINKS.map((link) => {
                 const active = isActive(link.path);
@@ -1496,7 +1481,6 @@ export function CustomerHeader() {
                       active ? "bg-gray-50/50" : "hover:bg-gray-50"
                     )}
                   >
-                    {/* ICON - ALWAYS VISIBLE */}
                     <span className={cn(
                       "flex-shrink-0 transition-all duration-300",
                       active 
@@ -1505,8 +1489,6 @@ export function CustomerHeader() {
                     )}>
                       {navIcons[link.path] || <LayoutGrid className="w-4 h-4 flex-shrink-0" />}
                     </span>
-                    
-                    {/* TEXT - ALWAYS VISIBLE */}
                     <span className={cn(
                       "transition-all duration-300",
                       active 
@@ -1515,8 +1497,6 @@ export function CustomerHeader() {
                     )}>
                       {link.label}
                     </span>
-                    
-                    {/* Active indicator - only for active link */}
                     {active && (
                       <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 rounded-full"></span>
                     )}
@@ -1573,10 +1553,20 @@ export function CustomerHeader() {
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
+                    
+                    {/* My Profile */}
                     <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer hover:bg-gradient-to-r hover:from-pink-50 hover:via-orange-50 hover:to-blue-50">
                       <User className="w-4 h-4 mr-2" />
                       My Profile
                     </DropdownMenuItem>
+                    
+                    {/* My Quotations - NEW ITEM BELOW MY PROFILE */}
+                    <DropdownMenuItem onClick={() => navigate('/my-quotations')} className="cursor-pointer hover:bg-gradient-to-r hover:from-pink-50 hover:via-orange-50 hover:to-blue-50">
+                      <FileText className="w-4 h-4 mr-2" />
+                      My Quotations
+                    </DropdownMenuItem>
+                    
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 hover:bg-red-50 focus:text-red-600">
                       <LogOut className="w-4 h-4 mr-2" />
                       Logout
@@ -1641,6 +1631,16 @@ export function CustomerHeader() {
                           <div className="text-xs text-gray-500 truncate">{user.email}</div>
                         </div>
                       </button>
+                      
+                      {/* My Quotations in mobile menu */}
+                      <button
+                        onClick={() => { setMobileOpen(false); navigate('/my-quotations'); }}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gradient-to-r hover:from-pink-50 hover:via-orange-50 hover:to-blue-50 transition-colors duration-300"
+                      >
+                        <FileText className="w-4 h-4" />
+                        My Quotations
+                      </button>
+                      
                       <button
                         onClick={() => { setMobileOpen(false); handleLogout(); }}
                         className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors duration-300"
@@ -1667,7 +1667,6 @@ export function CustomerHeader() {
                     </div>
                   </form>
                   
-                  {/* Mobile Navigation - ICONS ALWAYS VISIBLE */}
                   <nav className="flex flex-col gap-1">
                     {NAV_LINKS.map((link) => {
                       const active = isActive(link.path);
@@ -1681,7 +1680,6 @@ export function CustomerHeader() {
                             active ? "bg-gray-50" : "hover:bg-gray-50"
                           )}
                         >
-                          {/* ICON - ALWAYS VISIBLE in mobile */}
                           <span className={cn(
                             "flex-shrink-0 transition-all duration-300",
                             active 
@@ -1690,8 +1688,6 @@ export function CustomerHeader() {
                           )}>
                             {navIcons[link.path] || <LayoutGrid className="w-4 h-4 flex-shrink-0" />}
                           </span>
-                          
-                          {/* TEXT - ALWAYS VISIBLE in mobile */}
                           <span className={cn(
                             "transition-all duration-300",
                             active 

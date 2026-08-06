@@ -71,7 +71,7 @@ export const NAV_LINKS = [
   { label: 'Home', path: '/' },
   { label: 'Categories', path: '/categories' },
   { label: 'Products', path: '/products' },
-   { label: 'Quotations', path: '/my-quotations' }, 
+  //  { label: 'Quotations', path: '/my-quotations' }, 
   // { label: 'Compare', path: '/compare' },
   // { label: 'Wishlist', path: '/wishlist' },
   { label: 'About', path: '/about' },

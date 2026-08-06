@@ -471,7 +471,7 @@ export function ProductDetailsPage() {
     setZoomPos({ x, y });
   };
 
-  const handleSingleQuotation = async () => {
+ const handleSingleQuotation = async () => {
     if (!product) return;
 
     const userId = getUserId();
