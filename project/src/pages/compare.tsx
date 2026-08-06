@@ -1,7 +1,7 @@
 // ComparePage.tsx - Fixed to allow comparing different types and show proper UI
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { X, GitCompare, Plus, ArrowRight, AlertCircle, Loader2, Check, Minus } from 'lucide-react';
+import { X, GitCompare, Plus, ArrowRight, AlertCircle, Loader2} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -74,7 +74,7 @@ export function ComparePage() {
   const { compareList, removeFromCompare, clearCompare } = useApp();
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showOnlyDifferences, setShowOnlyDifferences] = useState(false);
+  const [showOnlyDifferences, _setShowOnlyDifferences] = useState(false);
   const [relatedProducts, setRelatedProducts] = useState<ApiProduct[]>([]);
   const [_allProductsData, setAllProductsData] = useState<ApiProduct[]>([]);
 
@@ -420,7 +420,7 @@ export function ComparePage() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button
+          {/* <Button
             variant={showOnlyDifferences ? 'default' : 'outline'}
             size="sm"
             onClick={() => setShowOnlyDifferences(!showOnlyDifferences)}
@@ -428,7 +428,7 @@ export function ComparePage() {
           >
             {showOnlyDifferences ? <Check className="w-4 h-4 mr-1.5" /> : <Minus className="w-4 h-4 mr-1.5" />}
             Show only differences
-          </Button>
+          </Button> */}
           <Button variant="outline" size="sm" onClick={() => { clearCompare(); toast.success('Comparison cleared'); }}>
             <X className="w-4 h-4 mr-1.5" /> Clear All
           </Button>

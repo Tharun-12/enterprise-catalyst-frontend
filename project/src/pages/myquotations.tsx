@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, FileText, Calendar, User, Mail, Phone, Package, DollarSign, Percent, CheckCircle, Clock, XCircle, ArrowLeft, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { FileText, Calendar, User, Mail, Phone, Package, CheckCircle, Clock, XCircle, ChevronDown, ChevronUp, Loader, Percent } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -46,7 +46,7 @@ interface Quotation {
 export function MyQuotations() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
+  const [selectedQuotation, _setSelectedQuotation] = useState<Quotation | null>(null); // Keep this if you're using it in the dialog
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [expandedQuotation, setExpandedQuotation] = useState<number | null>(null);
   const navigate = useNavigate();
@@ -131,7 +131,7 @@ export function MyQuotations() {
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
+            <Loader className="w-12 h-12 animate-spin text-primary mx-auto" />
             <p className="mt-4 text-muted-foreground">Loading quotations...</p>
           </div>
         </div>
@@ -198,7 +198,6 @@ export function MyQuotations() {
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="space-y-2">
                       <div className="flex items-center gap-3 flex-wrap">
-                        {/* <h3 className="text-lg font-semibold">{quotation.quotation_no}</h3> */}
                         {getStatusBadge(quotation.status)}
                       </div>
                       <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
@@ -231,16 +230,6 @@ export function MyQuotations() {
                           {formatCurrency(quotation.grand_total)}
                         </div>
                       </div>
-                      {/* <Button
-                        onClick={() => {
-                          setSelectedQuotation(quotation);
-                          setIsDetailOpen(true);
-                        }}
-                        className="bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 text-white"
-                      >
-                        <Eye className="w-4 h-4 mr-2" />
-                        View Details
-                      </Button> */}
                     </div>
                   </div>
 
@@ -311,8 +300,6 @@ export function MyQuotations() {
                         <div className="mt-4 space-y-3 animate-in slide-in-from-top-2 duration-200">
                           {quotation.details.map((detail) => {
                             const discountAmount = calculateProductDiscountAmount(detail);
-                            const price = parseFloat(detail.price);
-                            const finalPrice = parseFloat(detail.final_price);
                             
                             return (
                               <div key={detail.id} className="bg-gradient-to-r from-muted/10 to-muted/5 rounded-xl p-4 border border-muted/20 hover:border-primary/30 transition-all hover:shadow-sm">
