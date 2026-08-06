@@ -1574,21 +1574,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (result.success) {
         setWishlist([]);
         setWishlistProducts([]);
-        toast.success('Wishlist cleared', {
-          duration: 3000,
-          position: 'top-right',
-          style: {
-            background: '#10B981',
-            color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '500',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            marginTop: '70px',
-          },
-        });
+        // toast.success('Wishlist cleared', {
+        //   duration: 3000,
+        //   position: 'top-right',
+        //   style: {
+        //     background: '#10B981',
+        //     color: 'white',
+        //     border: 'none',
+        //     padding: '12px 24px',
+        //     borderRadius: '8px',
+        //     fontSize: '14px',
+        //     fontWeight: '500',
+        //     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        //     marginTop: '70px',
+        //   },
+        // });
       } else {
         toast.error(result.message || 'Failed to clear wishlist', {
           duration: 3000,
