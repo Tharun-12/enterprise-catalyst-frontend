@@ -1184,10 +1184,8 @@ export function ComparePage() {
           >
             {showOnlyDifferences ? <Check className="w-4 h-4 mr-1.5" /> : <Minus className="w-4 h-4 mr-1.5" />}
             Show only differences
-<<<<<<< HEAD
           </Button> */}
           <Button variant="outline" size="sm" onClick={() => { clearCompare(); toast.success('Comparison cleared'); }}>
-=======
           </Button>
           <Button variant="outline" size="sm" onClick={() => { 
             clearCompare(); 
@@ -1208,7 +1206,6 @@ export function ComparePage() {
               },
             });
           }}>
->>>>>>> 9b9336174f8e780ab80d929ad8e79c318d1b1bc5
             <X className="w-4 h-4 mr-1.5" /> Clear All
           </Button>
         </div>
