@@ -43,14 +43,21 @@ interface Specialization {
 interface FormData {
     product_name: string;
     product_code: string;
-    price: string;
+    min_price: string;
+    max_price: string;
     discount: string;
     product_description: string;
     warranty: string;
     product_details_pdf: File | null;
     existing_pdf?: string;
-    product_series: string;
     product_type: string;
+    conductor_type: string;
+    cable_od: string;
+    jacket_material: string;
+    bandwidth: string;
+    operating_temperature: string;
+    poe_support: string;
+    product_series: string; // Moved to specifications
 }
 
 interface Variant {
@@ -89,14 +96,21 @@ const ProductForm = () => {
     const [formData, setFormData] = useState<FormData>({
         product_name: '',
         product_code: '',
-        price: '',
+        min_price: '',
+        max_price: '',
         discount: '0',
         product_description: '',
         warranty: '',
         product_details_pdf: null,
         existing_pdf: '',
-        product_series: '',
-        product_type: ''
+        product_type: '',
+        conductor_type: '',
+        cable_od: '',
+        jacket_material: '',
+        bandwidth: '',
+        operating_temperature: '',
+        poe_support: '',
+        product_series: '' // Moved to specifications
     });
 
     // Variants State
@@ -153,8 +167,6 @@ const ProductForm = () => {
         }
     }, [id]);
 
-    // REMOVED: Filter brands and specs when category changes (no longer needed for main form)
-
     // Extract spec types from specializations for comparison dropdown
     useEffect(() => {
         const types = specializations.map((spec: Specialization) => spec.spec_name);
@@ -185,7 +197,7 @@ const ProductForm = () => {
 
     const fetchSpecializations = async (): Promise<void> => {
         try {
-            const response = await axios.get(`${API_URL}/api/specializations/`);
+            const response = await axios.get(`${API_URL}/api/specifications/`);
             if (response.data.success) {
                 setSpecializations(response.data.data);
                 const types = response.data.data.map((spec: Specialization) => spec.spec_name);
@@ -205,14 +217,21 @@ const ProductForm = () => {
             setFormData({
                 product_name: productData.product_name || '',
                 product_code: productData.product_code || '',
-                price: productData.price || '',
+                min_price: productData.min_price || '',
+                max_price: productData.max_price || '',
                 discount: productData.discount || '0',
                 product_description: productData.product_description || '',
                 warranty: productData.warranty || '',
                 product_details_pdf: null,
                 existing_pdf: productData.product_details_pdf || '',
-                product_series: productData.product_series || '',
-                product_type: productData.product_type || ''
+                product_type: productData.product_type || '',
+                conductor_type: productData.conductor_type || '',
+                cable_od: productData.cable_od || '',
+                jacket_material: productData.jacket_material || '',
+                bandwidth: productData.bandwidth || '',
+                operating_temperature: productData.operating_temperature || '',
+                poe_support: productData.poe_support || '',
+                product_series: productData.product_series || ''
             });
 
             if (productData.variants && Array.isArray(productData.variants)) {
@@ -448,10 +467,21 @@ const ProductForm = () => {
         }
     };
 
-    // Get filtered brands by category
-    const getFilteredBrandsByCategory = (categoryId: string) => {
-        if (!categoryId) return brands;
-        return brands.filter(brand => brand.category_id === parseInt(categoryId));
+    // Get filtered brands by category - FIXED: Only show brands that exist in the color_brand_mapping for the selected spec
+    const getFilteredBrandsByCategory = (categoryId: string, specType: string, color: string) => {
+        if (!categoryId || !specType || !color) return [];
+        
+        // Find the specialization that matches the category and spec type
+        const spec = specializations.find(
+            s => s.category_id === parseInt(categoryId) && s.spec_name === specType
+        );
+        
+        if (spec && spec.color_brand_mapping && spec.color_brand_mapping[color]) {
+            // Return only the brands that are mapped to this color in the specialization
+            return spec.color_brand_mapping[color];
+        }
+        
+        return [];
     };
 
     // Get filtered specs for variant based on selected category
@@ -472,18 +502,6 @@ const ProductForm = () => {
         return [];
     };
 
-    // Get brands for a specific color from spec
-    // const getBrandsForColor = (specName: string, categoryId: string, color: string) => {
-    //     if (!specName || !categoryId || !color) return [];
-    //     const spec = specializations.find(
-    //         s => s.spec_name === specName && s.category_id === parseInt(categoryId)
-    //     );
-    //     if (spec && spec.color_brand_mapping && spec.color_brand_mapping[color]) {
-    //         return spec.color_brand_mapping[color];
-    //     }
-    //     return [];
-    // };
-
     const getImageUrl = (imagePath: string): string => {
         if (!imagePath) return '';
         if (imagePath.startsWith('http')) return imagePath;
@@ -498,7 +516,7 @@ const ProductForm = () => {
     };
 
     // ============================================
-    // SUBMIT HANDLER - UPDATED WITH PRODUCT_CODE
+    // SUBMIT HANDLER
     // ============================================
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
         e.preventDefault();
@@ -513,25 +531,29 @@ const ProductForm = () => {
         try {
             let productId: number;
 
-            // Get category and brand from the first variant if available
             const firstVariant = variants.length > 0 ? variants[0] : null;
             const categoryId = firstVariant?.category || '';
             const brand = firstVariant?.brand || '';
 
             if (isEditMode) {
-                // Update product
                 const productFormData = new FormData();
                 
-                // Add all form fields including product_code
                 const formFields = {
                     product_name: formData.product_name,
                     product_code: formData.product_code,
-                    price: formData.price,
+                    min_price: formData.min_price,
+                    max_price: formData.max_price,
                     discount: formData.discount,
                     product_description: formData.product_description,
                     warranty: formData.warranty,
-                    product_series: formData.product_series,
-                    product_type: formData.product_type
+                    product_type: formData.product_type,
+                    conductor_type: formData.conductor_type,
+                    cable_od: formData.cable_od,
+                    jacket_material: formData.jacket_material,
+                    bandwidth: formData.bandwidth,
+                    operating_temperature: formData.operating_temperature,
+                    poe_support: formData.poe_support,
+                    product_series: formData.product_series
                 };
                 
                 Object.entries(formFields).forEach(([key, value]) => {
@@ -540,7 +562,6 @@ const ProductForm = () => {
                     }
                 });
                 
-                // Add category and brand from variant
                 if (categoryId) {
                     productFormData.append('product_category_id', categoryId);
                 }
@@ -548,7 +569,6 @@ const ProductForm = () => {
                     productFormData.append('product_brand', brand);
                 }
                 
-                // Handle PDF upload
                 if (formData.product_details_pdf) {
                     productFormData.append("product_details_pdf", formData.product_details_pdf);
                 } else if (formData.existing_pdf) {
@@ -564,24 +584,20 @@ const ProductForm = () => {
                 productId = parseInt(id!);
                 setSuccess("Product updated successfully.");
 
-                // Handle variants - Get existing variants
                 const existingVariantsResponse = await axios.get(`${API_URL}/api/products/variants/${productId}`);
                 const existingVariants = existingVariantsResponse.data;
                 const existingIds = existingVariants.map((v: any) => v.id);
                 const currentIds = variants.filter(v => v.id).map(v => v.id);
 
-                // Delete removed variants
                 for (const existingId of existingIds) {
                     if (!currentIds.includes(existingId)) {
                         await axios.delete(`${API_URL}/api/products/variants/${existingId}`);
                     }
                 }
 
-                // Update or create variants
                 for (const variant of variants) {
                     const variantData = new FormData();
                     
-                    // Append all variant fields explicitly
                     variantData.append('product_id', String(productId));
                     variantData.append('variant_name', variant.variant_name || '');
                     variantData.append('part_code', variant.part_code || '');
@@ -596,7 +612,6 @@ const ProductForm = () => {
                     variantData.append('datasheet_url', variant.datasheet_url || '');
                     variantData.append('stock', variant.stock || '100');
 
-                    // Append images if any
                     if (variant.images && variant.images.length > 0) {
                         variant.images.forEach(img => {
                             variantData.append('images', img);
@@ -619,7 +634,6 @@ const ProductForm = () => {
                     }
                 }
 
-                // Save spec comparisons
                 await axios.delete(`${API_URL}/api/products/spec-comparison/${productId}/all`);
                 for (const spec of specComparisons) {
                     await axios.post(`${API_URL}/api/products/spec-comparison`, {
@@ -633,19 +647,24 @@ const ProductForm = () => {
                 }
 
             } else {
-                // Create new product
                 const productFormData = new FormData();
                 
-                // Add all form fields including product_code
                 const formFields = {
                     product_name: formData.product_name,
                     product_code: formData.product_code,
-                    price: formData.price,
+                    min_price: formData.min_price,
+                    max_price: formData.max_price,
                     discount: formData.discount,
                     product_description: formData.product_description,
                     warranty: formData.warranty,
-                    product_series: formData.product_series,
-                    product_type: formData.product_type
+                    product_type: formData.product_type,
+                    conductor_type: formData.conductor_type,
+                    cable_od: formData.cable_od,
+                    jacket_material: formData.jacket_material,
+                    bandwidth: formData.bandwidth,
+                    operating_temperature: formData.operating_temperature,
+                    poe_support: formData.poe_support,
+                    product_series: formData.product_series
                 };
                 
                 Object.entries(formFields).forEach(([key, value]) => {
@@ -654,7 +673,6 @@ const ProductForm = () => {
                     }
                 });
                 
-                // Add category and brand from variant
                 if (categoryId) {
                     productFormData.append('product_category_id', categoryId);
                 }
@@ -662,7 +680,6 @@ const ProductForm = () => {
                     productFormData.append('product_brand', brand);
                 }
 
-                // Handle PDF upload
                 if (formData.product_details_pdf) {
                     productFormData.append("product_details_pdf", formData.product_details_pdf);
                 }
@@ -675,11 +692,9 @@ const ProductForm = () => {
 
                 productId = productResponse.data.id;
 
-                // Create variants
                 for (const variant of variants) {
                     const variantData = new FormData();
                     
-                    // Append all variant fields explicitly
                     variantData.append('product_id', String(productId));
                     variantData.append('variant_name', variant.variant_name || '');
                     variantData.append('part_code', variant.part_code || '');
@@ -694,7 +709,6 @@ const ProductForm = () => {
                     variantData.append('datasheet_url', variant.datasheet_url || '');
                     variantData.append('stock', variant.stock || '100');
 
-                    // Append images if any
                     if (variant.images && variant.images.length > 0) {
                         variant.images.forEach(img => {
                             variantData.append('images', img);
@@ -708,7 +722,6 @@ const ProductForm = () => {
                     );
                 }
 
-                // Save spec comparisons
                 for (const spec of specComparisons) {
                     await axios.post(`${API_URL}/api/products/spec-comparison`, {
                         product_id: productId,
@@ -786,7 +799,6 @@ const ProductForm = () => {
                                 required
                                 placeholder="e.g., CPC3312-01M001"
                             />
-                            <small>Enter a unique product code</small>
                         </div>
 
                         <div className="form-group">
@@ -798,18 +810,6 @@ const ProductForm = () => {
                                 value={formData.product_type}
                                 onChange={handleInputChange}
                                 placeholder="e.g., Patch Cord, Cable, Panel"
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label htmlFor="product_series">Product Series</label>
-                            <input
-                                type="text"
-                                id="product_series"
-                                name="product_series"
-                                value={formData.product_series}
-                                onChange={handleInputChange}
-                                placeholder="e.g., GigaSPEED X10D"
                             />
                         </div>
 
@@ -839,18 +839,31 @@ const ProductForm = () => {
                         </div>
 
                         <div className="form-group">
-                            <label htmlFor="price">Price (INR) *</label>
+                            <label htmlFor="min_price">Min Price (INR) *</label>
                             <input
                                 type="number"
-                                id="price"
-                                name="price"
-                                value={formData.price}
+                                id="min_price"
+                                name="min_price"
+                                value={formData.min_price}
                                 onChange={handleInputChange}
                                 required
                                 step="0.01"
                                 placeholder="0.00"
                             />
-                            <small>For Discounts reach us out @ sales</small>
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="max_price">Max Price (INR) *</label>
+                            <input
+                                type="number"
+                                id="max_price"
+                                name="max_price"
+                                value={formData.max_price}
+                                onChange={handleInputChange}
+                                required
+                                step="0.01"
+                                placeholder="0.00"
+                            />
                         </div>
 
                         <div className="form-group">
@@ -877,7 +890,6 @@ const ProductForm = () => {
                                 onChange={handleFileChange}
                                 accept=".pdf"
                             />
-                            <small className="file-hint">Upload product datasheet PDF (max 5MB)</small>
                             {isEditMode && formData.existing_pdf && (
                                 <div className="file-existing-container">
                                     <FileText className="file-icon" size={16} />
@@ -897,6 +909,98 @@ const ProductForm = () => {
                                     </a>
                                 </div>
                             )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* ============================================
+                    PRODUCT SPECIFICATIONS SECTION - TEXT INPUTS
+                    ============================================ */}
+                <div className="form-section">
+                    <h3>Product Specifications</h3>
+                    <div className="form-grid">
+                        <div className="form-group">
+                            <label htmlFor="product_series">Product Series</label>
+                            <input
+                                type="text"
+                                id="product_series"
+                                name="product_series"
+                                value={formData.product_series}
+                                onChange={handleInputChange}
+                                placeholder="e.g., GigaSPEED X10D, NETCONNECT"
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="conductor_type">Conductor Type</label>
+                            <input
+                                type="text"
+                                id="conductor_type"
+                                name="conductor_type"
+                                value={formData.conductor_type}
+                                onChange={handleInputChange}
+                                placeholder="e.g., 24 AWG Solid"
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="cable_od">Cable OD</label>
+                            <input
+                                type="text"
+                                id="cable_od"
+                                name="cable_od"
+                                value={formData.cable_od}
+                                onChange={handleInputChange}
+                                placeholder="e.g., 7.24 mm"
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="jacket_material">Jacket Material</label>
+                            <input
+                                type="text"
+                                id="jacket_material"
+                                name="jacket_material"
+                                value={formData.jacket_material}
+                                onChange={handleInputChange}
+                                placeholder="e.g., PVC, LSZH"
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="bandwidth">Bandwidth</label>
+                            <input
+                                type="text"
+                                id="bandwidth"
+                                name="bandwidth"
+                                value={formData.bandwidth}
+                                onChange={handleInputChange}
+                                placeholder="e.g., 500 MHz"
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="operating_temperature">Operating Temperature</label>
+                            <input
+                                type="text"
+                                id="operating_temperature"
+                                name="operating_temperature"
+                                value={formData.operating_temperature}
+                                onChange={handleInputChange}
+                                placeholder="e.g., -10°C to +60°C"
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="poe_support">PoE Support</label>
+                            <input
+                                type="text"
+                                id="poe_support"
+                                name="poe_support"
+                                value={formData.poe_support}
+                                onChange={handleInputChange}
+                                placeholder="e.g., IEEE 802.3bt Type 4 (90W)"
+                            />
                         </div>
                     </div>
                 </div>
@@ -984,6 +1088,7 @@ const ProductForm = () => {
                                     type="button"
                                     onClick={handleAddSpecComparison}
                                     className="btn btn-secondary"
+                                    style={{marginTop:"10px"}}
                                 >
                                     <Plus className="icon-sm" /> Add Spec Comparison
                                 </button>
@@ -1107,7 +1212,7 @@ const ProductForm = () => {
                                         <option value="">Select Spec Type</option>
                                         {getFilteredSpecsForVariant(currentVariant.category).map(spec => (
                                             <option key={spec.id} value={spec.spec_name}>
-                                                {spec.spec_name} - {spec.spec_value}
+                                                {spec.spec_name}
                                             </option>
                                         ))}
                                     </select>
@@ -1145,15 +1250,23 @@ const ProductForm = () => {
                                         required
                                     >
                                         <option value="">Select Brand</option>
-                                        {/* Show all brands from the selected category */}
-                                        {getFilteredBrandsByCategory(currentVariant.category).map((brand) => (
-                                            <option key={brand.id} value={brand.brand_name}>
-                                                {brand.brand_name}
+                                        {/* Only show brands from the color_brand_mapping */}
+                                        {getFilteredBrandsByCategory(
+                                            currentVariant.category, 
+                                            currentVariant.spec_type, 
+                                            currentVariant.color
+                                        ).map((brandName) => (
+                                            <option key={brandName} value={brandName}>
+                                                {brandName}
                                             </option>
                                         ))}
                                     </select>
-                                    {getFilteredBrandsByCategory(currentVariant.category).length === 0 && currentVariant.category && (
-                                        <small className="text-gray-500">No brands available for this category</small>
+                                    {getFilteredBrandsByCategory(
+                                        currentVariant.category, 
+                                        currentVariant.spec_type, 
+                                        currentVariant.color
+                                    ).length === 0 && currentVariant.category && currentVariant.spec_type && currentVariant.color && (
+                                        <small className="text-gray-500">No brands available for this color</small>
                                     )}
                                 </div>
 

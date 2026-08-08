@@ -1,4 +1,4 @@
-// src/components/admin/SpecializationForm.tsx
+// src/components/admin/SpecificationsForm.tsx
 import { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, X, Plus, Trash2 } from 'lucide-react';
@@ -29,16 +29,15 @@ interface ColorBrandMapping {
   [color: string]: string[];
 }
 
-interface SpecializationData {
+interface SpecificationData {
   category_id: string;
   spec_name: string;
-  spec_value: string;
   color_brand_mapping: ColorBrandMapping;
 }
 
-interface SpecializationResponse {
+interface SpecificationResponse {
   success: boolean;
-  data: SpecializationData & { category_name?: string };
+  data: SpecificationData & { category_name?: string };
 }
 
 interface CategoriesResponse {
@@ -65,10 +64,9 @@ export function SpecificationsForm() {
   const [filteredBrands, setFilteredBrands] = useState<Brand[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState<boolean>(false);
   const [_isLoadingBrands, setIsLoadingBrands] = useState<boolean>(false);
-  const [formData, setFormData] = useState<SpecializationData>({
+  const [formData, setFormData] = useState<SpecificationData>({
     category_id: '',
     spec_name: '',
-    spec_value: '',
     color_brand_mapping: {},
   });
 
@@ -84,16 +82,15 @@ export function SpecificationsForm() {
     fetchBrands();
   }, []);
 
-  // Load specialization data if editing
+  // Load specification data if editing
   useEffect(() => {
     if (id) {
-      fetchSpecialization(id);
+      fetchSpecification(id);
     } else {
       setIsEditing(false);
       setFormData({
         category_id: '',
         spec_name: '',
-        spec_value: '',
         color_brand_mapping: {},
       });
     }
@@ -141,10 +138,10 @@ export function SpecificationsForm() {
     }
   };
 
-  const fetchSpecialization = async (specId: string): Promise<void> => {
+  const fetchSpecification = async (specId: string): Promise<void> => {
     try {
       setIsLoading(true);
-      const response = await axios.get<SpecializationResponse>(`${API_URL}/specializations/${specId}`);
+      const response = await axios.get<SpecificationResponse>(`${API_URL}/specifications/${specId}`);
       
       if (response.data.success) {
         const spec = response.data.data;
@@ -152,16 +149,15 @@ export function SpecificationsForm() {
         setFormData({
           category_id: spec.category_id || '',
           spec_name: spec.spec_name || '',
-          spec_value: spec.spec_value || '',
           color_brand_mapping: spec.color_brand_mapping || {},
         });
       } else {
-        toast.error('Specialization not found');
+        toast.error('Specification not found');
         navigate('/admin/specifications');
       }
     } catch (error) {
-      console.error('Error fetching specialization:', error);
-      toast.error('Failed to load specialization data');
+      console.error('Error fetching specification:', error);
+      toast.error('Failed to load specification data');
       navigate('/admin/specifications');
     } finally {
       setIsLoading(false);
@@ -170,14 +166,14 @@ export function SpecificationsForm() {
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
-    setFormData((prev: SpecializationData) => ({
+    setFormData((prev: SpecificationData) => ({
       ...prev,
       [name]: value
     }));
   };
 
   const handleSelectChange = (value: string): void => {
-    setFormData((prev: SpecializationData) => ({
+    setFormData((prev: SpecificationData) => ({
       ...prev,
       category_id: value
     }));
@@ -193,7 +189,7 @@ export function SpecificationsForm() {
       toast.error('Color already exists');
       return;
     }
-    setFormData((prev: SpecializationData) => ({
+    setFormData((prev: SpecificationData) => ({
       ...prev,
       color_brand_mapping: {
         ...prev.color_brand_mapping,
@@ -206,7 +202,7 @@ export function SpecificationsForm() {
   const handleRemoveColor = (color: string): void => {
     const newMapping = { ...formData.color_brand_mapping };
     delete newMapping[color];
-    setFormData((prev: SpecializationData) => ({
+    setFormData((prev: SpecificationData) => ({
       ...prev,
       color_brand_mapping: newMapping
     }));
@@ -237,7 +233,7 @@ export function SpecificationsForm() {
       return;
     }
     
-    setFormData((prev: SpecializationData) => ({
+    setFormData((prev: SpecificationData) => ({
       ...prev,
       color_brand_mapping: {
         ...prev.color_brand_mapping,
@@ -250,7 +246,7 @@ export function SpecificationsForm() {
 
   const handleRemoveBrandFromColor = (color: string, brand: string): void => {
     const currentBrands = formData.color_brand_mapping[color] || [];
-    setFormData((prev: SpecializationData) => ({
+    setFormData((prev: SpecificationData) => ({
       ...prev,
       color_brand_mapping: {
         ...prev.color_brand_mapping,
@@ -262,6 +258,7 @@ export function SpecificationsForm() {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     
+    // Validate required fields
     if (!formData.category_id) {
       toast.error('Please select a category');
       return;
@@ -270,10 +267,6 @@ export function SpecificationsForm() {
       toast.error('Specification name is required');
       return;
     }
-    // if (!formData.spec_value.trim()) {
-    //   toast.error('Specification value is required');
-    //   return;
-    // }
     
     const colors = Object.keys(formData.color_brand_mapping);
     if (colors.length === 0) {
@@ -298,19 +291,20 @@ export function SpecificationsForm() {
 
     try {
       const submitData = {
-        ...formData,
-        category_id: parseInt(formData.category_id)
+        category_id: parseInt(formData.category_id),
+        spec_name: formData.spec_name.trim(),
+        color_brand_mapping: formData.color_brand_mapping
       };
 
       if (isEditing) {
-        const response = await axios.put<SpecializationResponse>(`${API_URL}/specializations/${id}`, submitData);
+        const response = await axios.put<SpecificationResponse>(`${API_URL}/specifications/${id}`, submitData);
         if (response.data.success) {
-          toast.success('Specialization updated successfully!');
+          toast.success('Specification updated successfully!');
         }
       } else {
-        const response = await axios.post<SpecializationResponse>(`${API_URL}/specializations`, submitData);
+        const response = await axios.post<SpecificationResponse>(`${API_URL}/specifications`, submitData);
         if (response.data.success) {
-          toast.success('Specialization created successfully!');
+          toast.success('Specification created successfully!');
         }
       }
       
@@ -325,10 +319,10 @@ export function SpecificationsForm() {
         if (axiosError.response?.data?.message) {
           toast.error(axiosError.response.data.message);
         } else {
-          toast.error(isEditing ? 'Failed to update specialization' : 'Failed to create specialization');
+          toast.error(isEditing ? 'Failed to update specification' : 'Failed to create specification');
         }
       } else {
-        toast.error(isEditing ? 'Failed to update specialization' : 'Failed to create specialization');
+        toast.error(isEditing ? 'Failed to update specification' : 'Failed to create specification');
       }
     } finally {
       setIsLoading(false);
@@ -353,10 +347,10 @@ export function SpecificationsForm() {
         </Button>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {isEditing ? 'Edit Specialization' : 'Add New Specialization'}
+            {isEditing ? 'Edit Specification' : 'Add New Specification'}
           </h1>
           <p className="text-sm text-gray-500">
-            {isEditing ? 'Update specialization information' : 'Create a new product specialization'}
+            {isEditing ? 'Update specification information' : 'Create a new product specification'}
           </p>
         </div>
       </div>
@@ -405,21 +399,6 @@ export function SpecificationsForm() {
                   disabled={isLoading}
                 />
               </div>
-
-              {/* <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="spec_value" className="text-sm font-medium text-gray-700">
-                  Specification Value 
-                </Label>
-                <Input
-                  id="spec_value"
-                  name="spec_value"
-                  value={formData.spec_value}
-                  onChange={handleChange}
-                  placeholder="e.g., CAT6, CAT6A, etc."
-                  className="w-full h-10 bg-white border-gray-200"
-                  disabled={isLoading}
-                />
-              </div> */}
             </div>
           </div>
 
@@ -509,13 +488,12 @@ export function SpecificationsForm() {
                       )}
                     </div>
 
-                    {/* Add brand to this color - Two column layout */}
+                    {/* Add brand to this color */}
                     <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                       <p className="text-xs font-medium text-gray-500 mb-2">Add brands to {color}:</p>
                       
-                      {/* Two column layout: Dropdown and Custom Input side by side */}
                       <div className="grid grid-cols-2 gap-2">
-                        {/* Select Brand Dropdown - Left Column */}
+                        {/* Select Brand Dropdown */}
                         <div className="flex gap-2">
                           <div className="flex-1">
                             <Select
@@ -554,7 +532,7 @@ export function SpecificationsForm() {
                           </Button>
                         </div>
 
-                        {/* Custom Brand Input - Right Column */}
+                        {/* Custom Brand Input */}
                         <div className="flex gap-2">
                           <div className="flex-1">
                             <Input
@@ -613,7 +591,7 @@ export function SpecificationsForm() {
               <Save className="h-4 w-4 mr-2" />
               {isLoading 
                 ? (isEditing ? 'Updating...' : 'Creating...') 
-                : (isEditing ? 'Update Specialization' : 'Create Specialization')
+                : (isEditing ? 'Update Specification' : 'Create Specification')
               }
             </Button>
           </div>
