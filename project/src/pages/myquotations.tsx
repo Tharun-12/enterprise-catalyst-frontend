@@ -55,6 +55,7 @@ export function MyQuotations() {
     fetchQuotations();
   }, []);
 
+
   const fetchQuotations = async () => {
     try {
       const session = localStorage.getItem('userSession');
