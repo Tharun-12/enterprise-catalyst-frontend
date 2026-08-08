@@ -33,7 +33,7 @@ import { AdminQuotations } from '@/pages/admin/quotation';
 import { QuotationView } from '@/pages/admin/quotationview-details';
 import { AdminInquiries } from '@/pages/admin/inquiries';
 import { AdminSettings } from '@/pages/admin/settings';
-import { BrandForm } from '@/pages/admin/brand-form';
+// import { BrandForm } from '@/pages/admin/brand-form';
 
 import { RegisterPage } from '@/pages/auth/Register';
 import { LoginPage } from '@/pages/auth/Login';
@@ -107,14 +107,14 @@ export default function App() {
             {/* <Route path="categories/add" element={<CategoryForm />} />
             <Route path="categories/add/:id" element={<CategoryForm />} /> */}
             <Route path="brands" element={<AdminBrands />} />
-            <Route path="brands/add" element={<BrandForm />} />
-            <Route path="brands/add/:id" element={<BrandForm />} />
+            {/* <Route path="brands/add" element={<BrandForm />} />
+            <Route path="brands/add/:id" element={<BrandForm />} /> */} 
 
 
 
             <Route path="specifications" element={<AdminSpecifications />} />
-            <Route path="specializations/add" element={<SpecificationsForm />} />
-            <Route path="specializations/edit/:id" element={<SpecificationsForm />} />
+            <Route path="specifications/add" element={<SpecificationsForm />} />
+            <Route path="specifications/edit/:id" element={<SpecificationsForm />} />
             <Route path="leads" element={<AdminLeads />} />
             <Route path="quotations" element={<AdminQuotations />} />
             <Route path="quotations/view/:id" element={<QuotationView />} />

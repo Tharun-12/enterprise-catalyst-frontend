@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+<<<<<<< HEAD
 import {   Calendar, User, Mail, Phone, Package, Percent, CheckCircle, Clock, XCircle, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+=======
+import { FileText, Calendar, User, Mail, Phone, Package, CheckCircle, Clock, XCircle, ChevronDown, ChevronUp, Loader, Percent } from 'lucide-react';
+>>>>>>> 2e8bc42c94c77e1fbacbe6adb321f5e1cc84919e
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -46,7 +50,11 @@ interface Quotation {
 export function MyQuotations() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
+<<<<<<< HEAD
   const [selectedQuotation, _setSelectedQuotation] = useState<Quotation | null>(null);
+=======
+  const [selectedQuotation, _setSelectedQuotation] = useState<Quotation | null>(null); // Keep this if you're using it in the dialog
+>>>>>>> 2e8bc42c94c77e1fbacbe6adb321f5e1cc84919e
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [expandedQuotation, setExpandedQuotation] = useState<number | null>(null);
   const navigate = useNavigate();
@@ -54,6 +62,7 @@ export function MyQuotations() {
   useEffect(() => {
     fetchQuotations();
   }, []);
+
 
   const fetchQuotations = async () => {
     try {
@@ -131,7 +140,7 @@ export function MyQuotations() {
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
+            <Loader className="w-12 h-12 animate-spin text-primary mx-auto" />
             <p className="mt-4 text-muted-foreground">Loading quotations...</p>
           </div>
         </div>
@@ -197,8 +206,12 @@ export function MyQuotations() {
                   {/* Quotation Header */}
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="space-y-2">
+<<<<<<< HEAD
                       {/* <div className="flex items-center gap-3 flex-wrap">
                         <h3 className="text-lg font-semibold">{quotation.quotation_no}</h3>
+=======
+                      <div className="flex items-center gap-3 flex-wrap">
+>>>>>>> 2e8bc42c94c77e1fbacbe6adb321f5e1cc84919e
                         {getStatusBadge(quotation.status)}
                       </div> */}
                       <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
@@ -230,6 +243,7 @@ export function MyQuotations() {
                         <div className="text-xl font-bold text-primary">
                           {formatCurrency(quotation.grand_total)}
                         </div>
+<<<<<<< HEAD
                       </div> */}
                       {/* <Button
                         onClick={() => {
@@ -241,6 +255,9 @@ export function MyQuotations() {
                         <Eye className="w-4 h-4 mr-2" />
                         View Details
                       </Button> */}
+=======
+                      </div>
+>>>>>>> 2e8bc42c94c77e1fbacbe6adb321f5e1cc84919e
                     </div>
                   </div>
 
@@ -310,9 +327,13 @@ export function MyQuotations() {
                       {expandedQuotation === quotation.id && (
                         <div className="mt-4 space-y-3 animate-in slide-in-from-top-2 duration-200">
                           {quotation.details.map((detail) => {
+<<<<<<< HEAD
                             // const discountAmount = calculateProductDiscountAmount(detail);
                             // const price = parseFloat(detail.price);
                             // const finalPrice = parseFloat(detail.final_price);
+=======
+                            const discountAmount = calculateProductDiscountAmount(detail);
+>>>>>>> 2e8bc42c94c77e1fbacbe6adb321f5e1cc84919e
                             
                             return (
                               <div key={detail.id} className="bg-gradient-to-r from-muted/10 to-muted/5 rounded-xl p-4 border border-muted/20 hover:border-primary/30 transition-all hover:shadow-sm">

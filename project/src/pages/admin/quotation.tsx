@@ -1,7 +1,11 @@
 // src/components/admin/AdminQuotations.tsx
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+<<<<<<< HEAD
 import { Search, Eye,  ChevronLeft, ChevronRight } from 'lucide-react';
+=======
+import { Search, Eye, CheckCircle, XCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+>>>>>>> 2e8bc42c94c77e1fbacbe6adb321f5e1cc84919e
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

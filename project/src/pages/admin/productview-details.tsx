@@ -220,12 +220,12 @@ export function ProductView() {
             <CardTitle>Pricing & Dimensions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex justify-between items-center py-2 border-b">
+            {/* <div className="flex justify-between items-center py-2 border-b">
               <span className="text-sm text-muted-foreground">Price</span>
               <span className="font-medium text-lg text-primary">
                 {formatCurrency(product.price)}
               </span>
-            </div>
+            </div> */}
             {parseFloat(product.discount) > 0 && (
               <div className="flex justify-between items-center py-2 border-b">
                 <span className="text-sm text-muted-foreground">Discount</span>

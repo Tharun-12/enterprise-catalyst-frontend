@@ -1,4 +1,4 @@
-// src/components/admin/AdminSpecializations.tsx
+// src/components/admin/AdminSpecifications.tsx
 import { useState, useEffect, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Edit, Trash2, Loader2, Search, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
@@ -19,20 +19,19 @@ interface Category {
   category_name: string;
 }
 
-interface Specialization {
+interface Specification {
   id: string;
   category_id: number;
   category_name?: string;
   spec_name: string;
-  spec_value: string;
   color_brand_mapping: { [key: string]: string[] };
   created_at?: string;
   updated_at?: string;
 }
 
-interface SpecializationsResponse {
+interface SpecificationsResponse {
   success: boolean;
-  data: Specialization[];
+  data: Specification[];
 }
 
 interface CategoriesResponse {
@@ -47,34 +46,35 @@ interface DeleteResponse {
 
 export function AdminSpecifications() {
   const navigate = useNavigate();
-  const [specializations, setSpecializations] = useState<Specialization[]>([]);
+  const [specifications, setSpecifications] = useState<Specification[]>([]);
   const [_categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
-  const [deleteTarget, setDeleteTarget] = useState<Specialization | null>(null);
-  const [viewingSpec, setViewingSpec] = useState<Specialization | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Specification | null>(null);
+  const [viewingSpec, setViewingSpec] = useState<Specification | null>(null);
 
   // Pagination and search
   const [search, setSearch] = useState<string>('');
   const [page, setPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
 
-  // Fetch specializations and categories
+  // Fetch specifications and categories
   useEffect(() => {
-    fetchSpecializations();
+    fetchSpecifications();
     fetchCategories();
   }, [page, pageSize]);
 
-  const fetchSpecializations = async (): Promise<void> => {
+  const fetchSpecifications = async (): Promise<void> => {
     try {
       setIsLoading(true);
-      const response = await axios.get<SpecializationsResponse>(`${API_URL}/specializations`);
+      // Use /specifications endpoint
+      const response = await axios.get<SpecificationsResponse>(`${API_URL}/specifications`);
       if (response.data.success) {
-        setSpecializations(response.data.data);
+        setSpecifications(response.data.data);
       }
     } catch (error) {
-      console.error('Error fetching specializations:', error);
-      toast.error('Failed to load specializations');
+      console.error('Error fetching specifications:', error);
+      toast.error('Failed to load specifications');
     } finally {
       setIsLoading(false);
     }
@@ -92,14 +92,13 @@ export function AdminSpecifications() {
     }
   };
 
-  // Filter specializations based on search
-  const filteredSpecs = specializations.filter((spec: Specialization) =>
+  // Filter specifications based on search
+  const filteredSpecs = specifications.filter((spec: Specification) =>
     spec.spec_name.toLowerCase().includes(search.toLowerCase()) ||
-    spec.spec_value.toLowerCase().includes(search.toLowerCase()) ||
     (spec.category_name && spec.category_name.toLowerCase().includes(search.toLowerCase()))
   );
 
-  // Paginate filtered specializations
+  // Paginate filtered specifications
   const paginatedSpecs = filteredSpecs.slice(
     (page - 1) * pageSize,
     page * pageSize
@@ -107,14 +106,14 @@ export function AdminSpecifications() {
 
   const totalPages = Math.ceil(filteredSpecs.length / pageSize);
 
-  // Navigate to add specialization page
+  // Navigate to add specification page
   const handleAddSpec = (): void => {
-    navigate('/admin/specializations/add');
+    navigate('/admin/specifications/add');
   };
 
-  // Navigate to edit specialization page
-  const handleEditSpec = (spec: Specialization): void => {
-    navigate(`/admin/specializations/edit/${spec.id}`);
+  // Navigate to edit specification page
+  const handleEditSpec = (spec: Specification): void => {
+    navigate(`/admin/specifications/edit/${spec.id}`);
   };
 
   const handleDelete = async (): Promise<void> => {
@@ -122,17 +121,17 @@ export function AdminSpecifications() {
     
     try {
       setIsDeleting(true);
-      const response = await axios.delete<DeleteResponse>(`${API_URL}/specializations/${deleteTarget.id}`);
+      const response = await axios.delete<DeleteResponse>(`${API_URL}/specifications/${deleteTarget.id}`);
       if (response.data.success) {
-        toast.success('Specialization deleted successfully');
-        await fetchSpecializations();
+        toast.success('Specification deleted successfully');
+        await fetchSpecifications();
         setDeleteTarget(null);
       } else {
-        toast.error(response.data.message || 'Failed to delete specialization');
+        toast.error(response.data.message || 'Failed to delete specification');
       }
     } catch (error) {
-      console.error('Error deleting specialization:', error);
-      toast.error('Failed to delete specialization');
+      console.error('Error deleting specification:', error);
+      toast.error('Failed to delete specification');
     } finally {
       setIsDeleting(false);
     }
@@ -144,8 +143,8 @@ export function AdminSpecifications() {
     setPage(1);
   };
 
-  // View specialization details
-  const handleViewSpec = (spec: Specialization): void => {
+  // View specification details
+  const handleViewSpec = (spec: Specification): void => {
     setViewingSpec(spec);
   };
 
@@ -154,7 +153,7 @@ export function AdminSpecifications() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-          <p className="mt-4 text-muted-foreground">Loading specializations...</p>
+          <p className="mt-4 text-muted-foreground">Loading specifications...</p>
         </div>
       </div>
     );
@@ -165,11 +164,11 @@ export function AdminSpecifications() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold">Specializations Management</h2>
+          <h2 className="text-lg font-semibold">Specifications Management</h2>
           <p className="text-sm text-muted-foreground">Manage product specifications, colors, and brands</p>
         </div>
         <Button onClick={handleAddSpec}>
-          <Plus className="w-4 h-4 mr-1.5" /> Add Specialization
+          <Plus className="w-4 h-4 mr-1.5" /> Add Specification
         </Button>
       </div>
 
@@ -178,7 +177,7 @@ export function AdminSpecifications() {
         <div className="relative w-full sm:w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input 
-            placeholder="Search specializations..." 
+            placeholder="Search specifications..." 
             className="pl-9 h-9" 
             value={search} 
             onChange={(e: ChangeEvent<HTMLInputElement>) => {
@@ -188,7 +187,7 @@ export function AdminSpecifications() {
           />
         </div>
         <div className="text-sm text-muted-foreground">
-          {filteredSpecs.length} specializations found
+          {filteredSpecs.length} specifications found
         </div>
       </div>
 
@@ -201,7 +200,6 @@ export function AdminSpecifications() {
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">#</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Category</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Spec Name</th>
-                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Spec Value</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Colors & Brands</th>
                 <th className="p-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
               </tr>
@@ -209,8 +207,8 @@ export function AdminSpecifications() {
             <tbody>
               {paginatedSpecs.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-muted-foreground">
-                    {search ? 'No specializations match your search.' : 'No specializations found. Click "Add Specialization" to create one.'}
+                  <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                    {search ? 'No specifications match your search.' : 'No specifications found. Click "Add Specification" to create one.'}
                   </td>
                 </tr>
               ) : (
@@ -224,9 +222,6 @@ export function AdminSpecifications() {
                     </td>
                     <td className="p-3">
                       <span className="font-medium">{spec.spec_name}</span>
-                    </td>
-                    <td className="p-3 hidden md:table-cell text-sm text-muted-foreground">
-                      {spec.spec_value}
                     </td>
                     <td className="p-3 hidden lg:table-cell">
                       <div className="flex flex-wrap gap-1">
@@ -290,7 +285,7 @@ export function AdminSpecifications() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t">
             <div className="flex items-center gap-4">
               <div className="text-sm text-muted-foreground">
-                Showing {((page - 1) * pageSize) + 1} - {Math.min(page * pageSize, filteredSpecs.length)} of {filteredSpecs.length} specializations
+                Showing {((page - 1) * pageSize) + 1} - {Math.min(page * pageSize, filteredSpecs.length)} of {filteredSpecs.length} specifications
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Show</span>
@@ -334,7 +329,7 @@ export function AdminSpecifications() {
       <Dialog open={!!deleteTarget} onOpenChange={(v: boolean) => !v && setDeleteTarget(null)}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle className="text-xl font-semibold text-gray-900">Delete Specialization</DialogTitle>
+            <DialogTitle className="text-xl font-semibold text-gray-900">Delete Specification</DialogTitle>
             <DialogDescription className="text-gray-600">
               Are you sure you want to delete "<span className="font-semibold text-gray-900">{deleteTarget?.spec_name}</span>"? 
               This action cannot be undone.
@@ -368,12 +363,12 @@ export function AdminSpecifications() {
         </DialogContent>
       </Dialog>
 
-      {/* View Specialization Dialog - Updated (removed patch_cord_sizes) */}
+      {/* View Specification Dialog */}
       <Dialog open={!!viewingSpec} onOpenChange={(v: boolean) => !v && setViewingSpec(null)}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-gray-900">
-              Specialization Details
+              Specification Details
             </DialogTitle>
             <DialogDescription className="text-gray-600">
               Complete details for {viewingSpec?.spec_name}
@@ -386,27 +381,40 @@ export function AdminSpecifications() {
                 <p className="text-sm text-gray-900 mt-1">{viewingSpec?.category_name || '—'}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Spec Name</p>
+                <p className="text-sm font-medium text-gray-500">Specification Name</p>
                 <p className="text-sm text-gray-900 mt-1">{viewingSpec?.spec_name || '—'}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Spec Value</p>
-                <p className="text-sm text-gray-900 mt-1">{viewingSpec?.spec_value || '—'}</p>
               </div>
               <div className="col-span-2">
                 <p className="text-sm font-medium text-gray-500">Colors & Brands</p>
-                <div className="mt-1 space-y-1">
+                <div className="mt-2 space-y-2">
                   {viewingSpec?.color_brand_mapping && Object.keys(viewingSpec.color_brand_mapping).length > 0 ? (
                     Object.keys(viewingSpec.color_brand_mapping).map((color) => (
-                      <div key={color} className="text-sm">
-                        <span className="font-medium">{color}:</span>{' '}
-                        {viewingSpec.color_brand_mapping[color]?.length > 0 
-                          ? viewingSpec.color_brand_mapping[color].join(', ')
-                          : 'No brands'}
+                      <div key={color} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span 
+                            className="w-4 h-4 rounded-full border border-gray-300"
+                            style={{ backgroundColor: color.toLowerCase() }}
+                          ></span>
+                          <span className="font-medium text-sm">{color}</span>
+                          <span className="text-xs text-gray-500">
+                            ({viewingSpec.color_brand_mapping[color]?.length || 0} brands)
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {viewingSpec.color_brand_mapping[color]?.length > 0 ? (
+                            viewingSpec.color_brand_mapping[color].map((brand, idx) => (
+                              <span key={idx} className="inline-flex px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium border border-blue-200">
+                                {brand}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-xs text-gray-400 italic">No brands</span>
+                          )}
+                        </div>
                       </div>
                     ))
                   ) : (
-                    <span className="text-sm text-gray-500">—</span>
+                    <span className="text-sm text-gray-500">No colors or brands configured</span>
                   )}
                 </div>
               </div>

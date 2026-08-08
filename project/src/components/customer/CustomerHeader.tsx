@@ -1315,6 +1315,418 @@
 // }
 
 
+
+
+
+// import { Link, useNavigate, useLocation } from 'react-router-dom';
+// import { useState, useEffect } from 'react';
+// import { 
+//   Menu, Search, Heart, GitCompare, ChevronDown, Building2, 
+//   User, LogOut, Home, Package, Info, PhoneCall, ShoppingBag, 
+//   LayoutGrid, Headphones, Truck, Award, Shield 
+// } from 'lucide-react';
+// import { Button } from '@/components/ui/button';
+// import { Input } from '@/components/ui/input';
+// import { Badge } from '@/components/ui/badge';
+// import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
+// import {
+//   DropdownMenu,
+//   DropdownMenuContent,
+//   DropdownMenuItem,
+//   DropdownMenuTrigger,
+//   DropdownMenuSeparator,
+//   DropdownMenuLabel,
+// } from '@/components/ui/dropdown-menu';
+// import { NAV_LINKS } from '@/constants';
+// import { useApp } from '@/hooks/use-app';
+// // import { products } from '@/data';
+// import { cn } from '@/lib/utils';
+// import { toast } from 'sonner';
+// import { useSettings } from '@/hooks/use-settings';
+
+// import logo from '@/asstes/mvblogo.png';
+// import { baseurl } from '@/Baseurl/baseurl';
+
+// interface UserSession {
+//   userId: number;
+//   name: string;
+//   email: string;
+//   mobile: string;
+//   loggedIn: boolean;
+//   loginTime: string;
+// }
+
+// // Map of icons for navigation links - ICONS ARE ALWAYS VISIBLE
+// const navIcons: Record<string, React.ReactNode> = {
+//   '/': <Home className="w-4 h-4 flex-shrink-0" />,
+//   '/products': <Package className="w-4 h-4 flex-shrink-0" />,
+//   '/about': <Info className="w-4 h-4 flex-shrink-0" />,
+//   '/contact': <PhoneCall className="w-4 h-4 flex-shrink-0" />,
+//   '/brands': <LayoutGrid className="w-4 h-4 flex-shrink-0" />,
+//   '/services': <Headphones className="w-4 h-4 flex-shrink-0" />,
+//   '/shipping': <Truck className="w-4 h-4 flex-shrink-0" />,
+//   '/warranty': <Award className="w-4 h-4 flex-shrink-0" />,
+//   '/guarantee': <Shield className="w-4 h-4 flex-shrink-0" />,
+//   '/shop': <ShoppingBag className="w-4 h-4 flex-shrink-0" />,
+// };
+
+// export function CustomerHeader() {
+//   const [scrolled, setScrolled] = useState(false);
+//   const [mobileOpen, setMobileOpen] = useState(false);
+//   const [searchQuery, setSearchQuery] = useState('');
+//   // REMOVED: const [showResults, setShowResults] = useState(false);
+//   const [user, setUser] = useState<UserSession | null>(null);
+//   const { wishlist, compareList } = useApp();
+//   const navigate = useNavigate();
+//   const location = useLocation();
+//   const { settings } = useSettings();
+
+//   useEffect(() => {
+//     const onScroll = () => setScrolled(window.scrollY > 20);
+//     window.addEventListener('scroll', onScroll);
+//     return () => window.removeEventListener('scroll', onScroll);
+//   }, []);
+
+//   const loadUserSession = () => {
+//     const session = localStorage.getItem('userSession');
+//     if (session) {
+//       try {
+//         setUser(JSON.parse(session));
+//       } catch {
+//         setUser(null);
+//       }
+//     } else {
+//       setUser(null);
+//     }
+//   };
+
+//   useEffect(() => {
+//     loadUserSession();
+//     window.addEventListener('authChange', loadUserSession);
+//     window.addEventListener('storage', loadUserSession);
+//     return () => {
+//       window.removeEventListener('authChange', loadUserSession);
+//       window.removeEventListener('storage', loadUserSession);
+//     };
+//   }, []);
+
+//   const handleLogout = () => {
+//     localStorage.removeItem('userSession');
+//     localStorage.removeItem('rememberMe');
+//     setUser(null);
+//     window.dispatchEvent(new Event('authChange'));
+//     toast.success('Logged out successfully');
+//     navigate('/');
+//   };
+
+//   // const searchResults = searchQuery
+//   //   ? products
+//   //       .filter(
+//   //         (p) =>
+//   //           p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+//   //           p.brandName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+//   //           p.categoryName.toLowerCase().includes(searchQuery.toLowerCase())
+//   //       )
+//   //       .slice(0, 5)
+//   //   : [];
+
+//   const handleSearch = (e: React.FormEvent) => {
+//     e.preventDefault();
+//     if (searchQuery.trim()) {
+//       navigate(`/products?search=${encodeURIComponent(searchQuery)}`);
+//       // REMOVED: setShowResults(false);
+//       setSearchQuery('');
+//     }
+//   };
+
+//   // Check if link is active
+//   const isActive = (path: string) => {
+//     if (path === '/') {
+//       return location.pathname === '/';
+//     }
+//     return location.pathname.startsWith(path);
+//   };
+
+//   return (
+//     <>
+//       {/* Main header */}
+//       <header
+//         className={cn(
+//           'sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b transition-all duration-300',
+//           scrolled ? 'shadow-lg border-gray-200' : 'border-transparent'
+//         )}
+//       >
+//         <div className="container mx-auto px-4">
+//           <div className="flex items-center justify-between h-16 lg:h-20">
+//             {/* Logo */}
+//             <Link to="/" className="flex items-center gap-3 shrink-0 group">
+//               <div className="relative">
+//                 {settings?.logo_url ? (
+//                   <img 
+//                     src={`${baseurl}${settings.logo_url}`} 
+//                     alt={settings.short_name || 'Logo'}
+//                     className="w-12 h-12 object-contain transition-transform duration-300 group-hover:scale-105"
+//                   />
+//                 ) : (
+//                   <img 
+//                     src={logo} 
+//                     alt={settings?.short_name || 'Logo'}
+//                     className="w-12 h-12 object-contain transition-transform duration-300 group-hover:scale-105"
+//                   />
+//                 )}
+//                 <div className="absolute -bottom-1 left-0 w-full h-0.5 bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+//               </div>
+//               <div className="hidden sm:block">
+//                 <div className="font-bold text-lg text-gray-800 leading-tight">
+//                   {settings?.name || 'MV Business Solutions'}
+//                 </div>
+//                 <div className="text-[10px] text-transparent bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 bg-clip-text font-medium">
+//                   Enterprise E-Catalog
+//                 </div>
+//               </div>
+//             </Link>
+
+//             {/* Navigation Links - Desktop - ICONS ALWAYS VISIBLE */}
+//             <nav className="hidden lg:flex items-center gap-1">
+//               {NAV_LINKS.map((link) => {
+//                 const active = isActive(link.path);
+//                 return (
+//                   <Link
+//                     key={link.path}
+//                     to={link.path}
+//                     className={cn(
+//                       "px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 relative flex items-center gap-2 group",
+//                       active ? "bg-gray-50/50" : "hover:bg-gray-50"
+//                     )}
+//                   >
+//                     {/* ICON - ALWAYS VISIBLE */}
+//                     <span className={cn(
+//                       "flex-shrink-0 transition-all duration-300",
+//                       active 
+//                         ? "text-transparent bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 bg-clip-text" 
+//                         : "text-gray-600 group-hover:text-gray-900"
+//                     )}>
+//                       {navIcons[link.path] || <LayoutGrid className="w-4 h-4 flex-shrink-0" />}
+//                     </span>
+                    
+//                     {/* TEXT - ALWAYS VISIBLE */}
+//                     <span className={cn(
+//                       "transition-all duration-300",
+//                       active 
+//                         ? "text-transparent bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 bg-clip-text font-bold" 
+//                         : "text-gray-600 group-hover:text-gray-900"
+//                     )}>
+//                       {link.label}
+//                     </span>
+                    
+//                     {/* Active indicator - only for active link */}
+//                     {active && (
+//                       <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 rounded-full"></span>
+//                     )}
+//                   </Link>
+//                 );
+//               })}
+//             </nav>
+
+//             {/* Actions */}
+//             <div className="flex items-center gap-1 sm:gap-2">
+//               <Link to="/compare">
+//                 <Button variant="ghost" size="sm" className="relative hover:bg-gradient-to-r hover:from-pink-50 hover:via-orange-50 hover:to-blue-50 transition-all duration-300">
+//                   <GitCompare className="w-5 h-5 text-gray-600" />
+//                   {compareList.length > 0 && (
+//                     <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 flex items-center justify-center text-[10px] bg-gradient-to-r from-pink-500 via-orange-500 to-blue-600 text-white border-0">
+//                       {compareList.length}
+//                     </Badge>
+//                   )}
+//                   <span className="hidden xl:inline ml-1.5 text-gray-600">Compare</span>
+//                 </Button>
+//               </Link>
+//               <Link to="/wishlist">
+//                 <Button variant="ghost" size="sm" className="relative hover:bg-gradient-to-r hover:from-pink-50 hover:via-orange-50 hover:to-blue-50 transition-all duration-300">
+//                   <Heart className="w-5 h-5 text-gray-600" />
+//                   {wishlist.length > 0 && (
+//                     <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 flex items-center justify-center text-[10px] bg-gradient-to-r from-pink-500 via-orange-500 to-blue-600 text-white border-0">
+//                       {wishlist.length}
+//                     </Badge>
+//                   )}
+//                   <span className="hidden xl:inline ml-1.5 text-gray-600">Wishlist</span>
+//                 </Button>
+//               </Link>
+
+//               {user ? (
+//                 <DropdownMenu>
+//                   <DropdownMenuTrigger asChild>
+//                     <Button
+//                       variant="outline"
+//                       size="sm"
+//                       className="hidden md:flex items-center gap-1.5 border-0 bg-gradient-to-r from-pink-50 via-orange-50 to-blue-50 text-gray-700 hover:shadow-md transition-all duration-300 rounded-full px-4"
+//                     >
+//                       <div className="w-6 h-6 rounded-full bg-gradient-to-r from-pink-500 via-orange-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold">
+//                         {user.name.charAt(0).toUpperCase()}
+//                       </div>
+//                       <span className="max-w-[100px] truncate font-medium">{user.name}</span>
+//                       <ChevronDown className="w-3.5 h-3.5" />
+//                     </Button>
+//                   </DropdownMenuTrigger>
+//                   <DropdownMenuContent align="end" className="w-56 p-2">
+//                     <DropdownMenuLabel>
+//                       <div className="flex flex-col">
+//                         <span className="font-semibold text-gray-800 truncate">{user.name}</span>
+//                         <span className="text-xs text-gray-500 truncate">{user.email}</span>
+//                       </div>
+//                     </DropdownMenuLabel>
+//                     <DropdownMenuSeparator />
+//                     <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer hover:bg-gradient-to-r hover:from-pink-50 hover:via-orange-50 hover:to-blue-50">
+//                       <User className="w-4 h-4 mr-2" />
+//                       My Profile
+//                     </DropdownMenuItem>
+//                     <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 hover:bg-red-50 focus:text-red-600">
+//                       <LogOut className="w-4 h-4 mr-2" />
+//                       Logout
+//                     </DropdownMenuItem>
+//                   </DropdownMenuContent>
+//                 </DropdownMenu>
+//               ) : (
+//                 <Link to="/register">
+//                   <Button
+//                     size="sm"
+//                     className="hidden md:flex items-center gap-1.5 bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 text-white hover:shadow-lg transition-all duration-300 rounded-full px-5"
+//                   >
+//                     <User className="w-4 h-4" />
+//                     <span>Register / Login</span>
+//                   </Button>
+//                 </Link>
+//               )}
+
+//               <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+//                 <SheetTrigger asChild>
+//                   <Button variant="ghost" size="icon" className="lg:hidden hover:bg-gradient-to-r hover:from-pink-50 hover:via-orange-50 hover:to-blue-50">
+//                     <Menu className="w-5 h-5 text-gray-600" />
+//                   </Button>
+//                 </SheetTrigger>
+//                 <SheetContent side="right" className="w-[300px] sm:w-[350px] bg-white">
+//                   <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+//                   <div className="flex items-center gap-2.5 mb-6 pt-2">
+//                     {settings?.logo_url ? (
+//                       <img 
+//                         src={`${baseurl}${settings.logo_url}`} 
+//                         alt={settings.short_name || 'Logo'}
+//                         className="w-10 h-10 object-contain"
+//                       />
+//                     ) : (
+//                       <img 
+//                         src={logo} 
+//                         alt={settings?.short_name || 'Logo'}
+//                         className="w-10 h-10 object-contain"
+//                       />
+//                     )}
+//                     <div>
+//                       <div className="font-bold text-sm text-gray-800">
+//                         {settings?.short_name || 'MV Business Solutions'}
+//                       </div>
+//                       <div className="text-[10px] text-transparent bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 bg-clip-text font-medium">
+//                         Enterprise E-Catalog
+//                       </div>
+//                     </div>
+//                   </div>
+
+//                   {user ? (
+//                     <div className="mb-2">
+//                       <button
+//                         onClick={() => { setMobileOpen(false); navigate('/profile'); }}
+//                         className="w-full flex items-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-pink-50 via-orange-50 to-blue-50 mb-1 hover:shadow-md transition-all duration-300"
+//                       >
+//                         <div className="w-8 h-8 rounded-full bg-gradient-to-r from-pink-500 via-orange-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold">
+//                           {user.name.charAt(0).toUpperCase()}
+//                         </div>
+//                         <div className="flex-1 min-w-0 text-left">
+//                           <div className="text-sm font-semibold text-gray-800 truncate">{user.name}</div>
+//                           <div className="text-xs text-gray-500 truncate">{user.email}</div>
+//                         </div>
+//                       </button>
+//                       <button
+//                         onClick={() => { setMobileOpen(false); handleLogout(); }}
+//                         className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors duration-300"
+//                       >
+//                         <LogOut className="w-4 h-4" />
+//                         Logout
+//                       </button>
+//                     </div>
+//                   ) : (
+//                     <Link
+//                       to="/register"
+//                       onClick={() => setMobileOpen(false)}
+//                       className="flex items-center gap-2 px-4 py-3 mb-2 rounded-lg bg-gradient-to-r from-pink-50 via-orange-50 to-blue-50 text-gray-700 font-medium hover:shadow-md transition-all duration-300"
+//                     >
+//                       <User className="w-4 h-4" />
+//                       Register / Login
+//                     </Link>
+//                   )}
+
+//                   <form onSubmit={handleSearch} className="mb-4">
+//                     <div className="relative">
+//                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+//                       <Input placeholder="Search..." className="pl-10 bg-gray-50 border-gray-200 rounded-full" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+//                     </div>
+//                   </form>
+                  
+//                   {/* Mobile Navigation - ICONS ALWAYS VISIBLE */}
+//                   <nav className="flex flex-col gap-1">
+//                     {NAV_LINKS.map((link) => {
+//                       const active = isActive(link.path);
+//                       return (
+//                         <Link
+//                           key={link.path}
+//                           to={link.path}
+//                           onClick={() => setMobileOpen(false)}
+//                           className={cn(
+//                             "px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-3 group",
+//                             active ? "bg-gray-50" : "hover:bg-gray-50"
+//                           )}
+//                         >
+//                           {/* ICON - ALWAYS VISIBLE in mobile */}
+//                           <span className={cn(
+//                             "flex-shrink-0 transition-all duration-300",
+//                             active 
+//                               ? "text-transparent bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 bg-clip-text" 
+//                               : "text-gray-600 group-hover:text-gray-900"
+//                           )}>
+//                             {navIcons[link.path] || <LayoutGrid className="w-4 h-4 flex-shrink-0" />}
+//                           </span>
+                          
+//                           {/* TEXT - ALWAYS VISIBLE in mobile */}
+//                           <span className={cn(
+//                             "transition-all duration-300",
+//                             active 
+//                               ? "text-transparent bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 bg-clip-text font-bold" 
+//                               : "text-gray-600 group-hover:text-gray-900"
+//                           )}>
+//                             {link.label}
+//                           </span>
+//                         </Link>
+//                       );
+//                     })}
+//                     <Link
+//                       to="/admin"
+//                       onClick={() => setMobileOpen(false)}
+//                       className="px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors duration-300 flex items-center gap-2 text-transparent bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 bg-clip-text"
+//                     >
+//                       <Building2 className="w-4 h-4" />
+//                       Admin Portal
+//                     </Link>
+//                   </nav>
+//                 </SheetContent>
+//               </Sheet>
+//             </div>
+//           </div>
+//         </div>
+//       </header>
+//     </>
+//   );
+// }
+
+
+
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { 
@@ -1370,6 +1782,9 @@ export function CustomerHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertType, setAlertType] = useState<'success' | 'error' | 'info'>('success');
   const [user, setUser] = useState<UserSession | null>(null);
   const { wishlist, compareList } = useApp();
   const navigate = useNavigate();
@@ -1410,8 +1825,20 @@ export function CustomerHeader() {
     localStorage.removeItem('rememberMe');
     setUser(null);
     window.dispatchEvent(new Event('authChange'));
-    toast.success('Logged out successfully');
+    showAutoDismissAlert('Logged out successfully', 'success');
     navigate('/');
+  };
+
+  // Auto-dismiss alert function
+  const showAutoDismissAlert = (message: string, type: 'success' | 'error' | 'info' = 'success', duration: number = 3000) => {
+    setAlertMessage(message);
+    setAlertType(type);
+    setShowAlert(true);
+    
+    // Auto dismiss after duration
+    setTimeout(() => {
+      setShowAlert(false);
+    }, duration);
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -1428,6 +1855,42 @@ export function CustomerHeader() {
     }
     return location.pathname.startsWith(path);
   };
+
+  // Get alert styles based on type
+  const getAlertStyles = () => {
+    switch(alertType) {
+      case 'success':
+        return {
+          bg: 'bg-green-100',
+          icon: 'text-green-600',
+          border: 'border-green-200',
+          progress: 'bg-green-500'
+        };
+      case 'error':
+        return {
+          bg: 'bg-red-100',
+          icon: 'text-red-600',
+          border: 'border-red-200',
+          progress: 'bg-red-500'
+        };
+      case 'info':
+        return {
+          bg: 'bg-blue-100',
+          icon: 'text-blue-600',
+          border: 'border-blue-200',
+          progress: 'bg-blue-500'
+        };
+      default:
+        return {
+          bg: 'bg-green-100',
+          icon: 'text-green-600',
+          border: 'border-green-200',
+          progress: 'bg-green-500'
+        };
+    }
+  };
+
+  const alertStyles = getAlertStyles();
 
   return (
     <>
@@ -1489,6 +1952,7 @@ export function CustomerHeader() {
                     )}>
                       {navIcons[link.path] || <LayoutGrid className="w-4 h-4 flex-shrink-0" />}
                     </span>
+                    
                     <span className={cn(
                       "transition-all duration-300",
                       active 
@@ -1497,6 +1961,7 @@ export function CustomerHeader() {
                     )}>
                       {link.label}
                     </span>
+                    
                     {active && (
                       <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 rounded-full"></span>
                     )}
@@ -1536,7 +2001,7 @@ export function CustomerHeader() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="hidden md:flex items-center gap-1.5 border-0 bg-gradient-to-r from-pink-50 via-orange-50 to-blue-50 text-gray-700 hover:shadow-md transition-all duration-300 rounded-full px-4"
+                      className="hidden md:flex items-center gap-1.5 border-0 bg-gradient-to-r from-pink-50 via-orange-50 to-blue-50 text-gray-700 hover:shadow-md transition-all duration-300 rounded-full px-4 py-2"
                     >
                       <div className="w-6 h-6 rounded-full bg-gradient-to-r from-pink-500 via-orange-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold">
                         {user.name.charAt(0).toUpperCase()}
@@ -1574,15 +2039,57 @@ export function CustomerHeader() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <Link to="/register">
-                  <Button
-                    size="sm"
-                    className="hidden md:flex items-center gap-1.5 bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 text-white hover:shadow-lg transition-all duration-300 rounded-full px-5"
-                  >
-                    <User className="w-4 h-4" />
-                    <span>Register / Login</span>
-                  </Button>
-                </Link>
+                <div className="relative">
+                  <Link to="/register">
+                    <Button
+                      size="default"
+                      className="hidden md:inline-flex items-center gap-2 bg-gradient-to-r from-pink-500 via-orange-500 to-blue-600 hover:from-pink-600 hover:via-orange-600 hover:to-blue-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-300 rounded-full px-6 py-2.5"
+                    >
+                      <User className="w-4 h-4" />
+                      <span>Register / Login</span>
+                    </Button>
+                  </Link>
+                  
+                  {/* Alert positioned exactly below the button */}
+                  {showAlert && (
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-max min-w-[280px] z-[100] animate-in slide-in-from-top-2 duration-300">
+                      <div className={`bg-white rounded-lg shadow-2xl border ${alertStyles.border} p-3 flex items-center gap-2.5`}>
+                        <div className={`flex-shrink-0 w-8 h-8 rounded-full ${alertStyles.bg} flex items-center justify-center`}>
+                          {alertType === 'success' && (
+                            <svg className={`w-5 h-5 ${alertStyles.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                          )}
+                          {alertType === 'error' && (
+                            <svg className={`w-5 h-5 ${alertStyles.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                          )}
+                          {alertType === 'info' && (
+                            <svg className={`w-5 h-5 ${alertStyles.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">{alertMessage}</p>
+                        </div>
+                        <button 
+                          onClick={() => setShowAlert(false)}
+                          className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                          </svg>
+                        </button>
+                      </div>
+                      {/* Progress bar for auto-dismiss */}
+                      <div className="mt-1 h-1 bg-gray-200 rounded-full overflow-hidden">
+                        <div className={`h-full ${alertStyles.progress} rounded-full animate-progress`} style={{ animationDuration: '3s' }}></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
 
               <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -1653,7 +2160,7 @@ export function CustomerHeader() {
                     <Link
                       to="/register"
                       onClick={() => setMobileOpen(false)}
-                      className="flex items-center gap-2 px-4 py-3 mb-2 rounded-lg bg-gradient-to-r from-pink-50 via-orange-50 to-blue-50 text-gray-700 font-medium hover:shadow-md transition-all duration-300"
+                      className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-pink-500 via-orange-500 to-blue-600 text-white font-medium hover:shadow-lg transition-all duration-300"
                     >
                       <User className="w-4 h-4" />
                       Register / Login
@@ -1688,6 +2195,7 @@ export function CustomerHeader() {
                           )}>
                             {navIcons[link.path] || <LayoutGrid className="w-4 h-4 flex-shrink-0" />}
                           </span>
+                          
                           <span className={cn(
                             "transition-all duration-300",
                             active 
@@ -1714,6 +2222,30 @@ export function CustomerHeader() {
           </div>
         </div>
       </header>
+
+      {/* CSS for animations */}
+      <style>{`
+        @keyframes progress {
+          from { width: 100%; }
+          to { width: 0%; }
+        }
+        .animate-progress {
+          animation: progress 3s linear forwards;
+        }
+        .animate-in {
+          animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateY(-5px) translateX(-50%);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) translateX(-50%);
+          }
+        }
+      `}</style>
     </>
   );
 }
