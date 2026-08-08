@@ -2,13 +2,10 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import {
   LayoutDashboard, Package, FolderTree, Award, Settings2, Heart,
-  MessageSquare, Settings, Menu, ChevronLeft, Building2, Bell, Search, LogOut
+  MessageSquare, Settings, Menu, ChevronLeft, Building2, LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ADMIN_NAV } from '@/constants';
 import { useSettings } from '@/hooks/use-settings';
 import { baseurl } from '@/Baseurl/baseurl';

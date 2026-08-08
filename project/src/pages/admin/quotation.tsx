@@ -1,14 +1,14 @@
 // src/components/admin/AdminQuotations.tsx
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Eye, FileText, CheckCircle, XCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Eye,  ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
+// import { cn } from '@/lib/utils';
 import axios from 'axios';
 import { baseurl } from '@/Baseurl/baseurl';
 
@@ -81,27 +81,27 @@ interface Quotation {
     notes?: string;
 }
 
-const statusColors: Record<QuotationStatus, string> = {
-    Pending: 'bg-yellow-100 text-yellow-700 border-yellow-200 hover:bg-yellow-200',
-    Approved: 'bg-green-100 text-green-700 border-green-200 hover:bg-green-200',
-    Rejected: 'bg-red-100 text-red-700 border-red-200 hover:bg-red-200',
-};
+// const statusColors: Record<QuotationStatus, string> = {
+//     Pending: 'bg-yellow-100 text-yellow-700 border-yellow-200 hover:bg-yellow-200',
+//     Approved: 'bg-green-100 text-green-700 border-green-200 hover:bg-green-200',
+//     Rejected: 'bg-red-100 text-red-700 border-red-200 hover:bg-red-200',
+// };
 
-const statusIcons: Record<QuotationStatus, React.ReactNode> = {
-    Pending: <Clock className="w-4 h-4" />,
-    Approved: <CheckCircle className="w-4 h-4" />,
-    Rejected: <XCircle className="w-4 h-4" />,
-};
+// const statusIcons: Record<QuotationStatus, React.ReactNode> = {
+//     Pending: <Clock className="w-4 h-4" />,
+//     Approved: <CheckCircle className="w-4 h-4" />,
+//     Rejected: <XCircle className="w-4 h-4" />,
+// };
 
 export function AdminQuotations() {
     const navigate = useNavigate();
     const [quotations, setQuotations] = useState<Quotation[]>([]);
     const [search, setSearch] = useState('');
-    const [statusFilter, setStatusFilter] = useState('all');
+    const [statusFilter, _setStatusFilter] = useState('all');
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState<number>(1);
     const [pageSize, setPageSize] = useState<number>(10);
-    const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+    const [_updatingStatus, _setUpdatingStatus] = useState<string | null>(null);
 
     // Fetch quotations data
     useEffect(() => {
@@ -173,35 +173,35 @@ export function AdminQuotations() {
     };
 
     // Update quotation status
-    const updateQuotationStatus = async (quotationId: string, newStatus: QuotationStatus) => {
-        try {
-            setUpdatingStatus(quotationId);
+    // const updateQuotationStatus = async (quotationId: string, newStatus: QuotationStatus) => {
+    //     try {
+    //         setUpdatingStatus(quotationId);
             
-            const response = await axios.put(
-                `${baseurl}/api/quotations/${quotationId}/status`,
-                { status: newStatus }
-            );
+    //         const response = await axios.put(
+    //             `${baseurl}/api/quotations/${quotationId}/status`,
+    //             { status: newStatus }
+    //         );
 
-            if (response.data.success) {
-                // Update local state
-                setQuotations(prevQuotations =>
-                    prevQuotations.map(q =>
-                        q.id === quotationId
-                            ? { ...q, status: newStatus }
-                            : q
-                    )
-                );
-                toast.success(`Quotation status updated to ${newStatus}`);
-            } else {
-                toast.error('Failed to update status');
-            }
-        } catch (error) {
-            console.error('Error updating status:', error);
-            toast.error('Failed to update status');
-        } finally {
-            setUpdatingStatus(null);
-        }
-    };
+    //         if (response.data.success) {
+    //             // Update local state
+    //             setQuotations(prevQuotations =>
+    //                 prevQuotations.map(q =>
+    //                     q.id === quotationId
+    //                         ? { ...q, status: newStatus }
+    //                         : q
+    //                 )
+    //             );
+    //             toast.success(`Quotation status updated to ${newStatus}`);
+    //         } else {
+    //             toast.error('Failed to update status');
+    //         }
+    //     } catch (error) {
+    //         console.error('Error updating status:', error);
+    //         toast.error('Failed to update status');
+    //     } finally {
+    //         setUpdatingStatus(null);
+    //     }
+    // };
 
     // Filter quotations
     const filtered = useMemo(() => {
@@ -251,19 +251,19 @@ export function AdminQuotations() {
     };
 
     // Calculate summary statistics
-    const stats = useMemo(() => {
-        const counts = {
-            Pending: 0,
-            Approved: 0,
-            Rejected: 0
-        };
-        quotations.forEach(q => {
-            if (q.status in counts) {
-                counts[q.status]++;
-            }
-        });
-        return counts;
-    }, [quotations]);
+    // const stats = useMemo(() => {
+    //     const counts = {
+    //         Pending: 0,
+    //         Approved: 0,
+    //         Rejected: 0
+    //     };
+    //     quotations.forEach(q => {
+    //         if (q.status in counts) {
+    //             counts[q.status]++;
+    //         }
+    //     });
+    //     return counts;
+    // }, [quotations]);
 
     if (loading) {
         return (
@@ -299,7 +299,7 @@ export function AdminQuotations() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
+            {/* <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
                 {(['Pending', 'Approved', 'Rejected'] as QuotationStatus[]).map((status) => {
                     const count = stats[status] || 0;
                     return (
@@ -320,7 +320,7 @@ export function AdminQuotations() {
                         </Card>
                     );
                 })}
-            </div>
+            </div> */}
 
             {/* Toolbar */}
             <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
@@ -337,7 +337,7 @@ export function AdminQuotations() {
                             }}
                         />
                     </div>
-                    <Select value={statusFilter} onValueChange={(value) => {
+                    {/* <Select value={statusFilter} onValueChange={(value) => {
                         setStatusFilter(value);
                         setPage(1);
                     }}>
@@ -350,7 +350,7 @@ export function AdminQuotations() {
                             <SelectItem value="approved">Approved</SelectItem>
                             <SelectItem value="rejected">Rejected</SelectItem>
                         </SelectContent>
-                    </Select>
+                    </Select> */}
                 </div>
                 <div className="text-sm text-muted-foreground whitespace-nowrap">
                     {filtered.length} quotations found
@@ -368,7 +368,7 @@ export function AdminQuotations() {
                                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Email</th>
                                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Phone</th>
                                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
-                                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+                                {/* <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th> */}
                                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Date</th>
                                 <th className="p-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
                             </tr>
@@ -411,7 +411,7 @@ export function AdminQuotations() {
                                         <td className="p-3">
                                             <div className="text-sm font-medium">₹{quotation.grandTotal.toLocaleString()}</div>
                                         </td>
-                                        <td className="p-3">
+                                        {/* <td className="p-3">
                                             <Select
                                                 value={quotation.status}
                                                 onValueChange={(value: QuotationStatus) => 
@@ -456,7 +456,7 @@ export function AdminQuotations() {
                                                     </SelectItem>
                                                 </SelectContent>
                                             </Select>
-                                        </td>
+                                        </td> */}
                                         <td className="p-3 hidden lg:table-cell text-sm text-muted-foreground">
                                             {new Date(quotation.createdAt).toLocaleDateString('en-IN')}
                                         </td>

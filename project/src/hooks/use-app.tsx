@@ -315,7 +315,7 @@ const fetchWishlistFromAPI = useCallback(async (userId: number) => {
   }
 
   try {
-    const response = await fetch(`${API_BASE}/compare/clear/${uid}`, {
+    const response = await fetch(`${API_BASE}/clear/${uid}`, {
       method: 'DELETE',
     });
 
