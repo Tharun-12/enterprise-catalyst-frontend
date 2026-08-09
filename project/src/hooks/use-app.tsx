@@ -1364,204 +1364,74 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await fetchWishlistFromAPI(userId);
   };
 
-  const addToWishlist = useCallback(async (productId: string, userId?: number) => {
-    const uid = userId || currentUserId;
-    
-    // If user is not logged in, store in localStorage only
-    if (!uid) {
+// use-app.tsx - Update the addToWishlist function
+const addToWishlist = useCallback(async (productId: string, userId?: number) => {
+  const uid = userId || currentUserId;
+  
+  // If user is not logged in, store in localStorage only
+  if (!uid) {
+    setWishlist((prev) => (prev.includes(productId) ? prev : [...prev, productId]));
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/wishlist`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id: uid,
+        product_id: parseInt(productId),
+      }),
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
       setWishlist((prev) => (prev.includes(productId) ? prev : [...prev, productId]));
-      toast.success('Added to wishlist (login to sync)', {
-        duration: 3000,
-        position: 'top-right',
-        style: {
-          background: '#10B981',
-          color: 'white',
-          border: 'none',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '500',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          marginTop: '70px', // This pushes it down below the header
-        },
-      });
-      return;
+      // Refresh wishlist to get updated data
+      await fetchWishlistFromAPI(uid);
+    } else {
+      throw new Error(result.message || 'Failed to add to wishlist');
     }
+  } catch (error) {
+    console.error('Error adding to wishlist:', error);
+    throw error;
+  }
+}, [currentUserId, fetchWishlistFromAPI]);
 
-    try {
-      const response = await fetch(`${API_BASE}/wishlist`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user_id: uid,
-          product_id: parseInt(productId),
-        }),
-      });
+// use-app.tsx - Update the removeFromWishlist function
+const removeFromWishlist = useCallback(async (productId: string, userId?: number) => {
+  const uid = userId || currentUserId;
 
-      const result = await response.json();
+  // If user is not logged in, remove from localStorage only
+  if (!uid) {
+    setWishlist((prev) => prev.filter((id) => id !== productId));
+    return;
+  }
 
-      if (result.success) {
-        setWishlist((prev) => (prev.includes(productId) ? prev : [...prev, productId]));
-        toast.success('Added to wishlist', {
-          duration: 3000,
-          position: 'top-right',
-          style: {
-            background: '#10B981',
-            color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '500',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            marginTop: '70px',
-          },
-        });
-        // Refresh wishlist
-        await fetchWishlistFromAPI(uid);
-      } else if (result.message === 'Product already exists in wishlist.') {
-        toast.info('Product already in wishlist', {
-          duration: 3000,
-          position: 'top-right',
-          style: {
-            background: '#3B82F6',
-            color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '500',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            marginTop: '70px',
-          },
-        });
-      } else {
-        toast.error(result.message || 'Failed to add to wishlist', {
-          duration: 3000,
-          position: 'top-right',
-          style: {
-            background: '#EF4444',
-            color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '500',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            marginTop: '70px',
-          },
-        });
+  try {
+    const response = await fetch(
+      `${API_BASE}/wishlist/user/${uid}/product/${parseInt(productId)}`,
+      {
+        method: 'DELETE',
       }
-    } catch (error) {
-      console.error('Error adding to wishlist:', error);
-      toast.error('Failed to add to wishlist', {
-        duration: 3000,
-        position: 'top-right',
-        style: {
-          background: '#EF4444',
-          color: 'white',
-          border: 'none',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '500',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          marginTop: '70px',
-        },
-      });
-    }
-  }, [currentUserId, fetchWishlistFromAPI]);
+    );
 
-  const removeFromWishlist = useCallback(async (productId: string, userId?: number) => {
-    const uid = userId || currentUserId;
+    const result = await response.json();
 
-    // If user is not logged in, remove from localStorage only
-    if (!uid) {
+    if (result.success) {
       setWishlist((prev) => prev.filter((id) => id !== productId));
-      toast.success('Removed from wishlist', {
-        duration: 3000,
-        position: 'top-right',
-        style: {
-          background: '#EF4444',
-          color: 'white',
-          border: 'none',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '500',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          marginTop: '70px',
-        },
-      });
-      return;
+      setWishlistProducts((prev) => prev.filter((p) => String(p.id) !== productId));
+      // Removed toast here since ProductCard handles it
     }
-
-    try {
-      const response = await fetch(
-        `${API_BASE}/wishlist/user/${uid}/product/${parseInt(productId)}`,
-        {
-          method: 'DELETE',
-        }
-      );
-
-      const result = await response.json();
-
-      if (result.success) {
-        setWishlist((prev) => prev.filter((id) => id !== productId));
-        setWishlistProducts((prev) => prev.filter((p) => String(p.id) !== productId));
-        toast.success('Removed from wishlist', {
-          duration: 3000,
-          position: 'top-right',
-          style: {
-            background: '#EF4444',
-            color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '500',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            marginTop: '70px',
-          },
-        });
-      } else {
-        toast.error(result.message || 'Failed to remove from wishlist', {
-          duration: 3000,
-          position: 'top-right',
-          style: {
-            background: '#EF4444',
-            color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '500',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            marginTop: '70px',
-          },
-        });
-      }
-    } catch (error) {
-      console.error('Error removing from wishlist:', error);
-      toast.error('Failed to remove from wishlist', {
-        duration: 3000,
-        position: 'top-right',
-        style: {
-          background: '#EF4444',
-          color: 'white',
-          border: 'none',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '500',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          marginTop: '70px',
-        },
-      });
-    }
-  }, [currentUserId]);
+  } catch (error) {
+    console.error('Error removing from wishlist:', error);
+    // Re-throw so ProductCard can handle the error
+    throw error;
+  }
+}, [currentUserId]);
 
   const clearWishlist = useCallback(async (userId: number) => {
     try {

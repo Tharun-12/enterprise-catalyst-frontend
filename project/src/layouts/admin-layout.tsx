@@ -25,10 +25,17 @@ export function AdminLayout() {
   const navigate = useNavigate();
   const { settings } = useSettings();
 
-  const handleLogout = () => {
-    localStorage.removeItem('adminAuth');
-    navigate('/admin/login');
-  };
+ const handleLogout = () => {
+  // Remove all specific keys
+  localStorage.removeItem('adminAuth');
+  localStorage.removeItem('adminData');
+  localStorage.removeItem('adminId');
+  localStorage.removeItem('compareList');
+  localStorage.removeItem('wishlist');
+  
+  // Navigate to login
+  navigate('/admin/login');
+};
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">

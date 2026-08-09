@@ -737,12 +737,10 @@
 
 
 
-
-
-// ComparePage.tsx - Fixed to allow comparing different types and show proper UI
+// ComparePage.tsx - Fixed price handling
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { X, GitCompare, Plus, ArrowRight, AlertCircle, Loader2} from 'lucide-react';
+import { X, GitCompare, Plus, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -797,6 +795,8 @@ interface ApiProduct {
   product_brand: string;
   product_details_pdf: string;
   price: string;
+  min_price?: string;
+  max_price?: string;
   discount: string;
   product_description: string;
   warranty: string;
@@ -860,11 +860,10 @@ export function ComparePage() {
         
         setProducts(productsWithSpecs);
 
-        // Get related products based on the first product's type (for "Related Products" section)
+        // Get related products based on the first product's type
         if (compareProducts.length > 0) {
           const firstProductType = compareProducts[0].product_type;
           
-          // Related products: same type, NOT in compare list
           const related = allProducts
             .filter((p: ApiProduct) => 
               p.product_type === firstProductType && 
@@ -877,22 +876,7 @@ export function ComparePage() {
         
       } catch (error) {
         console.error('Error fetching products:', error);
-        toast.error('Failed to load products for comparison', {
-          duration: 3000,
-          position: 'top-right',
-          style: {
-            background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
-            color: '#ffffff',
-            border: 'none',
-            padding: '14px 24px',
-            borderRadius: '12px',
-            fontSize: '15px',
-            fontWeight: '600',
-            boxShadow: '0 8px 25px rgba(239, 68, 68, 0.4)',
-            marginTop: '70px',
-            letterSpacing: '0.3px',
-          },
-        });
+        toast.error('Failed to load products for comparison');
       } finally {
         setLoading(false);
       }
@@ -914,12 +898,56 @@ export function ComparePage() {
     return productName.toLowerCase().replace(/\s+/g, '-');
   };
 
-  // Helper function to get product price with discount
+  // Helper function to get product price - FIXED: Use min_price and max_price
+  const getProductPrice = (product: ApiProduct) => {
+    // Use max_price if available, otherwise use min_price, fallback to price
+    const price = parseFloat(product.max_price || product.min_price || product.price || '0');
+    return isNaN(price) ? 0 : price;
+  };
+
+  // Helper function to get display price string with min/max
+  const getDisplayPrice = (product: ApiProduct) => {
+    const minPrice = parseFloat(product.min_price || '0');
+    const maxPrice = parseFloat(product.max_price || '0');
+    const discount = parseFloat(product.discount || '0');
+    
+    if (minPrice === 0 && maxPrice === 0) {
+      return 'Price on request';
+    }
+    
+    // Calculate discounted prices
+    const minDiscounted = minPrice * (1 - discount / 100);
+    const maxDiscounted = maxPrice * (1 - discount / 100);
+    
+    if (minPrice === maxPrice) {
+      return formatPrice(minDiscounted);
+    }
+    
+    return `${formatPrice(minDiscounted)} - ${formatPrice(maxDiscounted)}`;
+  };
+
+  // Helper function to get original price display
+  const getDisplayOriginalPrice = (product: ApiProduct) => {
+    const minPrice = parseFloat(product.min_price || '0');
+    const maxPrice = parseFloat(product.max_price || '0');
+    
+    if (minPrice === 0 && maxPrice === 0) {
+      return '';
+    }
+    
+    if (minPrice === maxPrice) {
+      return formatPrice(minPrice);
+    }
+    
+    return `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`;
+  };
+
+  // Helper function to get discounted price for comparison table
   const getDiscountedPrice = (product: ApiProduct) => {
-    const originalPrice = parseFloat(product.price);
-    const discount = parseFloat(product.discount) || 0;
-    const discountedPrice = originalPrice * (1 - discount / 100);
-    return discountedPrice.toFixed(2);
+    const price = getProductPrice(product);
+    const discount = parseFloat(product.discount || '0');
+    const discountedPrice = price * (1 - discount / 100);
+    return isNaN(discountedPrice) ? 0 : discountedPrice;
   };
 
   // Helper function to get stock status
@@ -950,6 +978,7 @@ export function ComparePage() {
   // Format price in Indian Rupees
   const formatPrice = (price: string | number) => {
     const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+    if (isNaN(numPrice) || numPrice === 0) return '₹0';
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
@@ -958,15 +987,13 @@ export function ComparePage() {
     }).format(numPrice);
   };
 
-  // Get spec value from product (check both product fields and spec_comparison)
+  // Get spec value from product
   const getSpecValue = (product: ApiProduct, specKey: string): string => {
-    // First check if the product has the field directly
     const directValue = (product as any)[specKey];
     if (directValue && directValue !== 'null' && directValue !== '') {
       return directValue;
     }
     
-    // If not, check spec_comparison
     if (product.spec_comparison && product.spec_comparison.length > 0) {
       const spec = product.spec_comparison[0];
       const specValue = (spec as any)[specKey];
@@ -1043,7 +1070,6 @@ export function ComparePage() {
       v.image_url ? `${baseurl}${v.image_url}` : null
     ).filter(Boolean) as string[] || ['https://via.placeholder.com/400x400'];
 
-    // Build spec groups from product
     const specFields = [];
     if (product.product_series) {
       specFields.push({ key: 'series', label: 'Series', value: product.product_series });
@@ -1055,7 +1081,6 @@ export function ComparePage() {
       specFields.push({ key: 'warranty', label: 'Warranty', value: product.warranty });
     }
 
-    // Add variant spec types
     if (product.variants && product.variants.length > 0) {
       const variant = product.variants[0];
       if (variant.spec_type) {
@@ -1069,7 +1094,6 @@ export function ComparePage() {
       }
     }
 
-    // Determine product status based on stock
     const totalStock = product.variants?.reduce((sum, v) => sum + v.stock, 0) || 0;
     let status: ProductStatus = 'active';
     if (totalStock === 0) {
@@ -1092,6 +1116,9 @@ export function ComparePage() {
       description: v.description,
     })) || [];
 
+    // Get the price for the product card
+    const price = getProductPrice(product);
+
     return {
       id: String(product.id),
       name: product.product_name,
@@ -1112,7 +1139,9 @@ export function ComparePage() {
         }
       ],
       gallery,
-      price: parseFloat(product.price) || 0,
+      price: price,
+      minPrice: parseFloat(product.min_price || '0'),
+      maxPrice: parseFloat(product.max_price || '0'),
       currency: 'INR',
       status: status,
       isPopular: false,
@@ -1125,7 +1154,7 @@ export function ComparePage() {
       relatedProductIds: [],
       createdAt: product.created_at,
       warranty: product.warranty || 'Standard warranty',
-      originalPrice: parseFloat(product.price) * (1 + parseFloat(product.discount || '0') / 100) || 0,
+      originalPrice: price * (1 + parseFloat(product.discount || '0') / 100) || 0,
       discountPercentage: parseFloat(product.discount || '0'),
       variants: variants,
       hasVariants: (product.variants?.length || 0) > 0,
@@ -1160,8 +1189,6 @@ export function ComparePage() {
 
   const generalInfoItems = getGeneralInfoItems();
   const specItems = getSpecificationItems();
-  
-  // Get product type for related products section
   const productType = products[0]?.product_type || '';
 
   return (
@@ -1176,35 +1203,9 @@ export function ComparePage() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* <Button
-            variant={showOnlyDifferences ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setShowOnlyDifferences(!showOnlyDifferences)}
-            className="rounded-full"
-          >
-            {showOnlyDifferences ? <Check className="w-4 h-4 mr-1.5" /> : <Minus className="w-4 h-4 mr-1.5" />}
-            Show only differences
-          </Button> */}
-          <Button variant="outline" size="sm" onClick={() => { clearCompare(); toast.success('Comparison cleared'); }}>
-          </Button>
           <Button variant="outline" size="sm" onClick={() => { 
             clearCompare(); 
-            toast.success('Comparison cleared', {
-              duration: 3000,
-              position: 'top-right',
-              style: {
-                background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-                color: '#ffffff',
-                border: 'none',
-                padding: '14px 24px',
-                borderRadius: '12px',
-                fontSize: '15px',
-                fontWeight: '600',
-                boxShadow: '0 8px 25px rgba(16, 185, 129, 0.4)',
-                marginTop: '70px',
-                letterSpacing: '0.3px',
-              },
-            });
+            toast.success('Comparison cleared');
           }}>
             <X className="w-4 h-4 mr-1.5" /> Clear All
           </Button>
@@ -1225,7 +1226,6 @@ export function ComparePage() {
             key={product.id} 
             className="group relative overflow-hidden border-border hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col"
           >
-            {/* Remove button - No toast notification */}
             <Button
               size="icon"
               variant="ghost"
@@ -1234,13 +1234,11 @@ export function ComparePage() {
                 e.preventDefault();
                 e.stopPropagation();
                 removeFromCompare(String(product.id));
-                // No toast notification for remove
               }}
             >
               <X className="w-4 h-4" />
             </Button>
 
-            {/* Image */}
             <Link to={`/products/${getProductSlug(product.product_name)}`} className="block relative aspect-square overflow-hidden bg-muted/30">
               <img
                 src={getProductImage(product)}
@@ -1258,7 +1256,6 @@ export function ComparePage() {
               )}
             </Link>
 
-            {/* Content */}
             <div className="p-4 flex flex-col flex-1">
               <div className="flex items-center gap-1.5 mb-2">
                 <Badge className="text-[10px] font-semibold bg-primary/10 text-primary border-0">
@@ -1274,13 +1271,14 @@ export function ComparePage() {
                 </h3>
               </Link>
 
+              {/* Price - FIXED: Show min/max price with discount */}
               <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <span className="text-lg font-bold text-primary">
-                  {formatPrice(getDiscountedPrice(product))}
+                  {getDisplayPrice(product)}
                 </span>
                 {parseFloat(product.discount) > 0 && (
                   <span className="text-xs text-muted-foreground line-through">
-                    {formatPrice(product.price)}
+                    {getDisplayOriginalPrice(product)}
                   </span>
                 )}
               </div>
@@ -1289,14 +1287,12 @@ export function ComparePage() {
                 {product.product_description?.substring(0, 100) || ''}
               </p>
 
-              {/* Stock Status */}
               <div className="mt-3">
                 <Badge variant={getStockStatus(product) === 'In Stock' ? 'default' : 'destructive'} className="w-fit">
                   {getStockStatus(product)}
                 </Badge>
               </div>
 
-              {/* View Details Button */}
               <Button asChild size="sm" className="w-full mt-3">
                 <Link to={`/products/${getProductSlug(product.product_name)}`}>
                   View Details
@@ -1306,7 +1302,6 @@ export function ComparePage() {
           </Card>
         ))}
 
-        {/* Add more products card */}
         {products.length < 4 && (
           <Card className="p-4 flex flex-col items-center justify-center border-2 border-dashed min-h-[350px] hover:border-primary/50 transition-colors">
             <div className="w-full aspect-square rounded-lg border-2 border-dashed flex items-center justify-center mb-3 bg-gray-50 dark:bg-gray-800/50">
@@ -1320,16 +1315,11 @@ export function ComparePage() {
         )}
       </div>
 
-      {/* General Information Section - Only show if we have at least 2 products */}
+      {/* General Information Section */}
       {products.length >= 2 && generalInfoItems.length > 0 && (
         <div className="mb-6">
           <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 rounded-t-lg font-semibold text-sm flex items-center justify-between">
             <span>General Information</span>
-            {showOnlyDifferences && generalInfoItems.length > 0 && (
-              <Badge variant="secondary" className="bg-white/20 text-white border-0">
-                Showing differences only
-              </Badge>
-            )}
           </div>
           <div className="border border-t-0 rounded-b-lg overflow-hidden">
             {generalInfoItems.map((item, index) => {
@@ -1387,16 +1377,11 @@ export function ComparePage() {
         </div>
       )}
 
-      {/* Specifications Section - Only show if we have at least 2 products */}
+      {/* Specifications Section */}
       {products.length >= 2 && specItems.length > 0 && (
         <div className="mb-6">
           <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 rounded-t-lg font-semibold text-sm flex items-center justify-between">
             <span>Specifications</span>
-            {showOnlyDifferences && specItems.length > 0 && (
-              <Badge variant="secondary" className="bg-white/20 text-white border-0">
-                Showing differences only
-              </Badge>
-            )}
           </div>
           <div className="border border-t-0 rounded-b-lg overflow-hidden">
             {specItems.map((item, index) => {
@@ -1448,7 +1433,7 @@ export function ComparePage() {
         </div>
       )}
 
-      {/* Variants Section - Only show if we have at least 2 products */}
+      {/* Variants Section */}
       {products.length >= 2 && (
         <div className="mb-6">
           <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 rounded-t-lg font-semibold text-sm">
@@ -1484,7 +1469,7 @@ export function ComparePage() {
         </div>
       )}
 
-      {/* Related Products Section - Same product_type as first product */}
+      {/* Related Products Section */}
       {relatedProducts.length > 0 && (
         <div className="mt-12">
           <div className="flex items-center justify-between mb-5">

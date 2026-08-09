@@ -1,4 +1,4 @@
-// product-details.tsx - Fixed to only show same product_type, no fallback
+// product-details.tsx - Fixed quotation price handling
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -22,9 +22,11 @@ import { PageBreadcrumb as Breadcrumb } from '@/layouts/customer-layout-wrapper'
 import { baseurl } from '@/Baseurl/baseurl';
 import type { Product } from '@/types';
 
-// Extend the Product type locally to include productType
+// Extend the Product type locally to include productType, minPrice, maxPrice
 interface ExtendedProduct extends Product {
   productType?: string;
+  minPrice?: number;
+  maxPrice?: number;
 }
 
 // ---- Raw API response shapes ----
@@ -82,6 +84,8 @@ interface ApiProduct {
   product_brand: string;
   product_details_pdf: string;
   price: string;
+  min_price?: string;
+  max_price?: string;
   dimensions?: string;
   specifications?: string;
   weight?: string;
@@ -90,6 +94,12 @@ interface ApiProduct {
   warranty: string;
   product_series?: string;
   product_type?: string;
+  conductor_type?: string;
+  cable_od?: string;
+  jacket_material?: string;
+  bandwidth?: string;
+  operating_temperature?: string;
+  poe_support?: string;
   created_at: string;
   updated_at: string;
   category_name?: string;
@@ -130,53 +140,61 @@ const transformProduct = (
   // Use the product price directly from API
   const priceNum = parseFloat(product.price);
   const discountNum = parseFloat(product.discount || '0');
+  
+  // Parse min and max prices from API
+  const minPrice = product.min_price ? parseFloat(product.min_price) : undefined;
+  const maxPrice = product.max_price ? parseFloat(product.max_price) : undefined;
 
   // Get unique spec types from variants
   const specTypes = product.variants?.map(v => v.spec_type).filter(Boolean) as string[] || [];
   const uniqueSpecTypes = [...new Set(specTypes)];
 
-  // Build specifications - only include fields that have actual values
+  // Build specifications - include ALL product fields
   const specFields: { key: string; label: string; value: string }[] = [];
 
-  // Only add fields if they have meaningful values (not N/A or empty)
-  if (product.dimensions && product.dimensions !== 'N/A' && product.dimensions.trim() !== '') {
-    specFields.push({ key: 'dimensions', label: 'Dimensions', value: product.dimensions });
-  }
-  
-  if (product.weight && product.weight !== 'N/A' && product.weight.trim() !== '') {
-    specFields.push({ key: 'weight', label: 'Weight', value: `${product.weight} kg` });
-  }
-  
-  if (product.specifications && product.specifications !== 'N/A' && product.specifications.trim() !== '') {
-    specFields.push({ key: 'specifications', label: 'Specifications', value: product.specifications });
-  }
-  
-  if (product.warranty && product.warranty !== 'N/A' && product.warranty.trim() !== '') {
-    specFields.push({ key: 'warranty', label: 'Warranty', value: product.warranty });
-  }
-  
-  if (product.product_series && product.product_series !== 'N/A' && product.product_series.trim() !== '') {
+  // Product fields
+  if (product.product_series && product.product_series.trim() !== '') {
     specFields.push({ key: 'series', label: 'Series', value: product.product_series });
   }
   
-  if (product.product_type && product.product_type !== 'N/A' && product.product_type.trim() !== '') {
+  if (product.product_type && product.product_type.trim() !== '') {
     specFields.push({ key: 'type', label: 'Type', value: product.product_type });
   }
+  
+  if (product.conductor_type && product.conductor_type.trim() !== '') {
+    specFields.push({ key: 'conductor_type', label: 'Conductor Type', value: product.conductor_type });
+  }
+  
+  if (product.cable_od && product.cable_od.trim() !== '') {
+    specFields.push({ key: 'cable_od', label: 'Cable OD', value: product.cable_od });
+  }
+  
+  if (product.jacket_material && product.jacket_material.trim() !== '') {
+    specFields.push({ key: 'jacket_material', label: 'Jacket Material', value: product.jacket_material });
+  }
+  
+  if (product.bandwidth && product.bandwidth.trim() !== '') {
+    specFields.push({ key: 'bandwidth', label: 'Bandwidth', value: product.bandwidth });
+  }
+  
+  if (product.operating_temperature && product.operating_temperature.trim() !== '') {
+    specFields.push({ key: 'operating_temperature', label: 'Operating Temperature', value: product.operating_temperature });
+  }
+  
+  if (product.poe_support && product.poe_support.trim() !== '') {
+    specFields.push({ key: 'poe_support', label: 'PoE Support', value: product.poe_support });
+  }
+  
+  if (product.warranty && product.warranty.trim() !== '') {
+    specFields.push({ key: 'warranty', label: 'Warranty', value: product.warranty });
+  }
 
-  // Add variant spec types to spec fields
-  uniqueSpecTypes.forEach(type => {
-    if (type && type.trim() !== '') {
-      specFields.push({
-        key: `spec_${type}`,
-        label: `Spec Type`,
-        value: type
-      });
-    }
-  });
-
-  // Add variant details if available
+  // Add variant details
   if (product.variants && product.variants.length > 0) {
     const variant = product.variants[0];
+    if (variant.spec_type && variant.spec_type.trim() !== '') {
+      specFields.push({ key: 'spec_type', label: 'Spec Type', value: variant.spec_type });
+    }
     if (variant.size && variant.size.trim() !== '') {
       specFields.push({ key: 'size', label: 'Size', value: variant.size });
     }
@@ -185,6 +203,9 @@ const transformProduct = (
     }
     if (variant.availability && variant.availability.trim() !== '') {
       specFields.push({ key: 'availability', label: 'Availability', value: variant.availability });
+    }
+    if (variant.part_code && variant.part_code.trim() !== '') {
+      specFields.push({ key: 'part_code', label: 'Part Code', value: variant.part_code });
     }
   }
 
@@ -212,13 +233,12 @@ const transformProduct = (
     sku: product.product_code,
     brandId: String(brand?.id ?? 'unknown'),
     brandName: brand?.brand_name || product.product_brand || 'Unknown',
-    brandDescription: brand?.description || '',
     categoryId: String(product.product_category_id),
     categoryName: category?.category_name || product.category_name || 'Uncategorized',
     shortDescription: product.product_description?.substring(0, 150) || '',
     description: product.product_description || '',
     gallery,
-    features: product.specifications?.split(',').map(s => s.trim()).filter(Boolean) || ['Premium quality', 'Enterprise grade'],
+    features: product.specifications?.split(',').map(s => s.trim()).filter(Boolean) || [],
     specifications: {},
     currency: 'INR',
     relatedProductIds: [],
@@ -229,6 +249,8 @@ const transformProduct = (
       }
     ],
     price: priceNum,
+    minPrice: minPrice,
+    maxPrice: maxPrice,
     originalPrice: priceNum * (1 + discountNum / 100),
     discountPercentage: discountNum,
     status: 'active',
@@ -293,16 +315,14 @@ export function ProductDetailsPage() {
         if (Array.isArray(productsData) && productsData.length > 0) {
           setAllProducts(productsData);
 
-          // Find the product by slug - decode the slug first
+          // Find the product by slug
           const decodedSlug = decodeURIComponent(slug || '');
           
-          // Try multiple matching strategies
           let foundProduct = productsData.find((p: ApiProduct) => {
             const productSlug = p.product_name.toLowerCase().replace(/\s+/g, '-');
             return productSlug === decodedSlug;
           });
 
-          // If not found by slug, try by ID
           if (!foundProduct) {
             const idMatch = decodedSlug.match(/^(\d+)/);
             if (idMatch) {
@@ -310,7 +330,6 @@ export function ProductDetailsPage() {
             }
           }
 
-          // If still not found, try partial match
           if (!foundProduct) {
             foundProduct = productsData.find((p: ApiProduct) => {
               const productSlug = p.product_name.toLowerCase().replace(/\s+/g, '-');
@@ -360,37 +379,31 @@ export function ProductDetailsPage() {
     return transformProduct(productData, categories, brands);
   }, [productData, categories, brands]);
 
-  // FIXED: Related products - ONLY show products with same product_type, no fallback
+  // Related products - ONLY show products with same product_type
   const relatedProducts = useMemo(() => {
     if (!product || allProducts.length === 0) return [];
 
-    // Cast product to ExtendedProduct
     const extendedProduct = product as ExtendedProduct;
     const productType = extendedProduct.productType;
 
-    // Check if product has a valid product_type
     const hasValidProductType = productType && 
                                 productType !== 'N/A' && 
                                 productType.trim() !== '';
 
-    // If product doesn't have a product_type, don't show related products
     if (!hasValidProductType) {
       return [];
     }
 
-    // Filter: same category, same product_type, exclude current product
     const sameTypeProducts = allProducts.filter(p => 
       String(p.product_category_id) === product.categoryId &&
       String(p.id) !== product.id &&
       p.product_type === productType
     );
 
-    // If no products with same product_type, return empty (don't show anything)
     if (sameTypeProducts.length === 0) {
       return [];
     }
 
-    // Sort: prefer products with variants, then by price
     sameTypeProducts.sort((a, b) => {
       const aHasVariant = (a.variants?.length || 0) > 0;
       const bHasVariant = (b.variants?.length || 0) > 0;
@@ -399,7 +412,6 @@ export function ProductDetailsPage() {
       return parseFloat(a.price) - parseFloat(b.price);
     });
 
-    // Take only top 4
     const topRelated = sameTypeProducts.slice(0, 4);
     
     return topRelated.map(p => transformProduct(p, categories, brands));
@@ -471,7 +483,7 @@ export function ProductDetailsPage() {
     setZoomPos({ x, y });
   };
 
- const handleSingleQuotation = async () => {
+  const handleSingleQuotation = async () => {
     if (!product) return;
 
     const userId = getUserId();
@@ -485,20 +497,34 @@ export function ProductDetailsPage() {
     try {
       const user = getUserDetails();
       
+      // Use the actual product price from the product data
+      // If minPrice and maxPrice are available and different, use the maxPrice for quotation
+      let actualPrice = product.price;
+      if (extendedProduct.maxPrice !== undefined && extendedProduct.maxPrice > 0) {
+        actualPrice = extendedProduct.maxPrice;
+      } else if (extendedProduct.minPrice !== undefined && extendedProduct.minPrice > 0) {
+        actualPrice = extendedProduct.minPrice;
+      }
+      
+      // Get the actual discount percentage from the product
+      const actualDiscount = product.discountPercentage || 0;
+      
       const payload = {
         user_id: userId,
         product_id: parseInt(product.id),
         product_name: product.name,
         product_code: product.sku,
         product_brand: product.brandName,
-        price: product.price,
-        discount: product.discountPercentage || 0,
+        price: actualPrice, // Send the actual price
+        discount: actualDiscount, // Send the discount percentage
         quantity: 1,
         remarks: `Quotation requested for ${product.name}`,
         customer_name: user?.name || '',
         customer_mobile: user?.mobile || '',
         customer_email: user?.email || ''
       };
+
+      console.log('Sending quotation payload:', payload); // Debug log
 
       const response = await fetch(`${baseurl}/api/quotations/single`, {
         method: 'POST',
@@ -559,20 +585,48 @@ export function ProductDetailsPage() {
   const inWishlist = isInWishlist(product.id);
   const inCompare = isInCompare(product.id);
 
-  // Get variant spec types for display - Use type assertion to access spec_type
+  // Get variant spec types
   const variantSpecTypes = product.variants?.map(v => (v as any).spec_type).filter(Boolean) as string[] || [];
   const uniqueSpecTypes = [...new Set(variantSpecTypes)];
 
-  // Get the first variant for price display
-  const firstVariant = product.variants && product.variants.length > 0 ? product.variants[0] : null;
-  const displayPrice = firstVariant ? parseFloat(firstVariant.price) : product.price;
-  const displayOriginalPrice = displayPrice * (1 + (product.discountPercentage || 0) / 100);
-
-  // Get only the first 4 non-empty spec fields for preview
-  const previewSpecs = product.specGroups[0]?.fields.slice(0, 6) || [];
-
-  // Cast product to ExtendedProduct for accessing productType
+  // Cast product to ExtendedProduct
   const extendedProduct = product as ExtendedProduct;
+
+  // Get display price with min/max
+  const getDisplayPrice = () => {
+    if (extendedProduct.minPrice !== undefined && extendedProduct.maxPrice !== undefined) {
+      const min = extendedProduct.minPrice;
+      const max = extendedProduct.maxPrice;
+      if (min === max) {
+        return `₹${min.toLocaleString()}`;
+      }
+      return `₹${min.toLocaleString()} - ₹${max.toLocaleString()}`;
+    }
+    return `₹${product.price.toLocaleString()}`;
+  };
+
+  // Get display price for original (without discount)
+  const getDisplayOriginalPrice = () => {
+    if (extendedProduct.minPrice !== undefined && extendedProduct.maxPrice !== undefined) {
+      const min = extendedProduct.minPrice * (1 + (product.discountPercentage || 0) / 100);
+      const max = extendedProduct.maxPrice * (1 + (product.discountPercentage || 0) / 100);
+      if (min === max) {
+        return `₹${min.toLocaleString()}`;
+      }
+      return `₹${min.toLocaleString()} - ₹${max.toLocaleString()}`;
+    }
+    const originalPrice = product.price * (1 + (product.discountPercentage || 0) / 100);
+    return `₹${originalPrice.toLocaleString()}`;
+  };
+
+  // Check if product has discount
+  const hasDiscount = (product.discountPercentage ?? 0) > 0;
+
+  // Get all spec fields for display
+  const allSpecFields = product.specGroups[0]?.fields || [];
+
+  // Preview specs (first 4)
+  const previewSpecs = allSpecFields.slice(0, 4);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -606,7 +660,7 @@ export function ProductDetailsPage() {
             <div className="absolute top-4 left-4 flex flex-col gap-1.5">
               {product.isPopular && <Badge className="bg-accent text-accent-foreground shadow-sm">POPULAR</Badge>}
               {product.isNew && <Badge className="bg-secondary text-secondary-foreground shadow-sm">NEW</Badge>}
-              {(product.discountPercentage ?? 0) > 0 && (
+              {hasDiscount && (
                 <Badge variant="destructive">{product.discountPercentage}% OFF</Badge>
               )}
             </div>
@@ -662,26 +716,31 @@ export function ProductDetailsPage() {
 
           <p className="text-muted-foreground leading-relaxed mb-6">{product.shortDescription}</p>
 
-          {/* Price */}
+          {/* Price - Show Min and Max */}
           <div className="mb-6">
-            <div className="flex items-center gap-3">
-              <span className="text-3xl font-bold text-primary">₹{displayPrice.toLocaleString()}</span>
-              {(product.discountPercentage ?? 0) > 0 && (
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-3xl font-bold text-primary">{getDisplayPrice()}</span>
+              {hasDiscount && (
                 <>
-                  <span className="text-lg text-muted-foreground line-through">₹{displayOriginalPrice.toLocaleString()}</span>
+                  <span className="text-lg text-muted-foreground line-through">{getDisplayOriginalPrice()}</span>
                   <Badge variant="destructive" className="text-sm">{product.discountPercentage}% OFF</Badge>
                 </>
               )}
             </div>
+            {/* Show price range note if min and max are different */}
+            {extendedProduct.minPrice !== undefined && extendedProduct.maxPrice !== undefined && 
+             extendedProduct.minPrice !== extendedProduct.maxPrice && (
+              <p className="text-xs text-muted-foreground mt-1">Price range based on variants</p>
+            )}
           </div>
 
-          {/* Key specs preview - only show if there are specs */}
+          {/* Key specs preview - show relevant specs */}
           {previewSpecs.length > 0 && (
             <div className="grid grid-cols-2 gap-3 mb-6">
               {previewSpecs.map((field) => (
                 <div key={field.key} className="bg-muted/40 rounded-lg p-3">
                   <div className="text-xs text-muted-foreground mb-0.5">{field.label}</div>
-                  <div className="text-sm font-semibold">{field.value}</div>
+                  <div className="text-sm font-semibold truncate">{field.value}</div>
                 </div>
               ))}
             </div>
@@ -769,31 +828,18 @@ export function ProductDetailsPage() {
           <Card className="p-6">
             <h2 className="text-xl font-bold mb-4">Product Description</h2>
             <p className="text-muted-foreground leading-relaxed mb-4">{product.description}</p>
-            {product.brandDescription && (
-              <div className="mt-4 p-4 bg-muted/30 rounded-lg">
-                <h3 className="font-semibold text-sm mb-1">About {product.brandName}</h3>
-                <p className="text-sm text-muted-foreground">{product.brandDescription}</p>
-              </div>
-            )}
           </Card>
         </TabsContent>
 
         <TabsContent value="specifications" className="mt-6">
           <Card className="p-6">
             <h2 className="text-xl font-bold mb-6">Technical Specifications</h2>
-            {product.specGroups[0]?.fields.length > 0 ? (
-              <div className="space-y-8">
-                {product.specGroups.map((group) => (
-                  <div key={group.groupName}>
-                    <h3 className="font-semibold text-primary mb-3 pb-2 border-b">{group.groupName}</h3>
-                    <div className="grid sm:grid-cols-2 gap-x-8 gap-y-0">
-                      {group.fields.map((field, idx) => (
-                        <div key={field.key} className={cn('flex justify-between py-2.5 border-b border-dashed', idx % 2 === 1 && 'sm:border-l sm:pl-8 sm:border-b-0 sm:border-dashed')}>
-                          <span className="text-sm text-muted-foreground">{field.label}</span>
-                          <span className="text-sm font-medium text-right">{field.value}</span>
-                        </div>
-                      ))}
-                    </div>
+            {allSpecFields.length > 0 ? (
+              <div className="grid sm:grid-cols-2 gap-x-8 gap-y-0">
+                {allSpecFields.map((field, idx) => (
+                  <div key={field.key} className={cn('flex justify-between py-2.5 border-b border-dashed', idx % 2 === 1 && 'sm:border-l sm:pl-8 sm:border-b-0 sm:border-dashed')}>
+                    <span className="text-sm text-muted-foreground">{field.label}</span>
+                    <span className="text-sm font-medium text-right">{field.value}</span>
                   </div>
                 ))}
               </div>
@@ -918,7 +964,7 @@ export function ProductDetailsPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Related Products - Only show if there are products with same product_type */}
+      {/* Related Products */}
       {relatedProducts.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-5">

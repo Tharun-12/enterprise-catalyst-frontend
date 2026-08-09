@@ -1,4 +1,5 @@
-import { Link} from 'react-router-dom';
+// product-card.tsx
+import { Link } from 'react-router-dom';
 import { Heart, GitCompare, Eye, Star, BadgeCheck } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,9 +15,6 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product }: ProductCardProps) {
-  // Remove unused navigate
-  // const navigate = useNavigate();
-  
   const { 
     compareList, 
     addToWishlist, 
@@ -29,52 +27,77 @@ export function ProductCard({ product }: ProductCardProps) {
   } = useApp();
   
   const [isLoading, setIsLoading] = useState(false);
+  const [localWishlistState, setLocalWishlistState] = useState<boolean | null>(null);
 
-  const inWishlist = isInWishlist(product.id);
+  // Use local state if available, otherwise use the context state
+  const inWishlist = localWishlistState !== null ? localWishlistState : isInWishlist(product.id);
   const inCompare = isInCompare(product.id);
   const compareFull = compareList.length >= 4;
-
-  // Get user ID from localStorage
-  const getUserId = () => {
-    const session = localStorage.getItem('userSession');
-    if (session) {
-      try {
-        const user = JSON.parse(session);
-        return user.userId;
-      } catch (e) {
-        return null;
-      }
-    }
-    return null;
-  };
 
   const handleWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    if (isLoading) return;
+    if (isLoading || loadingWishlist) return;
     
     setIsLoading(true);
-    // Remove userId parameter - only pass product ID
-    const userId = getUserId();
     
     try {
       if (inWishlist) {
-        await removeFromWishlist(product.id); // Only 1 argument
+        await removeFromWishlist(product.id);
+        setLocalWishlistState(false);
+        toast.success('Removed from wishlist', {
+          duration: 2000,
+          position: 'top-right',
+          style: {
+            background: '#EF4444',
+            color: 'white',
+            border: 'none',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            marginTop: '70px',
+          },
+        });
       } else {
-        await addToWishlist(product.id); // Only 1 argument
-        if (!userId) {
-          toast.info('Please login to sync your wishlist across devices', {
-            action: {
-              label: 'Login',
-              onClick: () => window.location.href = '/login'
-            }
-          });
-        }
+        await addToWishlist(product.id);
+        setLocalWishlistState(true);
+        toast.success('Added to wishlist', {
+          duration: 2000,
+          position: 'top-right',
+          style: {
+            background: '#10B981',
+            color: 'white',
+            border: 'none',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            marginTop: '70px',
+          },
+        });
       }
     } catch (error) {
       console.error('Error toggling wishlist:', error);
-      toast.error('Failed to update wishlist');
+      setLocalWishlistState(null);
+      toast.error('Failed to update wishlist', {
+        duration: 2000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+      });
     } finally {
       setIsLoading(false);
     }
@@ -84,22 +107,83 @@ export function ProductCard({ product }: ProductCardProps) {
     e.preventDefault();
     e.stopPropagation();
     
-    // const userId = getUserId(); // Keep for potential future use, but don't pass it
-    
-    if (inCompare) {
-      await removeFromCompare(product.id); // Only 1 argument
-    } else {
-      if (compareFull) {
-        toast.error('You can compare up to 4 products at a time');
-        return;
+    try {
+      if (inCompare) {
+        await removeFromCompare(product.id);
+        toast.success('Removed from compare', {
+          duration: 2000,
+          position: 'top-right',
+          style: {
+            background: '#EF4444',
+            color: 'white',
+            border: 'none',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            marginTop: '70px',
+          },
+        });
+      } else {
+        if (compareFull) {
+          toast.error('You can compare up to 4 products at a time', {
+            duration: 3000,
+            position: 'top-right',
+            style: {
+              background: '#F59E0B',
+              color: 'white',
+              border: 'none',
+              padding: '12px 24px',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '500',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+              marginTop: '70px',
+            },
+          });
+          return;
+        }
+        await addToCompare(product.id);
+        toast.success('Added to compare', {
+          duration: 2000,
+          position: 'top-right',
+          style: {
+            background: '#10B981',
+            color: 'white',
+            border: 'none',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            marginTop: '70px',
+          },
+        });
       }
-      await addToCompare(product.id); // Only 1 argument
-      // No navigation - just stay on the page
+    } catch (error) {
+      console.error('Error toggling compare:', error);
+      toast.error('Failed to update compare list', {
+        duration: 2000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+      });
     }
   };
 
   // Format price in Indian Rupees
   const formatPrice = (price: number) => {
+    if (isNaN(price) || !isFinite(price)) return '₹0';
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
@@ -108,24 +192,50 @@ export function ProductCard({ product }: ProductCardProps) {
     }).format(price);
   };
 
-  // Get the display price (lowest variant price or product price)
+  // Get display price - show min/max range
   const getDisplayPrice = () => {
-    if (product.variants && product.variants.length > 0) {
-      const variantPrices = product.variants.map(v => parseFloat(v.price));
-      const minPrice = Math.min(...variantPrices);
-      const maxPrice = Math.max(...variantPrices);
+    // Check if product has minPrice and maxPrice from API
+    if (product.minPrice !== undefined && product.minPrice !== null && 
+        product.maxPrice !== undefined && product.maxPrice !== null) {
+      const min = Number(product.minPrice);
+      const max = Number(product.maxPrice);
       
-      if (minPrice === maxPrice) {
-        return formatPrice(minPrice);
+      if (!isNaN(min) && !isNaN(max)) {
+        if (min === max) {
+          return formatPrice(min);
+        }
+        return `${formatPrice(min)} - ${formatPrice(max)}`;
       }
-      return `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`;
     }
-    return formatPrice(product.price);
+    
+    // Fallback to variants
+    if (product.variants && product.variants.length > 0) {
+      const variantPrices = product.variants
+        .map(v => parseFloat(v.price))
+        .filter(p => !isNaN(p) && isFinite(p));
+      
+      if (variantPrices.length > 0) {
+        const minPrice = Math.min(...variantPrices);
+        const maxPrice = Math.max(...variantPrices);
+        
+        if (minPrice === maxPrice) {
+          return formatPrice(minPrice);
+        }
+        return `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`;
+      }
+    }
+    
+    // Fallback to product price
+    if (product.price && !isNaN(product.price) && isFinite(product.price)) {
+      return formatPrice(product.price);
+    }
+    
+    return 'Price on request';
   };
 
-  // Check if product has discount - fixed with optional chaining and nullish coalescing
+  // Check if product has discount
   const hasDiscount = (product.discountPercentage ?? 0) > 0;
-  const discountedPrice = hasDiscount ? product.price * (1 - (product.discountPercentage ?? 0) / 100) : product.price;
+  const discountedPrice = hasDiscount && product.price ? product.price * (1 - (product.discountPercentage ?? 0) / 100) : product.price;
 
   // Get stock with fallback
   const stock = product.stock ?? 0;
@@ -193,10 +303,10 @@ export function ProductCard({ product }: ProductCardProps) {
           </h3>
         </Link>
 
-        {/* Price Section */}
+        {/* Price Section - Fixed to show min/max properly */}
         <div className="mb-2 mt-1">
-          {hasDiscount ? (
-            <div className="flex items-center gap-2">
+          {hasDiscount && discountedPrice ? (
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-lg font-bold text-primary">
                 {formatPrice(discountedPrice)}
               </span>
@@ -209,7 +319,14 @@ export function ProductCard({ product }: ProductCardProps) {
               {getDisplayPrice()}
             </span>
           )}
-          {product.variants && product.variants.length > 1 && (
+          {/* Show min/max label if different */}
+          {product.minPrice !== undefined && product.maxPrice !== undefined && 
+           product.minPrice !== product.maxPrice && 
+           !isNaN(product.minPrice) && !isNaN(product.maxPrice) && (
+            <p className="text-xs text-gray-400 mt-0.5">Price range based on variants</p>
+          )}
+          {product.variants && product.variants.length > 1 && 
+           !(product.minPrice !== undefined && product.maxPrice !== undefined) && (
             <p className="text-xs text-gray-400 mt-0.5">*Price varies by variant</p>
           )}
         </div>
@@ -257,13 +374,13 @@ export function ProductCard({ product }: ProductCardProps) {
             className={cn(
               'h-9 w-9 shrink-0 rounded-full transition-all duration-200 border-gray-200 dark:border-gray-700 hover:border-primary hover:text-primary',
               inWishlist && 'border-red-500 text-red-500 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30',
-              isLoading && 'opacity-50 cursor-not-allowed'
+              (isLoading || loadingWishlist) && 'opacity-50 cursor-not-allowed'
             )}
             onClick={handleWishlist}
             disabled={isLoading || loadingWishlist}
             title={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
           >
-            {isLoading ? (
+            {isLoading || loadingWishlist ? (
               <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
             ) : (
               <Heart className={cn('w-4 h-4 transition-all', inWishlist && 'fill-red-500')} />

@@ -20,6 +20,8 @@ interface Product {
   product_brand: string;
   product_description: string;
   price: string;
+  min_price: string;  // Added
+  max_price: string;  // Added
   warranty: string;
   created_at: string;
   updated_at: string;
@@ -340,7 +342,7 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Product</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Category</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Brand</th>
-                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Price</th>
+                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Price Range</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Created</th>
                 <th className="p-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
               </tr>
@@ -382,9 +384,16 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
                     <td className="p-3 hidden lg:table-cell text-sm">{product.product_brand}</td>
                     <td className="p-3">
                       <div className="flex flex-col">
-                        <span className="font-medium">₹{parseFloat(product.price).toLocaleString('en-IN')}</span>
+                        {/* Compact price range display */}
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">₹{parseFloat(product.min_price || product.price).toLocaleString('en-IN')}</span>
+                          <span className="text-muted-foreground text-xs">-</span>
+                          <span className="font-medium text-sm">₹{parseFloat(product.max_price || product.price).toLocaleString('en-IN')}</span>
+                        </div>
                         {parseFloat(product.discount) > 0 && (
-                          <span className="text-xs text-green-600">-{product.discount}%</span>
+                          <span className="text-xs text-green-600 font-medium">
+                            {product.discount}% OFF
+                          </span>
                         )}
                       </div>
                     </td>

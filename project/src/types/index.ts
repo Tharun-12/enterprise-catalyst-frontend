@@ -1,3 +1,4 @@
+// src/types/index.ts
 export type ProductStatus = 'active' | 'draft' | 'archived';
 export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'closed';
 export type InquiryStatus = 'new' | 'in-review' | 'responded' | 'closed';
@@ -32,9 +33,18 @@ export interface SpecField {
   options?: string[];
 }
 
-export interface SpecificationGroup {
+export interface SpecGroup {
   groupName: string;
   fields: { key: string; label: string; value: string }[];
+}
+
+export interface Variant {
+  id: number;
+  color_name: string;
+  color_hex: string;
+  price: string;
+  stock: number;
+  image_url: string;
 }
 
 export interface DownloadResource {
@@ -64,29 +74,28 @@ export interface Product {
   categoryName: string;
   shortDescription: string;
   description: string;
-  features: string[];
-  specifications: Record<string, string>;
-  specGroups: SpecificationGroup[];
   gallery: string[];
-  price: number;
+  features: string[];
+  specifications: Record<string, any>;
   currency: string;
-  status: ProductStatus;
+  relatedProductIds: string[];
+  specGroups: SpecGroup[];
+  price: number;
+  minPrice?: number;
+  maxPrice?: number;
+  originalPrice: number;
+  discountPercentage: number;
+  status: 'active' | 'inactive' | 'draft';
   isPopular: boolean;
   isNew: boolean;
   rating: number;
   reviewCount: number;
-  downloads: DownloadResource[];
-  relatedProductIds: string[];
+  downloads: { name: string; type: 'pdf' | 'zip' | 'file'; size: string; url: string }[];
   createdAt: string;
   warranty: string;
-
-  // Optional extras used by product-details page (not required by ProductCard/WishlistLeadModal)
-  originalPrice?: number;
-  discountPercentage?: number;
-  brandDescription?: string;
-  variants?: ProductVariant[];
-  hasVariants?: boolean;
-  stock?: number;
+  variants?: Variant[];
+  hasVariants: boolean;
+  stock: number;
 }
 
 export interface WishlistLead {
@@ -118,16 +127,14 @@ export interface Inquiry {
   createdAt: string;
 }
 
-// In your types file (e.g., src/types/index.ts)
 export interface Testimonial {
   id: string;
   name: string;
   role: string;
   company: string;
-  message: string;  // ✅ Changed from 'quote'
+  message: string;
   rating: number;
-  avatar: string;   // ✅ Changed from 'image'
-  // Optional: Add any additional fields you need
+  avatar: string;
 }
 
 export interface Activity {
@@ -137,8 +144,6 @@ export interface Activity {
   timestamp: string;
 }
 
-
-// index.ts - Add this extended interface
 export interface ProductVariantExtended extends ProductVariant {
   variant_name?: string;
   part_code?: string;
