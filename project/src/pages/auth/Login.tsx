@@ -12,7 +12,7 @@ import { useSettings } from '@/hooks/use-settings';
 import { baseurl } from '@/Baseurl/baseurl';
 
 // Use environment variable or fallback to localhost
-const API_URL =  `${baseurl}/api`;
+const API_URL = `${baseurl}/api`;
 
 export function LoginPage() {
     const [email, setEmail] = useState('');
@@ -69,6 +69,9 @@ export function LoginPage() {
                 } else {
                     localStorage.removeItem('rememberMe');
                 }
+                
+                // 🔥 IMPORTANT: Dispatch authChange event to notify all components
+                window.dispatchEvent(new Event('authChange'));
                 
                 toast.success(`Welcome back, ${response.data.user.name}!`);
                 setLoading(false);
