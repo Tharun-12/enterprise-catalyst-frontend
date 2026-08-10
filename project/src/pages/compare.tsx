@@ -737,6 +737,8 @@
 
 
 // ComparePage.tsx - Updated with hidden Product Type dropdown after first product
+
+// ComparePage.tsx - Updated with hidden Product Type dropdown after first product
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { X, GitCompare, Plus, ArrowRight, AlertCircle, Loader2, Heart } from 'lucide-react';
@@ -850,7 +852,8 @@ export function ComparePage() {
   
   // Dropdown states for adding products (Flipkart style)
   const [brands, setBrands] = useState<Brand[]>([]);
-  const [productTypes, setProductTypes] = useState<string[]>([]);
+  // FIXED: Removed unused productTypes state variable
+  // const [productTypes, setProductTypes] = useState<string[]>([]); // REMOVED - was never used
   
   // State for each slot's dropdown selections
   interface SlotDropdowns {
@@ -927,9 +930,9 @@ export function ComparePage() {
         const allProducts = response.data;
         setAllProductsData(allProducts);
         
-        // Get unique product types
-        const types: string[] = [...new Set(allProducts.map((p: ApiProduct) => p.product_type).filter(Boolean))];
-        setProductTypes(types);
+        // Get unique product types - removed unused setter
+        // const types: string[] = [...new Set(allProducts.map((p: ApiProduct) => p.product_type).filter(Boolean))];
+        // setProductTypes(types); // REMOVED - was never used
         
         // Initialize filtered products for slots
         const initialFiltered = Array(4).fill(null).map(() => allProducts);
@@ -983,7 +986,8 @@ export function ComparePage() {
             `${baseurl}/api/products/spec-comparison/${product.id}`
           );
           if (specRes.data && Object.keys(specRes.data).length > 0) {
-            const specArray: SpecComparison[] = Object.values(specRes.data);
+            // FIXED: Use type assertion to tell TypeScript this is SpecComparison[]
+            const specArray: SpecComparison[] = Object.values(specRes.data) as SpecComparison[];
             return { ...product, spec_comparison: specArray };
           }
           return { ...product, spec_comparison: [] };

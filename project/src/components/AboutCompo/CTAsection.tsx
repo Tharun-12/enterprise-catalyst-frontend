@@ -1,4 +1,4 @@
-import { ArrowRight, BookOpen, Download, MessageCircle } from "lucide-react";
+import { ArrowRight, BookOpen, MessageCircle } from "lucide-react";
 
 export default function ECatalog() {
   return (

@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 // import { motion } from 'framer-motion';
 import {
-  Heart, GitCompare, Download, FileText, Check, Star, ChevronRight,
+  Heart, Download, FileText, Star, ChevronRight,
   ZoomIn, Share2, ShieldCheck, Package, ArrowLeft,
   BadgeCheck, Truck, Wrench, FileSpreadsheet
 } from 'lucide-react';
@@ -146,8 +146,8 @@ const transformProduct = (
   const maxPrice = product.max_price ? parseFloat(product.max_price) : undefined;
 
   // Get unique spec types from variants
-  const specTypes = product.variants?.map(v => v.spec_type).filter(Boolean) as string[] || [];
-  const uniqueSpecTypes = [...new Set(specTypes)];
+  // const specTypes = product.variants?.map(v => v.spec_type).filter(Boolean) as string[] || [];
+  // const uniqueSpecTypes = [...new Set(specTypes)];
 
   // Build specifications - include ALL product fields
   const specFields: { key: string; label: string; value: string }[] = [];
@@ -606,18 +606,18 @@ export function ProductDetailsPage() {
   };
 
   // Get display price for original (without discount)
-  const getDisplayOriginalPrice = () => {
-    if (extendedProduct.minPrice !== undefined && extendedProduct.maxPrice !== undefined) {
-      const min = extendedProduct.minPrice * (1 + (product.discountPercentage || 0) / 100);
-      const max = extendedProduct.maxPrice * (1 + (product.discountPercentage || 0) / 100);
-      if (min === max) {
-        return `₹${min.toLocaleString()}`;
-      }
-      return `₹${min.toLocaleString()} - ₹${max.toLocaleString()}`;
-    }
-    const originalPrice = product.price * (1 + (product.discountPercentage || 0) / 100);
-    return `₹${originalPrice.toLocaleString()}`;
-  };
+  // const getDisplayOriginalPrice = () => {
+  //   if (extendedProduct.minPrice !== undefined && extendedProduct.maxPrice !== undefined) {
+  //     const min = extendedProduct.minPrice * (1 + (product.discountPercentage || 0) / 100);
+  //     const max = extendedProduct.maxPrice * (1 + (product.discountPercentage || 0) / 100);
+  //     if (min === max) {
+  //       return `₹${min.toLocaleString()}`;
+  //     }
+  //     return `₹${min.toLocaleString()} - ₹${max.toLocaleString()}`;
+  //   }
+  //   const originalPrice = product.price * (1 + (product.discountPercentage || 0) / 100);
+  //   return `₹${originalPrice.toLocaleString()}`;
+  // };
 
   // Check if product has discount
   const hasDiscount = (product.discountPercentage ?? 0) > 0;

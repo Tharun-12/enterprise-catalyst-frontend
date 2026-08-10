@@ -141,11 +141,11 @@
 
 // pages/about.tsx (or wherever AboutPage is used)
 import { AboutHero } from "@/components/AboutCompo/AboutHero";
-import { AboutStory } from "@/components/AboutCompo/AboutStory";
+// import { AboutStory } from "@/components/AboutCompo/AboutStory";
 import { AboutMissionVision } from "@/components/AboutCompo/AboutMissionVision";
 import { AboutValues } from "@/components/AboutCompo/AboutValues";
-import { AboutIndustries } from "@/components/AboutCompo/AboutIndustries";
-import { AboutTimeline } from "@/components/AboutCompo/AboutTimeline";
+// import { AboutIndustries } from "@/components/AboutCompo/AboutIndustries";
+// import { AboutTimeline } from "@/components/AboutCompo/AboutTimeline";
 import { PageBreadcrumb as Breadcrumb } from '@/layouts/customer-layout-wrapper';
 import ECatalog from "@/components/AboutCompo/CTAsection";
 

@@ -647,7 +647,7 @@
 
 // product-card.tsx
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, GitCompare, Eye, Star, BadgeCheck, FileSpreadsheet } from 'lucide-react';
+import { Heart, Eye, Star, BadgeCheck, FileSpreadsheet } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -856,21 +856,21 @@ export function ProductCard({ product }: ProductCardProps) {
   };
 
   // Compare icon: toggle, then take user to the compare page
-  const handleCompareClick = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  // const handleCompareClick = async (e: React.MouseEvent) => {
+  //   e.preventDefault();
+  //   e.stopPropagation();
 
-    if (inCompare) {
-      // Already added — just view the comparison
-      navigate('/compare');
-      return;
-    }
+  //   if (inCompare) {
+  //     // Already added — just view the comparison
+  //     navigate('/compare');
+  //     return;
+  //   }
 
-    const added = await toggleCompare();
-    if (added) {
-      navigate('/compare');
-    }
-  };
+  //   const added = await toggleCompare();
+  //   if (added) {
+  //     navigate('/compare');
+  //   }
+  // };
 
   // Checkbox: toggle and navigate to compare page
   const handleCompareCheckbox = async (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -322,10 +322,10 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { SectionHeader } from '@/components/shared';
+// import { SectionHeader } from '@/components/shared';
 import { ProductCard } from '@/components/product-card';
 import { baseurl } from "@/Baseurl/baseurl";
-import type { Product, Category, Brand } from '@/types';
+import type { Product } from '@/types';
 
 // ---- Raw API response shapes ----
 interface ApiCategory {
@@ -403,10 +403,10 @@ interface ApiProduct {
 }
 
 // Helper function to create slug
-const createSlug = (name: string): string => {
-  if (!name) return '';
-  return name.toLowerCase().replace(/\s+/g, '-');
-};
+// const createSlug = (name: string): string => {
+//   if (!name) return '';
+//   return name.toLowerCase().replace(/\s+/g, '-');
+// };
 
 // ---- Transform API product into the app-wide `Product` type ----
 const transformProduct = (

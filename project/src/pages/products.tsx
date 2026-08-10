@@ -169,7 +169,7 @@ const transformProduct = (
 };
 
 export function ProductsPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, _setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [showMobileFilter, setShowMobileFilter] = useState(false);
   const [categories, setCategories] = useState<ApiCategory[]>([]);
@@ -533,14 +533,14 @@ export function ProductsPage() {
     return pageNumbers;
   };
 
-  const handleCategoryChange = (slug: string | null) => {
-    if (slug) {
-      setSearchParams({ category: slug });
-    } else {
-      setSearchParams({});
-    }
-    setCurrentPage(1);
-  };
+  // const handleCategoryChange = (slug: string | null) => {
+  //   if (slug) {
+  //     setSearchParams({ category: slug });
+  //   } else {
+  //     setSearchParams({});
+  //   }
+  //   setCurrentPage(1);
+  // };
 
   if (error) {
     return (
