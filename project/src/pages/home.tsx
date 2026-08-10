@@ -394,13 +394,13 @@ export function HomePage() {
     <div>
       <HeroSection />
       <CompanyIntroSection />
-      <ServicesSection />
+      {/* <ServicesSection /> */}
       {/* <FeaturedCategoriesSection /> */}
       <FeaturedCategories />
       <FeaturedProductsSection />
       <TrustedBrandsSection />
       <WhyChooseUsSection />
-      <ProductsSection />
+      {/* <ProductsSection /> */}
       {/* <CTASection /> */}
       <TestimonialsSection />
       <ContactInfoSection />
