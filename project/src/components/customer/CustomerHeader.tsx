@@ -1725,8 +1725,6 @@
 //   );
 // }
 
-
-
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { 
@@ -1975,10 +1973,12 @@ export function CustomerHeader() {
 
             {/* Actions */}
             <div className="flex items-center gap-1 sm:gap-2">
+              {/* Compare Button - Badge only shown when user is logged in */}
               <Link to="/compare">
                 <Button variant="ghost" size="sm" className="relative hover:bg-gradient-to-r hover:from-pink-50 hover:via-orange-50 hover:to-blue-50 transition-all duration-300">
                   <GitCompare className="w-5 h-5 text-gray-600" />
-                  {compareList.length > 0 && (
+                  {/* Show badge ONLY if user is logged in AND compareList has items */}
+                  {user && compareList.length > 0 && (
                     <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 flex items-center justify-center text-[10px] bg-gradient-to-r from-pink-500 via-orange-500 to-blue-600 text-white border-0">
                       {compareList.length}
                     </Badge>
@@ -1986,10 +1986,13 @@ export function CustomerHeader() {
                   <span className="hidden xl:inline ml-1.5 text-gray-600">Compare</span>
                 </Button>
               </Link>
+
+              {/* Wishlist Button - Badge only shown when user is logged in */}
               <Link to="/wishlist">
                 <Button variant="ghost" size="sm" className="relative hover:bg-gradient-to-r hover:from-pink-50 hover:via-orange-50 hover:to-blue-50 transition-all duration-300">
                   <Heart className="w-5 h-5 text-gray-600" />
-                  {wishlist.length > 0 && (
+                  {/* Show badge ONLY if user is logged in AND wishlist has items */}
+                  {user && wishlist.length > 0 && (
                     <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 flex items-center justify-center text-[10px] bg-gradient-to-r from-pink-500 via-orange-500 to-blue-600 text-white border-0">
                       {wishlist.length}
                     </Badge>
@@ -2028,7 +2031,7 @@ export function CustomerHeader() {
                       My Profile
                     </DropdownMenuItem>
                     
-                    {/* My Quotations - NEW ITEM BELOW MY PROFILE */}
+                    {/* My Quotations */}
                     <DropdownMenuItem onClick={() => navigate('/my-quotations')} className="cursor-pointer hover:bg-gradient-to-r hover:from-pink-50 hover:via-orange-50 hover:to-blue-50">
                       <FileText className="w-4 h-4 mr-2" />
                       My Quotations

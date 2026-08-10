@@ -101,14 +101,14 @@
 
 // // // Add compareLoading state
 // // // const [compareLoading, setCompareLoading] = useState(false);
-  
+
 
 // // const fetchWishlistFromAPI = useCallback(async (userId: number) => {
 // //   try {
 // //     setLoadingWishlist(true);
 // //     const response = await fetch(`${API_BASE}/wishlist/${userId}`);
 // //     const result = await response.json();
-    
+
 // //     if (result.success) {
 // //       const productIds = result.data.map((item: any) => String(item.id));
 // //       setWishlist(productIds);
@@ -128,7 +128,7 @@
 
 // //   const addToWishlist = useCallback(async (productId: string, userId?: number) => {
 // //     const uid = userId || currentUserId;
-    
+
 // //     // If user is not logged in, store in localStorage only
 // //     if (!uid) {
 // //       setWishlist((prev) => (prev.includes(productId) ? prev : [...prev, productId]));
@@ -224,7 +224,7 @@
 
 // //  const addToCompare = useCallback(async (productId: string, userId?: number) => {
 // //   const uid = userId || currentUserId;
-  
+
 // //   // If user is not logged in, store in localStorage only
 // //   if (!uid) {
 // //     setCompareList((prev) => {
@@ -338,7 +338,7 @@
 // //   try {
 // //     const response = await fetch(`${API_BASE}/compare/${userId}`);
 // //     const result = await response.json();
-    
+
 // //     if (result.success) {
 // //       const productIds = result.data.map((item: any) => String(item.product_id));
 // //       setCompareList(productIds);
@@ -511,7 +511,7 @@
 //       setLoadingWishlist(true);
 //       const response = await fetch(`${API_BASE}/wishlist/${userId}`);
 //       const result = await response.json();
-      
+
 //       if (result.success) {
 //         const productIds = result.data.map((item: any) => String(item.id));
 //         setWishlist(productIds);
@@ -530,7 +530,7 @@
 
 //   const addToWishlist = useCallback(async (productId: string, userId?: number) => {
 //     const uid = userId || currentUserId;
-    
+
 //     // If user is not logged in, store in localStorage only
 //     if (!uid) {
 //       setWishlist((prev) => (prev.includes(productId) ? prev : [...prev, productId]));
@@ -636,7 +636,7 @@
 
 //   const addToCompare = useCallback(async (productId: string, userId?: number) => {
 //     const uid = userId || currentUserId;
-    
+
 //     // If user is not logged in, store in localStorage only
 //     if (!uid) {
 //       setCompareList((prev) => {
@@ -758,7 +758,7 @@
 //     try {
 //       const response = await fetch(`${API_BASE}/compare/${userId}`);
 //       const result = await response.json();
-      
+
 //       if (result.success) {
 //         const productIds = result.data.map((item: any) => String(item.product_id));
 //         setCompareList(productIds);
@@ -931,7 +931,7 @@
 //       setLoadingWishlist(true);
 //       const response = await fetch(`${API_BASE}/wishlist/${userId}`);
 //       const result = await response.json();
-      
+
 //       if (result.success) {
 //         const productIds = result.data.map((item: any) => String(item.id));
 //         setWishlist(productIds);
@@ -950,7 +950,7 @@
 
 //   const addToWishlist = useCallback(async (productId: string, userId?: number) => {
 //     const uid = userId || currentUserId;
-    
+
 //     // If user is not logged in, store in localStorage only
 //     if (!uid) {
 //       setWishlist((prev) => (prev.includes(productId) ? prev : [...prev, productId]));
@@ -1060,7 +1060,7 @@
 
 //   const addToCompare = useCallback(async (productId: string, userId?: number) => {
 //     const uid = userId || currentUserId;
-    
+
 //     // If user is not logged in, store in localStorage only
 //     if (!uid) {
 //       setCompareList((prev) => {
@@ -1174,7 +1174,7 @@
 //     try {
 //       const response = await fetch(`${API_BASE}/compare/${userId}`);
 //       const result = await response.json();
-      
+
 //       if (result.success) {
 //         const productIds = result.data.map((item: any) => String(item.product_id));
 //         setCompareList(productIds);
@@ -1240,6 +1240,13 @@
 // }
 
 
+// use-app.tsx - Updated version
+
+// use-app.tsx - Updated version
+
+// use-app.tsx - Updated version
+
+// use-app.tsx - Fixed version
 
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { WishlistLead, Inquiry, Product } from '@/types';
@@ -1253,6 +1260,7 @@ interface AppContextValue {
   leads: WishlistLead[];
   inquiries: Inquiry[];
   loadingWishlist: boolean;
+  isLoggedIn: boolean;
   addToWishlist: (productId: string, userId?: number) => Promise<void>;
   removeFromWishlist: (productId: string, userId?: number) => Promise<void>;
   isInWishlist: (productId: string) => boolean;
@@ -1264,6 +1272,10 @@ interface AppContextValue {
   addInquiry: (inquiry: Omit<Inquiry, 'id' | 'status' | 'createdAt'>) => void;
   fetchWishlist: (userId: number) => Promise<void>;
   clearWishlist: (userId: number) => Promise<void>;
+  setUserLoggedIn: (userId: number) => void;
+  setUserLoggedOut: () => void;
+  refreshUserState: () => void;
+  syncCompareFromLocalStorage: () => void;
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
@@ -1278,9 +1290,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loadingWishlist, setLoadingWishlist] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // Load wishlist from localStorage on mount
+  // Load wishlist and compare from localStorage on mount
   useEffect(() => {
+    // Load wishlist from localStorage
     const savedWishlist = localStorage.getItem('wishlist');
     if (savedWishlist) {
       try {
@@ -1290,13 +1304,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    // Load compareList from localStorage
     const savedCompare = localStorage.getItem('compareList');
     if (savedCompare) {
       try {
-        setCompareList(JSON.parse(savedCompare));
+        const parsedCompare = JSON.parse(savedCompare);
+        setCompareList(parsedCompare);
+        console.log('Loaded compareList from localStorage:', parsedCompare);
       } catch (e) {
         console.error('Error loading compareList from localStorage:', e);
       }
+    } else {
+      // Initialize empty compareList in localStorage if not exists
+      localStorage.setItem('compareList', JSON.stringify([]));
     }
 
     // Load user session
@@ -1305,13 +1325,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         const user = JSON.parse(session);
         setCurrentUserId(user.userId);
-        // Fetch wishlist from API if user is logged in
+        setIsLoggedIn(true);
         if (user.userId) {
           fetchWishlistFromAPI(user.userId);
+          fetchCompareFromAPI(user.userId);
         }
       } catch (e) {
         console.error('Error loading user session:', e);
       }
+    } else {
+      setIsLoggedIn(false);
+      setCurrentUserId(null);
     }
   }, []);
 
@@ -1323,23 +1347,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Save compareList to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('compareList', JSON.stringify(compareList));
+    console.log('Saved compareList to localStorage:', compareList);
   }, [compareList]);
 
-  // Update the useEffect to fetch compare list when user logs in
+  // Listen for auth changes
   useEffect(() => {
-    const session = localStorage.getItem('userSession');
-    if (session) {
-      try {
-        const user = JSON.parse(session);
-        setCurrentUserId(user.userId);
-        if (user.userId) {
-          fetchWishlistFromAPI(user.userId);
-          fetchCompareFromAPI(user.userId);
+    const handleAuthChange = () => {
+      const session = localStorage.getItem('userSession');
+      if (session) {
+        try {
+          const user = JSON.parse(session);
+          setCurrentUserId(user.userId);
+          setIsLoggedIn(true);
+          if (user.userId) {
+            fetchWishlistFromAPI(user.userId);
+            fetchCompareFromAPI(user.userId);
+          }
+        } catch (e) {
+          console.error('Error loading user session:', e);
         }
-      } catch (e) {
-        console.error('Error loading user session:', e);
+      } else {
+        setIsLoggedIn(false);
+        setCurrentUserId(null);
+        setWishlist([]);
+        setWishlistProducts([]);
+        // Don't clear compareList on logout - keep localStorage data
+        // setCompareList([]);
       }
-    }
+    };
+
+    window.addEventListener('authChange', handleAuthChange);
+    window.addEventListener('storage', handleAuthChange);
+
+    return () => {
+      window.removeEventListener('authChange', handleAuthChange);
+      window.removeEventListener('storage', handleAuthChange);
+    };
   }, []);
 
   const fetchWishlistFromAPI = useCallback(async (userId: number) => {
@@ -1347,11 +1390,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setLoadingWishlist(true);
       const response = await fetch(`${API_BASE}/wishlist/${userId}`);
       const result = await response.json();
-      
+
       if (result.success) {
         const productIds = result.data.map((item: any) => String(item.id));
         setWishlist(productIds);
         setWishlistProducts(result.data);
+        // Update localStorage
+        localStorage.setItem('wishlist', JSON.stringify(productIds));
       }
     } catch (error) {
       console.error('Error fetching wishlist:', error);
@@ -1364,74 +1409,260 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await fetchWishlistFromAPI(userId);
   };
 
-// use-app.tsx - Update the addToWishlist function
-const addToWishlist = useCallback(async (productId: string, userId?: number) => {
-  const uid = userId || currentUserId;
-  
-  // If user is not logged in, store in localStorage only
-  if (!uid) {
-    setWishlist((prev) => (prev.includes(productId) ? prev : [...prev, productId]));
-    return;
-  }
+  const fetchCompareFromAPI = useCallback(async (userId: number) => {
+    try {
+      console.log('Fetching compare list for user:', userId);
+      const response = await fetch(`${API_BASE}/compare/${userId}`);
+      const result = await response.json();
 
-  try {
-    const response = await fetch(`${API_BASE}/wishlist`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        user_id: uid,
-        product_id: parseInt(productId),
-      }),
-    });
+      console.log('Compare API response:', result);
 
-    const result = await response.json();
-
-    if (result.success) {
-      setWishlist((prev) => (prev.includes(productId) ? prev : [...prev, productId]));
-      // Refresh wishlist to get updated data
-      await fetchWishlistFromAPI(uid);
-    } else {
-      throw new Error(result.message || 'Failed to add to wishlist');
-    }
-  } catch (error) {
-    console.error('Error adding to wishlist:', error);
-    throw error;
-  }
-}, [currentUserId, fetchWishlistFromAPI]);
-
-// use-app.tsx - Update the removeFromWishlist function
-const removeFromWishlist = useCallback(async (productId: string, userId?: number) => {
-  const uid = userId || currentUserId;
-
-  // If user is not logged in, remove from localStorage only
-  if (!uid) {
-    setWishlist((prev) => prev.filter((id) => id !== productId));
-    return;
-  }
-
-  try {
-    const response = await fetch(
-      `${API_BASE}/wishlist/user/${uid}/product/${parseInt(productId)}`,
-      {
-        method: 'DELETE',
+      if (result.success) {
+        const productIds = result.data.map((item: any) => String(item.product_id));
+        console.log('Setting compareList from API:', productIds);
+        setCompareList(productIds);
+        // Update localStorage
+        localStorage.setItem('compareList', JSON.stringify(productIds));
+      } else {
+        console.error('Failed to fetch compare list:', result);
       }
-    );
-
-    const result = await response.json();
-
-    if (result.success) {
-      setWishlist((prev) => prev.filter((id) => id !== productId));
-      setWishlistProducts((prev) => prev.filter((p) => String(p.id) !== productId));
-      // Removed toast here since ProductCard handles it
+    } catch (error) {
+      console.error('Error fetching compare list:', error);
     }
-  } catch (error) {
-    console.error('Error removing from wishlist:', error);
-    // Re-throw so ProductCard can handle the error
-    throw error;
-  }
-}, [currentUserId]);
+  }, []);
+
+  // Set user logged in
+  const setUserLoggedIn = useCallback((userId: number) => {
+    setCurrentUserId(userId);
+    setIsLoggedIn(true);
+    fetchWishlistFromAPI(userId);
+    fetchCompareFromAPI(userId);
+  }, [fetchWishlistFromAPI, fetchCompareFromAPI]);
+
+  // Set user logged out
+  const setUserLoggedOut = useCallback(() => {
+    setCurrentUserId(null);
+    setIsLoggedIn(false);
+    setWishlist([]);
+    setWishlistProducts([]);
+    // Don't clear compareList on logout - keep localStorage data
+    // setCompareList([]);
+    // localStorage.removeItem('compareList');
+  }, []);
+
+  // Refresh user state - call this after login
+  const refreshUserState = useCallback(() => {
+    const session = localStorage.getItem('userSession');
+    if (session) {
+      try {
+        const user = JSON.parse(session);
+        setCurrentUserId(user.userId);
+        setIsLoggedIn(true);
+        if (user.userId) {
+          fetchWishlistFromAPI(user.userId);
+          fetchCompareFromAPI(user.userId);
+        }
+      } catch (e) {
+        console.error('Error refreshing user state:', e);
+      }
+    } else {
+      setIsLoggedIn(false);
+      setCurrentUserId(null);
+    }
+  }, [fetchWishlistFromAPI, fetchCompareFromAPI]);
+
+  // Sync compare list from localStorage (for initial load)
+  const syncCompareFromLocalStorage = useCallback(() => {
+    const savedCompare = localStorage.getItem('compareList');
+    if (savedCompare) {
+      try {
+        const parsedCompare = JSON.parse(savedCompare);
+        setCompareList(parsedCompare);
+        console.log('Synced compareList from localStorage:', parsedCompare);
+      } catch (e) {
+        console.error('Error syncing compareList from localStorage:', e);
+      }
+    }
+  }, []);
+
+  const addToWishlist = useCallback(async (productId: string, userId?: number) => {
+    const uid = userId || currentUserId;
+
+    if (!uid || !isLoggedIn) {
+      toast.error('Please login to sync wishlist', {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+        action: {
+          label: 'Login',
+          onClick: () => window.location.href = '/login'
+        }
+      });
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 1500);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/wishlist`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: uid,
+          product_id: parseInt(productId),
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setWishlist((prev) => (prev.includes(productId) ? prev : [...prev, productId]));
+        await fetchWishlistFromAPI(uid);
+        toast.success('Added to Wishlist', {
+          duration: 3000,
+          position: 'top-right',
+          style: {
+            background: '#10B981',
+            color: 'white',
+            border: 'none',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            marginTop: '70px',
+          },
+        });
+      } else if (result.message?.includes('already exists')) {
+        toast.info('Already in wishlist', {
+          duration: 3000,
+          position: 'top-right',
+          style: {
+            background: '#3B82F6',
+            color: 'white',
+            border: 'none',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            marginTop: '70px',
+          },
+        });
+      } else {
+        throw new Error(result.message || 'Failed to add to wishlist');
+      }
+    } catch (error) {
+      console.error('Error adding to wishlist:', error);
+      toast.error('Failed to add to wishlist', {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+      });
+    }
+  }, [currentUserId, isLoggedIn, fetchWishlistFromAPI]);
+
+  const removeFromWishlist = useCallback(async (productId: string, userId?: number) => {
+    const uid = userId || currentUserId;
+
+    if (!uid || !isLoggedIn) {
+      toast.error('Please login to sync wishlist', {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+        action: {
+          label: 'Login',
+          onClick: () => window.location.href = '/login'
+        }
+      });
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 1500);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/wishlist/user/${uid}/product/${parseInt(productId)}`,
+        {
+          method: 'DELETE',
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        setWishlist((prev) => prev.filter((id) => id !== productId));
+        setWishlistProducts((prev) => prev.filter((p) => String(p.id) !== productId));
+        toast.success('Remove from Wishlist', {
+          duration: 3000,
+          position: 'top-right',
+          style: {
+            background: '#EF4444',
+            color: 'white',
+            border: 'none',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            marginTop: '70px',
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Error removing from wishlist:', error);
+      toast.error('Failed to remove from wishlist', {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+      });
+      throw error;
+    }
+  }, [currentUserId, isLoggedIn]);
 
   const clearWishlist = useCallback(async (userId: number) => {
     try {
@@ -1444,21 +1675,6 @@ const removeFromWishlist = useCallback(async (productId: string, userId?: number
       if (result.success) {
         setWishlist([]);
         setWishlistProducts([]);
-        // toast.success('Wishlist cleared', {
-        //   duration: 3000,
-        //   position: 'top-right',
-        //   style: {
-        //     background: '#10B981',
-        //     color: 'white',
-        //     border: 'none',
-        //     padding: '12px 24px',
-        //     borderRadius: '8px',
-        //     fontSize: '14px',
-        //     fontWeight: '500',
-        //     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        //     marginTop: '70px',
-        //   },
-        // });
       } else {
         toast.error(result.message || 'Failed to clear wishlist', {
           duration: 3000,
@@ -1498,35 +1714,42 @@ const removeFromWishlist = useCallback(async (productId: string, userId?: number
 
   const isInWishlist = useCallback((productId: string) => wishlist.includes(productId), [wishlist]);
 
+  // ========================================
+  // COMPARE FUNCTIONS - NO LOGIN REQUIRED
+  // ========================================
   const addToCompare = useCallback(async (productId: string, userId?: number) => {
     const uid = userId || currentUserId;
-    
-    // If user is not logged in, store in localStorage only
-    if (!uid) {
-      setCompareList((prev) => {
-        if (prev.includes(productId)) return prev;
-        if (prev.length >= 4) {
-          toast.warning('You can compare up to 4 products', {
-            duration: 3000,
-            position: 'top-right',
-            style: {
-              background: '#F59E0B',
-              color: 'white',
-              border: 'none',
-              padding: '12px 24px',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '500',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-              marginTop: '70px',
-            },
-          });
-          return prev;
-        }
-        return [...prev, productId];
-      });
-      toast.success('Added to compare (login to sync)', {
+
+    // Check if already in compare list
+    if (compareList.includes(productId)) {
+      toast.info('Already in compare list');
+      return;
+    }
+
+    if (compareList.length >= 4) {
+      toast.warning('You can compare up to 4 products', {
         duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#F59E0B',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+      });
+      return;
+    }
+
+    // If no userId, store in localStorage only (no login required)
+    if (!uid) {
+      setCompareList((prev) => [...prev, productId]);
+      toast.success('Added to compare', {
+        duration: 2000,
         position: 'top-right',
         style: {
           background: '#10B981',
@@ -1543,7 +1766,9 @@ const removeFromWishlist = useCallback(async (productId: string, userId?: number
       return;
     }
 
+    // User is logged in - store in database
     try {
+      console.log('Adding to compare - userId:', uid, 'productId:', productId);
       const response = await fetch(`${API_BASE}/compare`, {
         method: 'POST',
         headers: {
@@ -1556,32 +1781,14 @@ const removeFromWishlist = useCallback(async (productId: string, userId?: number
       });
 
       const result = await response.json();
+      console.log('Add to compare response:', result);
 
       if (result.success) {
-        setCompareList((prev) => {
-          if (prev.includes(productId)) return prev;
-          if (prev.length >= 4) {
-            toast.warning('You can compare up to 4 products', {
-              duration: 3000,
-              position: 'top-right',
-              style: {
-                background: '#F59E0B',
-                color: 'white',
-                border: 'none',
-                padding: '12px 24px',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                marginTop: '70px',
-              },
-            });
-            return prev;
-          }
-          return [...prev, productId];
-        });
+        setCompareList((prev) => [...prev, productId]);
+        // Refresh compare list from API to ensure sync
+        await fetchCompareFromAPI(uid);
         toast.success(result.message || 'Added to compare', {
-          duration: 3000,
+          duration: 2000,
           position: 'top-right',
           style: {
             background: '#10B981',
@@ -1630,15 +1837,16 @@ const removeFromWishlist = useCallback(async (productId: string, userId?: number
         },
       });
     }
-  }, [currentUserId]);
+  }, [currentUserId, compareList, fetchCompareFromAPI]);
 
   const removeFromCompare = useCallback(async (productId: string, userId?: number) => {
     const uid = userId || currentUserId;
 
+    // If no userId, remove from localStorage only
     if (!uid) {
       setCompareList((prev) => prev.filter((id) => id !== productId));
       toast.success('Removed from compare', {
-        duration: 3000,
+        duration: 2000,
         position: 'top-right',
         style: {
           background: '#EF4444',
@@ -1655,7 +1863,9 @@ const removeFromWishlist = useCallback(async (productId: string, userId?: number
       return;
     }
 
+    // User is logged in - remove from database
     try {
+      console.log('Removing from compare - userId:', uid, 'productId:', productId);
       const response = await fetch(
         `${API_BASE}/compare/${uid}/${parseInt(productId)}`,
         {
@@ -1664,11 +1874,14 @@ const removeFromWishlist = useCallback(async (productId: string, userId?: number
       );
 
       const result = await response.json();
+      console.log('Remove from compare response:', result);
 
       if (result.success) {
         setCompareList((prev) => prev.filter((id) => id !== productId));
+        // Refresh compare list from API to ensure sync
+        await fetchCompareFromAPI(uid);
         toast.success(result.message || 'Removed from compare', {
-          duration: 3000,
+          duration: 2000,
           position: 'top-right',
           style: {
             background: '#EF4444',
@@ -1717,13 +1930,14 @@ const removeFromWishlist = useCallback(async (productId: string, userId?: number
         },
       });
     }
-  }, [currentUserId]);
+  }, [currentUserId, fetchCompareFromAPI]);
 
   const isInCompare = useCallback((productId: string) => compareList.includes(productId), [compareList]);
 
 const clearCompare = useCallback(async (userId?: number) => {
   const uid = userId || currentUserId;
 
+<<<<<<< HEAD
   if (!uid) {
     setCompareList([]);
     toast.success('Compare list cleared', {
@@ -1755,6 +1969,13 @@ const clearCompare = useCallback(async (userId?: number) => {
       setCompareList([]);
       toast.success(result.message || 'Compare list cleared', {
         duration: 3000,
+=======
+    // If no userId, clear localStorage only
+    if (!uid) {
+      setCompareList([]);
+      toast.success('Compare list cleared', {
+        duration: 2000,
+>>>>>>> cede48928585d010ccb6f07af6bde68a9aed53ff
         position: 'top-right',
         style: {
           background: '#10B981',
@@ -1768,8 +1989,59 @@ const clearCompare = useCallback(async (userId?: number) => {
           marginTop: '70px',
         },
       });
+<<<<<<< HEAD
     } else {
       toast.error(result.message || 'Failed to clear compare list', {
+=======
+      return;
+    }
+
+    // User is logged in - clear from database
+    try {
+      const response = await fetch(`${API_BASE}/compare/clear/${uid}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setCompareList([]);
+        toast.success(result.message || 'Compare list cleared', {
+          duration: 3000,
+          position: 'top-right',
+          style: {
+            background: '#10B981',
+            color: 'white',
+            border: 'none',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            marginTop: '70px',
+          },
+        });
+      } else {
+        toast.error(result.message || 'Failed to clear compare list', {
+          duration: 3000,
+          position: 'top-right',
+          style: {
+            background: '#EF4444',
+            color: 'white',
+            border: 'none',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            marginTop: '70px',
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Error clearing compare:', error);
+      toast.error('Failed to clear compare list', {
+>>>>>>> cede48928585d010ccb6f07af6bde68a9aed53ff
         duration: 3000,
         position: 'top-right',
         style: {
@@ -1805,21 +2077,6 @@ const clearCompare = useCallback(async (userId?: number) => {
   }
 }, [currentUserId]);
 
-  // Add this function to sync compare from API when user logs in
-  const fetchCompareFromAPI = useCallback(async (userId: number) => {
-    try {
-      const response = await fetch(`${API_BASE}/compare/${userId}`);
-      const result = await response.json();
-      
-      if (result.success) {
-        const productIds = result.data.map((item: any) => String(item.product_id));
-        setCompareList(productIds);
-      }
-    } catch (error) {
-      console.error('Error fetching compare list:', error);
-    }
-  }, []);
-
   const addLead = useCallback((lead: Omit<WishlistLead, 'id' | 'status' | 'assignedTo' | 'notes' | 'createdAt'>) => {
     const newLead: WishlistLead = {
       ...lead,
@@ -1851,6 +2108,7 @@ const clearCompare = useCallback(async (userId?: number) => {
         leads,
         inquiries,
         loadingWishlist,
+        isLoggedIn,
         addToWishlist,
         removeFromWishlist,
         isInWishlist,
@@ -1862,6 +2120,10 @@ const clearCompare = useCallback(async (userId?: number) => {
         addInquiry,
         fetchWishlist,
         clearWishlist,
+        setUserLoggedIn,
+        setUserLoggedOut,
+        refreshUserState,
+        syncCompareFromLocalStorage,
       }}
     >
       {children}

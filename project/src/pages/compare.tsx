@@ -736,7 +736,7 @@
 // }
 
 
-// ComparePage.tsx - Fixed type errors
+// ComparePage.tsx - Updated with hidden Product Type dropdown after first product
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { X, GitCompare, Plus, ArrowRight, AlertCircle, Loader2, Heart } from 'lucide-react';
@@ -816,11 +816,6 @@ interface ApiProduct {
   spec_comparison?: SpecComparison[];
 }
 
-interface Category {
-  id: number;
-  category_name: string;
-}
-
 interface Brand {
   id: number;
   brand_name: string;
@@ -829,6 +824,11 @@ interface Brand {
 }
 
 type Product = AppProduct;
+
+// Extended product type with spec_comparison
+interface ApiProductWithSpec extends ApiProduct {
+  spec_comparison?: SpecComparison[];
+}
 
 export function ComparePage() {
   const navigate = useNavigate();
@@ -841,22 +841,36 @@ export function ComparePage() {
     isInWishlist,
     addToCompare 
   } = useApp();
-  const [products, setProducts] = useState<ApiProduct[]>([]);
+  
+  const [products, setProducts] = useState<ApiProductWithSpec[]>([]);
   const [loading, setLoading] = useState(true);
   const [showOnlyDifferences, _setShowOnlyDifferences] = useState(false);
   const [relatedProducts, setRelatedProducts] = useState<ApiProduct[]>([]);
   const [allProductsData, setAllProductsData] = useState<ApiProduct[]>([]);
   
-  // Dropdown states
-  const [categories, setCategories] = useState<Category[]>([]);
+  // Dropdown states for adding products (Flipkart style)
   const [brands, setBrands] = useState<Brand[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedBrand, setSelectedBrand] = useState<string>('all');
-  const [selectedProductType, setSelectedProductType] = useState<string>('all');
-  const [selectedProductName, setSelectedProductName] = useState<string>('all');
-  const [filteredProducts, setFilteredProducts] = useState<ApiProduct[]>([]);
   const [productTypes, setProductTypes] = useState<string[]>([]);
-  const [productNames, setProductNames] = useState<string[]>([]);
+  
+  // State for each slot's dropdown selections
+  interface SlotDropdowns {
+    brand: string;
+    productName: string;
+  }
+  
+  // Create dropdown states for up to 4 slots (removed productType)
+  const [slotDropdowns, setSlotDropdowns] = useState<SlotDropdowns[]>([
+    { brand: 'all', productName: 'all' },
+    { brand: 'all', productName: 'all' },
+    { brand: 'all', productName: 'all' },
+    { brand: 'all', productName: 'all' },
+  ]);
+  
+  // Filtered products for each slot based on brand selection
+  const [filteredProductsForSlots, setFilteredProductsForSlots] = useState<ApiProduct[][]>([]);
+  
+  // Compare product type tracking
+  const [compareProductType, setCompareProductType] = useState<string | null>(null);
   
   // Wishlist and Quotation states
   const [wishlistLoading, setWishlistLoading] = useState<string | null>(null);
@@ -896,17 +910,12 @@ export function ComparePage() {
     return null;
   };
 
+  // Fetch all products and categories
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         
-        // Fetch categories
-        const categoriesRes = await axios.get(`${baseurl}/api/categories/`);
-        if (categoriesRes.data.success) {
-          setCategories(categoriesRes.data.data);
-        }
-
         // Fetch brands
         const brandsRes = await axios.get(`${baseurl}/api/brands/`);
         if (brandsRes.data.success) {
@@ -922,57 +931,12 @@ export function ComparePage() {
         const types: string[] = [...new Set(allProducts.map((p: ApiProduct) => p.product_type).filter(Boolean))];
         setProductTypes(types);
         
-        // Get unique product names
-        const names: string[] = allProducts.map((p: ApiProduct) => p.product_name);
-        setProductNames(names);
+        // Initialize filtered products for slots
+        const initialFiltered = Array(4).fill(null).map(() => allProducts);
+        setFilteredProductsForSlots(initialFiltered);
         
-        // If no products in compare list, show empty
-        if (compareList.length === 0) {
-          setProducts([]);
-          setFilteredProducts([]);
-          setRelatedProducts([]);
-          setLoading(false);
-          return;
-        }
-        
-        // Get products that are in the compare list
-        const compareProducts = allProducts.filter((p: ApiProduct) => 
-          compareList.includes(String(p.id))
-        );
-        
-        // Fetch spec comparison for each product in compare list
-        const productsWithSpecs = await Promise.all(
-          compareProducts.map(async (product: ApiProduct) => {
-            try {
-              const specRes = await axios.get(`${baseurl}/api/products/spec-comparison/${product.id}`);
-              if (specRes.data && Object.keys(specRes.data).length > 0) {
-                const specArray = Object.values(specRes.data);
-                return { ...product, spec_comparison: specArray };
-              }
-              return product;
-            } catch (error) {
-              console.error(`Error fetching spec for product ${product.id}:`, error);
-              return product;
-            }
-          })
-        );
-        
-        setProducts(productsWithSpecs);
-        setFilteredProducts(productsWithSpecs);
-
-        // Get related products based on the first product's type
-        if (compareProducts.length > 0) {
-          const firstProductType = compareProducts[0].product_type;
-          
-          const related = allProducts
-            .filter((p: ApiProduct) => 
-              p.product_type === firstProductType && 
-              !compareList.includes(String(p.id))
-            )
-            .slice(0, 4);
-          
-          setRelatedProducts(related);
-        }
+        // Update display products based on compareList
+        await updateDisplayProducts(allProducts);
         
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -983,93 +947,108 @@ export function ComparePage() {
     };
 
     fetchData();
+  }, []);
+
+  // Update display products whenever compareList changes
+  useEffect(() => {
+    if (allProductsData.length > 0) {
+      updateDisplayProducts(allProductsData);
+    }
   }, [compareList]);
 
-  // Handle category change - filter products by category
-  const handleCategoryChange = (categoryId: string) => {
-    setSelectedCategory(categoryId);
-    setSelectedBrand('all');
-    setSelectedProductType('all');
-    setSelectedProductName('all');
-    
-    let filtered: ApiProduct[] = [];
-    
-    if (categoryId === 'all') {
-      filtered = allProductsData;
-    } else {
-      filtered = allProductsData.filter(p => 
-        String(p.product_category_id) === categoryId
-      );
+  const updateDisplayProducts = async (allProducts: ApiProduct[]) => {
+    // If no products in compare list, show empty
+    if (compareList.length === 0) {
+      setProducts([]);
+      setRelatedProducts([]);
+      setCompareProductType(null);
+      return;
     }
     
-    setFilteredProducts(filtered);
-    // Update product names based on filtered products
-    const names: string[] = filtered.map((p: ApiProduct) => p.product_name);
-    setProductNames(names);
-  };
-
-  // Handle brand change - filter products by brand
-  const handleBrandChange = (brandName: string) => {
-    setSelectedBrand(brandName);
-    setSelectedProductType('all');
-    setSelectedProductName('all');
+    // Get products that are in the compare list
+    const compareProducts = allProducts.filter((p: ApiProduct) => 
+      compareList.includes(String(p.id))
+    );
     
-    let filtered: ApiProduct[] = [];
-    
-    if (brandName === 'all') {
-      // Reset to category filter
-      if (selectedCategory && selectedCategory !== 'all') {
-        filtered = allProductsData.filter(p => 
-          String(p.product_category_id) === selectedCategory
-        );
-      } else {
-        filtered = allProductsData;
-      }
-    } else {
-      filtered = allProductsData.filter(p => 
-        p.product_brand === brandName
-      );
+    // Set the product type from the first product in compare list
+    if (compareProducts.length > 0) {
+      setCompareProductType(compareProducts[0].product_type);
     }
     
-    setFilteredProducts(filtered);
-    const names: string[] = filtered.map((p: ApiProduct) => p.product_name);
-    setProductNames(names);
+    // Fetch spec comparison for each product in compare list
+    const productsWithSpecs = await Promise.all(
+      compareProducts.map(async (product: ApiProduct): Promise<ApiProductWithSpec> => {
+        try {
+          const specRes = await axios.get<Record<string, SpecComparison>>(
+            `${baseurl}/api/products/spec-comparison/${product.id}`
+          );
+          if (specRes.data && Object.keys(specRes.data).length > 0) {
+            const specArray: SpecComparison[] = Object.values(specRes.data);
+            return { ...product, spec_comparison: specArray };
+          }
+          return { ...product, spec_comparison: [] };
+        } catch (error) {
+          console.error(`Error fetching spec for product ${product.id}:`, error);
+          return { ...product, spec_comparison: [] };
+        }
+      })
+    );
+    
+    setProducts(productsWithSpecs);
+
+    // Get related products based on the first product's type
+    if (compareProducts.length > 0) {
+      const firstProductType = compareProducts[0].product_type;
+      
+      const related = allProducts
+        .filter((p: ApiProduct) => 
+          p.product_type === firstProductType && 
+          !compareList.includes(String(p.id))
+        )
+        .slice(0, 4);
+      
+      setRelatedProducts(related);
+    }
   };
 
-  // Handle product type change
-  const handleProductTypeChange = (productType: string) => {
-    setSelectedProductType(productType);
-    setSelectedProductName('all');
+  // Update dropdown options for a specific slot
+  const updateSlotFilteredProducts = (slotIndex: number, brand: string) => {
+    let filtered = allProductsData;
     
-    let filtered: ApiProduct[] = [];
-    
-    if (productType === 'all') {
-      // Reset to brand/category filter
-      if (selectedBrand && selectedBrand !== 'all') {
-        filtered = allProductsData.filter(p => 
-          p.product_brand === selectedBrand
-        );
-      } else if (selectedCategory && selectedCategory !== 'all') {
-        filtered = allProductsData.filter(p => 
-          String(p.product_category_id) === selectedCategory
-        );
-      } else {
-        filtered = allProductsData;
-      }
-    } else {
-      filtered = allProductsData.filter(p => 
-        p.product_type === productType
-      );
+    if (brand !== 'all') {
+      filtered = filtered.filter(p => p.product_brand === brand);
     }
     
-    setFilteredProducts(filtered);
-    const names: string[] = filtered.map((p: ApiProduct) => p.product_name);
-    setProductNames(names);
+    // Always filter by compareProductType if it exists
+    if (compareProductType) {
+      filtered = filtered.filter(p => p.product_type === compareProductType);
+    }
+    
+    const newFiltered = [...filteredProductsForSlots];
+    newFiltered[slotIndex] = filtered;
+    setFilteredProductsForSlots(newFiltered);
   };
 
-  // Handle product name selection - this will add the product to compare list using useApp
-  const handleProductNameChange = async (productName: string) => {
-    setSelectedProductName(productName);
+  // Handle brand change for a specific slot
+  const handleSlotBrandChange = (slotIndex: number, brandName: string) => {
+    const newSlots = [...slotDropdowns];
+    newSlots[slotIndex] = {
+      ...newSlots[slotIndex],
+      brand: brandName,
+      productName: 'all'
+    };
+    setSlotDropdowns(newSlots);
+    updateSlotFilteredProducts(slotIndex, brandName);
+  };
+
+  // Handle product name selection for a specific slot
+  const handleSlotProductNameChange = async (slotIndex: number, productName: string) => {
+    const newSlots = [...slotDropdowns];
+    newSlots[slotIndex] = {
+      ...newSlots[slotIndex],
+      productName: productName
+    };
+    setSlotDropdowns(newSlots);
     
     if (productName === 'all') {
       return;
@@ -1080,27 +1059,76 @@ export function ComparePage() {
       (p: ApiProduct) => p.product_name === productName
     );
     
-    if (selectedProduct && !compareList.includes(String(selectedProduct.id))) {
-      // Add product to compare list using the useApp hook
-      if (compareList.length >= 4) {
-        toast.error('You can compare up to 4 products at a time');
-        setSelectedProductName('all');
+    if (!selectedProduct) {
+      toast.error('Product not found');
+      return;
+    }
+
+    // Check if product already exists in compare list
+    if (compareList.includes(String(selectedProduct.id))) {
+      toast.info('Product already in compare list');
+      // Reset the dropdown
+      const resetSlots = [...slotDropdowns];
+      resetSlots[slotIndex] = {
+        ...resetSlots[slotIndex],
+        productName: 'all'
+      };
+      setSlotDropdowns(resetSlots);
+      return;
+    }
+
+    // Check product type compatibility
+    if (compareList.length > 0) {
+      // Get the first product's type from current compare list
+      const firstProduct = allProductsData.find(
+        (p: ApiProduct) => String(p.id) === compareList[0]
+      );
+      
+      if (firstProduct && firstProduct.product_type !== selectedProduct.product_type) {
+        toast.error(`Cannot compare different product types. Existing: ${firstProduct.product_type}, New: ${selectedProduct.product_type}`);
+        // Reset the dropdown
+        const resetSlots = [...slotDropdowns];
+        resetSlots[slotIndex] = {
+          ...resetSlots[slotIndex],
+          productName: 'all'
+        };
+        setSlotDropdowns(resetSlots);
         return;
       }
-      
-      try {
-        // Get user ID for API call
-        const userId = getUserId();
-        await addToCompare(String(selectedProduct.id), userId || undefined);
-        setSelectedProductName('all');
-      } catch (error) {
-        console.error('Error adding to compare:', error);
+    }
+    
+    // Check max limit
+    if (compareList.length >= 4) {
+      toast.error('You can compare up to 4 products at a time');
+      // Reset the dropdown
+      const resetSlots = [...slotDropdowns];
+      resetSlots[slotIndex] = {
+        ...resetSlots[slotIndex],
+        productName: 'all'
+      };
+      setSlotDropdowns(resetSlots);
+      return;
+    }
+    
+    try {
+      // Get user ID for API call
+      const userId = getUserId();
+      await addToCompare(String(selectedProduct.id), userId || undefined);
+      toast.success('Product added to compare list');
+    } catch (error: any) {
+      console.error('Error adding to compare:', error);
+      if (error?.response?.data?.message?.includes('Cannot compare different product types')) {
+        toast.error(error.response.data.message);
+      } else {
         toast.error('Failed to add product to compare');
-        setSelectedProductName('all');
       }
-    } else if (selectedProduct && compareList.includes(String(selectedProduct.id))) {
-      toast.info('Product already in compare list');
-      setSelectedProductName('all');
+      // Reset the dropdown
+      const resetSlots = [...slotDropdowns];
+      resetSlots[slotIndex] = {
+        ...resetSlots[slotIndex],
+        productName: 'all'
+      };
+      setSlotDropdowns(resetSlots);
     }
   };
 
@@ -1198,7 +1226,7 @@ export function ComparePage() {
   };
 
   // Get spec value from product
-  const getSpecValue = (product: ApiProduct, specKey: string): string => {
+  const getSpecValue = (product: ApiProductWithSpec, specKey: string): string => {
     const directValue = (product as any)[specKey];
     if (directValue && directValue !== 'null' && directValue !== '') {
       return directValue;
@@ -1220,23 +1248,23 @@ export function ComparePage() {
     const items = [
       { 
         label: 'Brand', 
-        value: (p: ApiProduct) => p.product_brand || '—' 
+        value: (p: ApiProductWithSpec) => p.product_brand || '—' 
       },
       { 
         label: 'Category', 
-        value: (p: ApiProduct) => p.category_name || '—' 
+        value: (p: ApiProductWithSpec) => p.category_name || '—' 
       },
       { 
         label: 'Product Type', 
-        value: (p: ApiProduct) => p.product_type || '—' 
+        value: (p: ApiProductWithSpec) => p.product_type || '—' 
       },
       { 
         label: 'Warranty', 
-        value: (p: ApiProduct) => p.warranty || '—' 
+        value: (p: ApiProductWithSpec) => p.warranty || '—' 
       },
       { 
         label: 'Stock Status', 
-        value: (p: ApiProduct) => getStockStatus(p) 
+        value: (p: ApiProductWithSpec) => getStockStatus(p) 
       },
     ];
 
@@ -1262,7 +1290,7 @@ export function ComparePage() {
 
     const items = specKeys.map(spec => ({
       label: spec.label,
-      value: (p: ApiProduct) => getSpecValue(p, spec.key)
+      value: (p: ApiProductWithSpec) => getSpecValue(p, spec.key)
     }));
 
     if (showOnlyDifferences) {
@@ -1275,102 +1303,98 @@ export function ComparePage() {
   };
 
   // Transform API product to the Product type expected by ProductCard
- // Replace the transformForProductCard function with this fixed version
+  const transformForProductCard = (product: ApiProduct): Product => {
+    const gallery = product.variants?.map(v => 
+      v.image_url ? `${baseurl}${v.image_url}` : null
+    ).filter(Boolean) as string[] || ['https://via.placeholder.com/400x400'];
 
-// Transform API product to the Product type expected by ProductCard
-const transformForProductCard = (product: ApiProduct): Product => {
-  const gallery = product.variants?.map(v => 
-    v.image_url ? `${baseurl}${v.image_url}` : null
-  ).filter(Boolean) as string[] || ['https://via.placeholder.com/400x400'];
-
-  const specFields = [];
-  if (product.product_series) {
-    specFields.push({ key: 'series', label: 'Series', value: product.product_series });
-  }
-  if (product.product_type) {
-    specFields.push({ key: 'type', label: 'Type', value: product.product_type });
-  }
-  if (product.warranty) {
-    specFields.push({ key: 'warranty', label: 'Warranty', value: product.warranty });
-  }
-
-  if (product.variants && product.variants.length > 0) {
-    const variant = product.variants[0];
-    if (variant.spec_type) {
-      specFields.push({ key: 'spec_type', label: 'Spec Type', value: variant.spec_type });
+    const specFields = [];
+    if (product.product_series) {
+      specFields.push({ key: 'series', label: 'Series', value: product.product_series });
     }
-    if (variant.size) {
-      specFields.push({ key: 'size', label: 'Size', value: variant.size });
+    if (product.product_type) {
+      specFields.push({ key: 'type', label: 'Type', value: product.product_type });
     }
-    if (variant.color) {
-      specFields.push({ key: 'color', label: 'Color', value: variant.color });
+    if (product.warranty) {
+      specFields.push({ key: 'warranty', label: 'Warranty', value: product.warranty });
     }
-  }
 
-  const totalStock = product.variants?.reduce((sum, v) => sum + v.stock, 0) || 0;
-  // Use 'active' as the status since ProductStatus type doesn't include 'inactive' or 'archived'
-  const status: ProductStatus = 'active';
-
-  const variants = product.variants?.map(v => ({
-    id: v.id,
-    color_name: v.color || '',
-    color_hex: v.color || '#cccccc',
-    price: v.price,
-    stock: v.stock,
-    image_url: v.image_url || '',
-    variant_name: v.variant_name,
-    part_code: v.part_code,
-    spec_type: v.spec_type,
-    size: v.size,
-    availability: v.availability,
-    datasheet_url: v.datasheet_url,
-    description: v.description,
-  })) || [];
-
-  const price = getProductPrice(product);
-
-  return {
-    id: String(product.id),
-    name: product.product_name,
-    slug: getProductSlug(product.product_name),
-    sku: product.product_code,
-    brandId: String(product.product_category_id),
-    brandName: product.product_brand || 'Unknown',
-    categoryId: String(product.product_category_id),
-    categoryName: product.category_name || 'Uncategorized',
-    shortDescription: product.product_description?.substring(0, 150) || '',
-    description: product.product_description || '',
-    features: [],
-    specifications: {},
-    specGroups: [
-      {
-        groupName: 'Specifications',
-        fields: specFields
+    if (product.variants && product.variants.length > 0) {
+      const variant = product.variants[0];
+      if (variant.spec_type) {
+        specFields.push({ key: 'spec_type', label: 'Spec Type', value: variant.spec_type });
       }
-    ],
-    gallery,
-    price: price,
-    minPrice: parseFloat(product.min_price || '0'),
-    maxPrice: parseFloat(product.max_price || '0'),
-    currency: 'INR',
-    status: status,
-    isPopular: false,
-    isNew: false,
-    rating: 4.5,
-    reviewCount: 0,
-    downloads: product.product_details_pdf 
-      ? [{ name: 'Product Details', type: 'pdf' as const, size: 'PDF', url: product.product_details_pdf }]
-      : [],
-    relatedProductIds: [],
-    createdAt: product.created_at,
-    warranty: product.warranty || 'Standard warranty',
-    originalPrice: price * (1 + parseFloat(product.discount || '0') / 100) || 0,
-    discountPercentage: parseFloat(product.discount || '0'),
-    variants: variants,
-    hasVariants: (product.variants?.length || 0) > 0,
-    stock: totalStock,
+      if (variant.size) {
+        specFields.push({ key: 'size', label: 'Size', value: variant.size });
+      }
+      if (variant.color) {
+        specFields.push({ key: 'color', label: 'Color', value: variant.color });
+      }
+    }
+
+    const totalStock = product.variants?.reduce((sum, v) => sum + v.stock, 0) || 0;
+    const status: ProductStatus = 'active';
+
+    const variants = product.variants?.map(v => ({
+      id: v.id,
+      color_name: v.color || '',
+      color_hex: v.color || '#cccccc',
+      price: v.price,
+      stock: v.stock,
+      image_url: v.image_url || '',
+      variant_name: v.variant_name,
+      part_code: v.part_code,
+      spec_type: v.spec_type,
+      size: v.size,
+      availability: v.availability,
+      datasheet_url: v.datasheet_url,
+      description: v.description,
+    })) || [];
+
+    const price = getProductPrice(product);
+
+    return {
+      id: String(product.id),
+      name: product.product_name,
+      slug: getProductSlug(product.product_name),
+      sku: product.product_code,
+      brandId: String(product.product_category_id),
+      brandName: product.product_brand || 'Unknown',
+      categoryId: String(product.product_category_id),
+      categoryName: product.category_name || 'Uncategorized',
+      shortDescription: product.product_description?.substring(0, 150) || '',
+      description: product.product_description || '',
+      features: [],
+      specifications: {},
+      specGroups: [
+        {
+          groupName: 'Specifications',
+          fields: specFields
+        }
+      ],
+      gallery,
+      price: price,
+      minPrice: parseFloat(product.min_price || '0'),
+      maxPrice: parseFloat(product.max_price || '0'),
+      currency: 'INR',
+      status: status,
+      isPopular: false,
+      isNew: false,
+      rating: 4.5,
+      reviewCount: 0,
+      downloads: product.product_details_pdf 
+        ? [{ name: 'Product Details', type: 'pdf' as const, size: 'PDF', url: product.product_details_pdf }]
+        : [],
+      relatedProductIds: [],
+      createdAt: product.created_at,
+      warranty: product.warranty || 'Standard warranty',
+      originalPrice: price * (1 + parseFloat(product.discount || '0') / 100) || 0,
+      discountPercentage: parseFloat(product.discount || '0'),
+      variants: variants,
+      hasVariants: (product.variants?.length || 0) > 0,
+      stock: totalStock,
+    };
   };
-};
 
   // Handle wishlist toggle
   const handleWishlistToggle = async (product: ApiProduct, e: React.MouseEvent) => {
@@ -1473,29 +1497,95 @@ const transformForProductCard = (product: ApiProduct): Product => {
     );
   }
 
-  // Get product names for dropdown based on filters
-  const getFilteredProductNames = (): string[] => {
-    let filtered = allProductsData;
-    
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter(p => String(p.product_category_id) === selectedCategory);
-    }
-    if (selectedBrand !== 'all') {
-      filtered = filtered.filter(p => p.product_brand === selectedBrand);
-    }
-    if (selectedProductType !== 'all') {
-      filtered = filtered.filter(p => p.product_type === selectedProductType);
-    }
-    
-    return filtered.map((p: ApiProduct) => p.product_name);
-  };
-
   const generalInfoItems = getGeneralInfoItems();
   const specItems = getSpecificationItems();
   const productType = products[0]?.product_type || '';
 
   // Products to display - only show products that are in compareList
   const displayProducts = products;
+
+  // Render dropdown for adding product slot
+  const renderAddProductSlot = (slotIndex: number) => {
+    const slot = slotDropdowns[slotIndex];
+    const filteredProducts = filteredProductsForSlots[slotIndex] || [];
+    
+    // Check if this slot is already used (has a product selected)
+    const isSlotUsed = compareList.length > slotIndex;
+    
+    if (isSlotUsed) {
+      return null; // Slot is already filled with a product
+    }
+    
+    // Check if this is the next available slot
+    const isNextAvailable = compareList.length === slotIndex;
+    
+    if (!isNextAvailable) {
+      return null; // Skip slots that are not the next available
+    }
+    
+    // Filter products to only show those with the correct product type
+    const availableProducts = filteredProducts.filter(p => !compareList.includes(String(p.id)));
+    
+    return (
+      <Card key={`add-slot-${slotIndex}`} className="p-4 flex flex-col items-center justify-center border-2 border-dashed min-h-[400px] hover:border-primary/50 transition-colors">
+        <div className="w-full max-w-xs space-y-4">
+          <div className="text-center mb-2">
+            <Plus className="w-12 h-12 text-muted-foreground/30 mx-auto mb-2" />
+            <p className="text-sm font-medium text-muted-foreground">Add a product</p>
+          </div>
+          
+          {/* Brand Dropdown */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Choose Brand</label>
+            <Select 
+              value={slot.brand} 
+              onValueChange={(value) => handleSlotBrandChange(slotIndex, value)}
+            >
+              <SelectTrigger className="w-full h-10">
+                <SelectValue placeholder="All Brands" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Brands</SelectItem>
+                {brands.map((brand) => (
+                  <SelectItem key={brand.id} value={brand.brand_name}>
+                    {brand.brand_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {/* Product Name Dropdown */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Choose a Product</label>
+            <Select 
+              value={slot.productName} 
+              onValueChange={(value) => handleSlotProductNameChange(slotIndex, value)}
+            >
+              <SelectTrigger className="w-full h-10">
+                <SelectValue placeholder="Select Product" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Products</SelectItem>
+                {availableProducts.map((product) => (
+                  <SelectItem key={product.id} value={product.product_name}>
+                    {product.product_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {/* Show product type info if compareProductType exists */}
+          {compareProductType && (
+            <div className="text-center text-xs text-muted-foreground pt-2 border-t">
+              Showing products of type: <span className="font-medium text-primary">{compareProductType}</span>
+            </div>
+          )}
+        </div>
+      </Card>
+    );
+  };
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -1509,12 +1599,23 @@ const transformForProductCard = (product: ApiProduct): Product => {
               ? `Comparing ${compareList.length} product${compareList.length > 1 ? 's' : ''}`
               : 'Select products to compare'}
           </p>
+          {compareProductType && compareList.length > 0 && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Product Type: <span className="font-medium text-primary">{compareProductType}</span>
+            </p>
+          )}
         </div>
         {compareList.length > 0 && (
           <div className="flex items-center gap-2 flex-wrap">
             <Button variant="outline" size="sm" onClick={async () => { 
               await clearCompare(); 
               toast.success('Comparison cleared');
+              // Reset dropdowns
+              const resetSlots = slotDropdowns.map(() => ({
+                brand: 'all',
+                productName: 'all'
+              }));
+              setSlotDropdowns(resetSlots);
             }}>
               <X className="w-4 h-4 mr-1.5" /> Clear All
             </Button>
@@ -1522,83 +1623,12 @@ const transformForProductCard = (product: ApiProduct): Product => {
         )}
       </div>
 
-      {/* Dropdown Filters */}
-      <div className="flex flex-wrap items-center gap-4 mb-6 p-4 bg-muted/30 rounded-lg border">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-muted-foreground">Category:</span>
-          <Select value={selectedCategory} onValueChange={handleCategoryChange}>
-            <SelectTrigger className="w-[160px] h-9">
-              <SelectValue placeholder="All Categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {categories.map((cat) => (
-                <SelectItem key={cat.id} value={String(cat.id)}>
-                  {cat.category_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-muted-foreground">Brand:</span>
-          <Select value={selectedBrand} onValueChange={handleBrandChange}>
-            <SelectTrigger className="w-[160px] h-9">
-              <SelectValue placeholder="All Brands" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Brands</SelectItem>
-              {brands.map((brand) => (
-                <SelectItem key={brand.id} value={brand.brand_name}>
-                  {brand.brand_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-muted-foreground">Product Type:</span>
-          <Select value={selectedProductType} onValueChange={handleProductTypeChange}>
-            <SelectTrigger className="w-[160px] h-9">
-              <SelectValue placeholder="All Types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              {productTypes.map((type) => (
-                <SelectItem key={type} value={type}>
-                  {type}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-muted-foreground">Product:</span>
-          <Select value={selectedProductName} onValueChange={handleProductNameChange}>
-            <SelectTrigger className="w-[200px] h-9">
-              <SelectValue placeholder="Select Product" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Products</SelectItem>
-              {getFilteredProductNames().map((name) => (
-                <SelectItem key={name} value={name}>
-                  {name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
       {/* Show only when products are in compare list */}
       {compareList.length === 0 ? (
         <EmptyState
           icon={<GitCompare className="w-8 h-8" />}
           title="No products to compare"
-          description="Add products from the Products page or use the dropdown above to select products to compare. You can compare up to 4 products at once."
+          description="Add products using the dropdown below to start comparing. You can compare up to 4 products of the same type at once."
           action={
             <div className="flex flex-col sm:flex-row gap-3">
               <Button asChild>
@@ -1616,7 +1646,7 @@ const transformForProductCard = (product: ApiProduct): Product => {
             </div>
           )}
 
-          {/* Product Cards Grid - Show only compared products */}
+          {/* Product Cards Grid - Show compared products + add slot */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mb-8">
             {displayProducts.map((product) => {
               const isWishlisted = isInWishlist(String(product.id));
@@ -1749,21 +1779,8 @@ const transformForProductCard = (product: ApiProduct): Product => {
               );
             })}
 
-            {/* Add more products card */}
-            {compareList.length < 4 && (
-              <Card className="p-4 flex flex-col items-center justify-center border-2 border-dashed min-h-[350px] hover:border-primary/50 transition-colors">
-                <div className="w-full aspect-square rounded-lg border-2 border-dashed flex items-center justify-center mb-3 bg-gray-50 dark:bg-gray-800/50">
-                  <Plus className="w-16 h-16 text-muted-foreground/30" />
-                </div>
-                <p className="text-sm text-muted-foreground text-center mb-3">Add more products to compare</p>
-                <div className="flex flex-col gap-2 w-full">
-                  <Button asChild variant="outline" size="sm" className="w-full">
-                    <Link to="/products">Browse Products</Link>
-                  </Button>
-                  <p className="text-xs text-center text-muted-foreground">or use the dropdown above</p>
-                </div>
-              </Card>
-            )}
+            {/* Add product slots - Show only the next available slot */}
+            {compareList.length < 4 && renderAddProductSlot(compareList.length)}
           </div>
 
           {/* General Information Section - Only show when comparing 2+ products */}
