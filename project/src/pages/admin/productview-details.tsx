@@ -11,11 +11,21 @@ import { baseurl } from '@/Baseurl/baseurl';
 interface Variant {
   id: number;
   product_id: number;
-  color_name: string;
-  color_hex: string;
+  variant_name?: string;
+  part_code?: string;
+  category?: string;
+  brand?: string;
+  description?: string;
+  spec_type?: string;
+  color?: string;
+  size?: string;
   price: string;
-  stock: number;
+  availability?: string;
+  datasheet_url?: string;
   image_url: string;
+  stock: number;
+  created_at: string;
+  updated_at: string;
 }
 
 interface Product {
@@ -26,6 +36,8 @@ interface Product {
   product_brand: string;
   product_description: string;
   price: string;
+  min_price: string;
+  max_price: string;
   warranty: string;
   created_at: string;
   updated_at: string;
@@ -35,6 +47,14 @@ interface Product {
   specifications: string;
   weight: string;
   discount: string;
+  product_series?: string;
+  product_type?: string;
+  conductor_type?: string;
+  cable_od?: string;
+  jacket_material?: string;
+  bandwidth?: string;
+  operating_temperature?: string;
+  poe_support?: string;
   variants: Variant[];
 }
 
@@ -125,6 +145,41 @@ export function ProductView() {
     return `${value}${suffix}`;
   };
 
+  // Get all specification fields
+  const getSpecifications = (product: Product): Array<{ label: string; value: string }> => {
+    const specs = [];
+    
+    if (hasValidValue(product.product_series)) {
+      specs.push({ label: 'Product Series', value: product.product_series! });
+    }
+    if (hasValidValue(product.product_type)) {
+      specs.push({ label: 'Product Type', value: product.product_type! });
+    }
+    if (hasValidValue(product.conductor_type)) {
+      specs.push({ label: 'Conductor Type', value: product.conductor_type! });
+    }
+    if (hasValidValue(product.cable_od)) {
+      specs.push({ label: 'Cable OD', value: product.cable_od! });
+    }
+    if (hasValidValue(product.jacket_material)) {
+      specs.push({ label: 'Jacket Material', value: product.jacket_material! });
+    }
+    if (hasValidValue(product.bandwidth)) {
+      specs.push({ label: 'Bandwidth', value: product.bandwidth! });
+    }
+    if (hasValidValue(product.operating_temperature)) {
+      specs.push({ label: 'Operating Temperature', value: product.operating_temperature! });
+    }
+    if (hasValidValue(product.poe_support)) {
+      specs.push({ label: 'PoE Support', value: product.poe_support! });
+    }
+    if (hasValidValue(product.specifications)) {
+      specs.push({ label: 'Additional Specifications', value: product.specifications! });
+    }
+    
+    return specs;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -148,6 +203,8 @@ export function ProductView() {
       </div>
     );
   }
+
+  const specifications = getSpecifications(product);
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -220,12 +277,37 @@ export function ProductView() {
             <CardTitle>Pricing & Dimensions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {/* <div className="flex justify-between items-center py-2 border-b">
-              <span className="text-sm text-muted-foreground">Price</span>
-              <span className="font-medium text-lg text-primary">
-                {formatCurrency(product.price)}
-              </span>
-            </div> */}
+            {/* Price Range Section */}
+            <div className="space-y-2 py-2 border-b">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Price Range</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-primary">
+                    {formatCurrency(product.min_price || product.price)}
+                  </span>
+                  <span className="text-muted-foreground">-</span>
+                  <span className="font-medium text-primary">
+                    {formatCurrency(product.max_price || product.price)}
+                  </span>
+                </div>
+              </div>
+              {/* Show individual prices if min and max are different */}
+              {product.min_price && product.max_price && 
+               parseFloat(product.min_price) !== parseFloat(product.max_price) && (
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Minimum Price</span>
+                  <span className="font-medium">{formatCurrency(product.min_price)}</span>
+                </div>
+              )}
+              {product.min_price && product.max_price && 
+               parseFloat(product.min_price) !== parseFloat(product.max_price) && (
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Maximum Price</span>
+                  <span className="font-medium">{formatCurrency(product.max_price)}</span>
+                </div>
+              )}
+            </div>
+
             {parseFloat(product.discount) > 0 && (
               <div className="flex justify-between items-center py-2 border-b">
                 <span className="text-sm text-muted-foreground">Discount</span>
@@ -278,17 +360,22 @@ export function ProductView() {
         </CardContent>
       </Card>
 
-      {/* Specifications */}
-      {hasValidValue(product.specifications) && (
+      {/* Specifications - Always show if there are any */}
+      {specifications.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Specifications</CardTitle>
+            <CardTitle>Technical Specifications</CardTitle>
+            <CardDescription>Detailed product specifications and technical data</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {product.specifications.split(',').map((spec, index) => (
-                <div key={index} className="flex items-start gap-2 py-1 border-b last:border-0">
-                  <span className="text-sm text-foreground">• {spec.trim()}</span>
+            <div className="grid gap-3 md:grid-cols-2">
+              {specifications.map((spec, index) => (
+                <div 
+                  key={index} 
+                  className="flex justify-between items-center py-2 border-b last:border-0"
+                >
+                  <span className="text-sm text-muted-foreground">{spec.label}</span>
+                  <span className="font-medium text-sm text-right">{spec.value}</span>
                 </div>
               ))}
             </div>
@@ -313,12 +400,12 @@ export function ProductView() {
                   <div className="flex items-center gap-3">
                     <div 
                       className="w-8 h-8 rounded-full border-2 border-gray-200 shrink-0"
-                      style={{ backgroundColor: variant.color_hex || '#808080' }}
+                      style={{ backgroundColor: variant.color || '#808080' }}
                     />
                     <div>
-                      <p className="font-medium">{variant.color_name || 'Default'}</p>
-                      {variant.color_hex && (
-                        <p className="text-xs text-muted-foreground">Hex: {variant.color_hex}</p>
+                      <p className="font-medium">{variant.color || 'Default'}</p>
+                      {variant.spec_type && (
+                        <p className="text-xs text-muted-foreground">Type: {variant.spec_type}</p>
                       )}
                     </div>
                   </div>
@@ -339,11 +426,18 @@ export function ProductView() {
                     </div>
                   </div>
                   
+                  {variant.size && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Size: </span>
+                      <span className="font-medium">{variant.size}</span>
+                    </div>
+                  )}
+                  
                   {variant.image_url && (
                     <div className="relative h-32 w-full rounded-lg overflow-hidden bg-gray-100">
                       <img
                         src={getImageUrl(variant.image_url)}
-                        alt={`${variant.color_name || 'Default'} variant`}
+                        alt={`${variant.color || 'Default'} variant`}
                         className="w-full h-full object-cover"
                         onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
                           (e.target as HTMLImageElement).src = '/placeholder-image.jpg';

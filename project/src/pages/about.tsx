@@ -147,17 +147,19 @@ import { AboutValues } from "@/components/AboutCompo/AboutValues";
 import { AboutIndustries } from "@/components/AboutCompo/AboutIndustries";
 import { AboutTimeline } from "@/components/AboutCompo/AboutTimeline";
 import { PageBreadcrumb as Breadcrumb } from '@/layouts/customer-layout-wrapper';
+import ECatalog from "@/components/AboutCompo/CTAsection";
 
 export function AboutPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <Breadcrumb items={[{ label: 'Home', path: '/' }, { label: 'About' }]} />
       <AboutHero />
-      <AboutStory />
+      {/* <AboutStory /> */}
       <AboutMissionVision />
       <AboutValues />
-      <AboutIndustries />
-      <AboutTimeline />
+      {/* <AboutIndustries /> */}
+      {/* <AboutTimeline /> */}
+      <ECatalog />
     </div>
   );
 }

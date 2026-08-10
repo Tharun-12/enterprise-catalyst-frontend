@@ -1925,9 +1925,12 @@ export function CustomerHeader() {
                 <div className="font-bold text-lg text-gray-800 leading-tight">
                   {settings?.name || 'MV Business Solutions'}
                 </div>
-                <div className="text-[10px] text-transparent bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 bg-clip-text font-medium">
+                {/* <div className="text-[10px] text-transparent bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 bg-clip-text font-medium">
                   Enterprise E-Catalog
-                </div>
+                </div> */}
+        <div className="text-[10px] text-pink-600 font-medium">
+  Enterprise E-Catalog
+</div>
               </div>
             </Link>
 
