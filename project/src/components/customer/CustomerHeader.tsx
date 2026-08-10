@@ -1726,9 +1726,6 @@
 // }
 
 
-
-
-
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { 
@@ -1831,13 +1828,10 @@ export function CustomerHeader() {
     navigate('/');
   };
 
-  // Auto-dismiss alert function
   const showAutoDismissAlert = (message: string, type: 'success' | 'error' | 'info' = 'success', duration: number = 3000) => {
     setAlertMessage(message);
     setAlertType(type);
     setShowAlert(true);
-    
-    // Auto dismiss after duration
     setTimeout(() => {
       setShowAlert(false);
     }, duration);
@@ -1858,7 +1852,6 @@ export function CustomerHeader() {
     return location.pathname.startsWith(path);
   };
 
-  // Get alert styles based on type
   const getAlertStyles = () => {
     switch(alertType) {
       case 'success':
@@ -1896,7 +1889,6 @@ export function CustomerHeader() {
 
   return (
     <>
-      {/* Main header */}
       <header
         className={cn(
           'sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b transition-all duration-300',
@@ -1927,16 +1919,13 @@ export function CustomerHeader() {
                 <div className="font-bold text-lg text-gray-800 leading-tight">
                   {settings?.name || 'MV Business Solutions'}
                 </div>
-                {/* <div className="text-[10px] text-transparent bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 bg-clip-text font-medium">
+                <div className="text-[10px] text-pink-600 font-medium">
                   Enterprise E-Catalog
-                </div> */}
-        <div className="text-[10px] text-pink-600 font-medium">
-  Enterprise E-Catalog
-</div>
+                </div>
               </div>
             </Link>
 
-            {/* Navigation Links - Desktop */}
+            {/* Navigation Links - Desktop - FIXED */}
             <nav className="hidden lg:flex items-center gap-1">
               {NAV_LINKS.map((link) => {
                 const active = isActive(link.path);
@@ -1949,26 +1938,28 @@ export function CustomerHeader() {
                       active ? "bg-gray-50/50" : "hover:bg-gray-50"
                     )}
                   >
+                    {/* Icon - Fixed active state */}
                     <span className={cn(
                       "flex-shrink-0 transition-all duration-300",
                       active 
-                        ? "text-transparent bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 bg-clip-text" 
-                        : "text-gray-600 group-hover:text-gray-900"
+                        ? "text-pink-500" 
+                        : "text-gray-600 group-hover:text-gray-800"
                     )}>
                       {navIcons[link.path] || <LayoutGrid className="w-4 h-4 flex-shrink-0" />}
                     </span>
                     
+                    {/* Text - Fixed active state */}
                     <span className={cn(
                       "transition-all duration-300",
                       active 
-                        ? "text-transparent bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 bg-clip-text font-bold" 
-                        : "text-gray-600 group-hover:text-gray-900"
+                        ? "text-pink-500 font-bold" 
+                        : "text-gray-600 group-hover:text-gray-800"
                     )}>
                       {link.label}
                     </span>
                     
                     {active && (
-                      <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 rounded-full"></span>
+                      <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-pink-500 rounded-full"></span>
                     )}
                   </Link>
                 );
@@ -1977,11 +1968,9 @@ export function CustomerHeader() {
 
             {/* Actions */}
             <div className="flex items-center gap-1 sm:gap-2">
-              {/* Compare Button - Badge only shown when user is logged in */}
               <Link to="/compare">
-                <Button variant="ghost" size="sm" className="relative hover:bg-gradient-to-r hover:from-pink-50 hover:via-orange-50 hover:to-blue-50 transition-all duration-300">
+                <Button variant="ghost" size="sm" className="relative hover:bg-pink-50 transition-all duration-300">
                   <GitCompare className="w-5 h-5 text-gray-600" />
-                  {/* Show badge ONLY if user is logged in AND compareList has items */}
                   {user && compareList.length > 0 && (
                     <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 flex items-center justify-center text-[10px] bg-gradient-to-r from-pink-500 via-orange-500 to-blue-600 text-white border-0">
                       {compareList.length}
@@ -1991,11 +1980,9 @@ export function CustomerHeader() {
                 </Button>
               </Link>
 
-              {/* Wishlist Button - Badge only shown when user is logged in */}
               <Link to="/wishlist">
-                <Button variant="ghost" size="sm" className="relative hover:bg-gradient-to-r hover:from-pink-50 hover:via-orange-50 hover:to-blue-50 transition-all duration-300">
+                <Button variant="ghost" size="sm" className="relative hover:bg-pink-50 transition-all duration-300">
                   <Heart className="w-5 h-5 text-gray-600" />
-                  {/* Show badge ONLY if user is logged in AND wishlist has items */}
                   {user && wishlist.length > 0 && (
                     <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 flex items-center justify-center text-[10px] bg-gradient-to-r from-pink-500 via-orange-500 to-blue-600 text-white border-0">
                       {wishlist.length}
@@ -2016,11 +2003,11 @@ export function CustomerHeader() {
                       <div className="w-6 h-6 rounded-full bg-gradient-to-r from-pink-500 via-orange-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold">
                         {user.name.charAt(0).toUpperCase()}
                       </div>
-                      <span className="max-w-[100px] truncate font-medium">{user.name}</span>
-                      <ChevronDown className="w-3.5 h-3.5" />
+                      <span className="max-w-[100px] truncate font-medium text-gray-700">{user.name}</span>
+                      <ChevronDown className="w-3.5 h-3.5 text-gray-600" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 p-2">
+                  <DropdownMenuContent align="end" className="w-56 p-2 bg-white">
                     <DropdownMenuLabel>
                       <div className="flex flex-col">
                         <span className="font-semibold text-gray-800 truncate">{user.name}</span>
@@ -2030,21 +2017,32 @@ export function CustomerHeader() {
                     <DropdownMenuSeparator />
                     
                     {/* My Profile */}
-                    <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer hover:bg-gradient-to-r hover:from-pink-50 hover:via-orange-50 hover:to-blue-50">
-                      <User className="w-4 h-4 mr-2" />
-                      My Profile
+                    <DropdownMenuItem 
+                      onClick={() => navigate('/profile')} 
+                      className="cursor-pointer hover:bg-pink-50 hover:text-gray-800 focus:bg-pink-50 focus:text-gray-800 text-gray-700"
+                    >
+                      <User className="w-4 h-4 mr-2 text-gray-600" />
+                      <span>My Profile</span>
                     </DropdownMenuItem>
                     
                     {/* My Quotations */}
-                    <DropdownMenuItem onClick={() => navigate('/my-quotations')} className="cursor-pointer hover:bg-gradient-to-r hover:from-pink-50 hover:via-orange-50 hover:to-blue-50">
-                      <FileText className="w-4 h-4 mr-2" />
-                      My Quotations
+                    <DropdownMenuItem 
+                      onClick={() => navigate('/my-quotations')} 
+                      className="cursor-pointer hover:bg-pink-50 hover:text-gray-800 focus:bg-pink-50 focus:text-gray-800 text-gray-700"
+                    >
+                      <FileText className="w-4 h-4 mr-2 text-gray-600" />
+                      <span>My Quotations</span>
                     </DropdownMenuItem>
                     
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 hover:bg-red-50 focus:text-red-600">
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Logout
+                    
+                    {/* Logout */}
+                    <DropdownMenuItem 
+                      onClick={handleLogout} 
+                      className="cursor-pointer text-red-600 hover:bg-red-50 hover:text-red-700 focus:bg-red-50 focus:text-red-700"
+                    >
+                      <LogOut className="w-4 h-4 mr-2 text-red-600" />
+                      <span>Logout</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -2060,7 +2058,6 @@ export function CustomerHeader() {
                     </Button>
                   </Link>
                   
-                  {/* Alert positioned exactly below the button */}
                   {showAlert && (
                     <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-max min-w-[280px] z-[100] animate-in slide-in-from-top-2 duration-300">
                       <div className={`bg-white rounded-lg shadow-2xl border ${alertStyles.border} p-3 flex items-center gap-2.5`}>
@@ -2093,7 +2090,6 @@ export function CustomerHeader() {
                           </svg>
                         </button>
                       </div>
-                      {/* Progress bar for auto-dismiss */}
                       <div className="mt-1 h-1 bg-gray-200 rounded-full overflow-hidden">
                         <div className={`h-full ${alertStyles.progress} rounded-full animate-progress`} style={{ animationDuration: '3s' }}></div>
                       </div>
@@ -2104,7 +2100,7 @@ export function CustomerHeader() {
 
               <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="lg:hidden hover:bg-gradient-to-r hover:from-pink-50 hover:via-orange-50 hover:to-blue-50">
+                  <Button variant="ghost" size="icon" className="lg:hidden hover:bg-pink-50">
                     <Menu className="w-5 h-5 text-gray-600" />
                   </Button>
                 </SheetTrigger>
@@ -2149,21 +2145,20 @@ export function CustomerHeader() {
                         </div>
                       </button>
                       
-                      {/* My Quotations in mobile menu */}
                       <button
                         onClick={() => { setMobileOpen(false); navigate('/my-quotations'); }}
-                        className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gradient-to-r hover:from-pink-50 hover:via-orange-50 hover:to-blue-50 transition-colors duration-300"
+                        className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-pink-50 hover:text-gray-800 transition-colors duration-300"
                       >
-                        <FileText className="w-4 h-4" />
-                        My Quotations
+                        <FileText className="w-4 h-4 text-gray-600" />
+                        <span>My Quotations</span>
                       </button>
                       
                       <button
                         onClick={() => { setMobileOpen(false); handleLogout(); }}
-                        className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors duration-300"
+                        className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors duration-300"
                       >
-                        <LogOut className="w-4 h-4" />
-                        Logout
+                        <LogOut className="w-4 h-4 text-red-600" />
+                        <span>Logout</span>
                       </button>
                     </div>
                   ) : (
@@ -2184,6 +2179,7 @@ export function CustomerHeader() {
                     </div>
                   </form>
                   
+                  {/* Mobile Navigation - FIXED */}
                   <nav className="flex flex-col gap-1">
                     {NAV_LINKS.map((link) => {
                       const active = isActive(link.path);
@@ -2194,14 +2190,14 @@ export function CustomerHeader() {
                           onClick={() => setMobileOpen(false)}
                           className={cn(
                             "px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-3 group",
-                            active ? "bg-gray-50" : "hover:bg-gray-50"
+                            active ? "bg-pink-50" : "hover:bg-gray-50"
                           )}
                         >
                           <span className={cn(
                             "flex-shrink-0 transition-all duration-300",
                             active 
-                              ? "text-transparent bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 bg-clip-text" 
-                              : "text-gray-600 group-hover:text-gray-900"
+                              ? "text-pink-500" 
+                              : "text-gray-600 group-hover:text-gray-800"
                           )}>
                             {navIcons[link.path] || <LayoutGrid className="w-4 h-4 flex-shrink-0" />}
                           </span>
@@ -2209,8 +2205,8 @@ export function CustomerHeader() {
                           <span className={cn(
                             "transition-all duration-300",
                             active 
-                              ? "text-transparent bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 bg-clip-text font-bold" 
-                              : "text-gray-600 group-hover:text-gray-900"
+                              ? "text-pink-500 font-bold" 
+                              : "text-gray-600 group-hover:text-gray-800"
                           )}>
                             {link.label}
                           </span>
@@ -2220,9 +2216,9 @@ export function CustomerHeader() {
                     <Link
                       to="/admin"
                       onClick={() => setMobileOpen(false)}
-                      className="px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors duration-300 flex items-center gap-2 text-transparent bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 bg-clip-text"
+                      className="px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors duration-300 flex items-center gap-2 text-pink-500"
                     >
-                      <Building2 className="w-4 h-4" />
+                      <Building2 className="w-4 h-4 text-pink-500" />
                       Admin Portal
                     </Link>
                   </nav>
@@ -2233,7 +2229,6 @@ export function CustomerHeader() {
         </div>
       </header>
 
-      {/* CSS for animations */}
       <style>{`
         @keyframes progress {
           from { width: 100%; }
@@ -2254,6 +2249,14 @@ export function CustomerHeader() {
             opacity: 1;
             transform: translateY(0) translateX(-50%);
           }
+        }
+        /* Fix for dropdown menu items to prevent white text on hover */
+        [data-radix-dropdown-menu-content] [role="menuitem"]:hover {
+          color: inherit !important;
+        }
+        /* Fix for dropdown menu items to prevent white text on focus */
+        [data-radix-dropdown-menu-content] [role="menuitem"]:focus {
+          color: inherit !important;
         }
       `}</style>
     </>
