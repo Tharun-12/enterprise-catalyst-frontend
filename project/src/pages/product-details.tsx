@@ -995,7 +995,7 @@
 // product-details.tsx - Fixed quotation price handling
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+// import { motion } from 'framer-motion';
 import {
   Heart, GitCompare, Download, FileText, Check, Star, ChevronRight,
   ZoomIn, Share2, ShieldCheck, Package, ArrowLeft,
@@ -1280,7 +1280,7 @@ export function ProductDetailsPage() {
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
   const [wishlistOpen, setWishlistOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const { addToWishlist, removeFromWishlist, isInWishlist, addToCompare, removeFromCompare, isInCompare , compareList } = useApp();
+  const { addToWishlist, removeFromWishlist, isInWishlist} = useApp();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -1511,9 +1511,21 @@ export function ProductDetailsPage() {
     }
   };
 
-  const handleCompare = async () => {
-    if (!product) return;
+  // const handleCompare = async () => {
+  //   if (!product) return;
     
+<<<<<<< HEAD
+  //   if (isInCompare(product.id)) {
+  //     await removeFromCompare(product.id);
+  //   } else {
+  //     if (compareList.length >= 4) {
+  //       toast.error('You can compare up to 4 products at a time');
+  //       return;
+  //     }
+  //     await addToCompare(product.id);
+  //   }
+  // };
+=======
     if (isInCompare(product.id)) {
       await removeFromCompare(product.id);
       // toast.success('Removed from comparison', {
@@ -1571,6 +1583,7 @@ export function ProductDetailsPage() {
       // });
     }
   };
+>>>>>>> b953ca2ad07e81b4da02b8466255dc469601e138
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -1739,7 +1752,7 @@ export function ProductDetailsPage() {
   }
 
   const inWishlist = isInWishlist(product.id);
-  const inCompare = isInCompare(product.id);
+  // const inCompare = isInCompare(product.id);
 
   // Get variant spec types
   const variantSpecTypes = product.variants?.map(v => (v as any).spec_type).filter(Boolean) as string[] || [];
@@ -1878,7 +1891,7 @@ export function ProductDetailsPage() {
               <span className="text-3xl font-bold text-primary">{getDisplayPrice()}</span>
               {hasDiscount && (
                 <>
-                  <span className="text-lg text-muted-foreground line-through">{getDisplayOriginalPrice()}</span>
+                  {/* <span className="text-lg text-muted-foreground line-through">{getDisplayOriginalPrice()}</span> */}
                   <Badge variant="destructive" className="text-sm">{product.discountPercentage}% OFF</Badge>
                 </>
               )}
@@ -1942,14 +1955,14 @@ export function ProductDetailsPage() {
               <Heart className={cn('w-4 h-4 mr-2', inWishlist && 'fill-current')} />
               {inWishlist ? 'Wishlisted' : 'Wishlist'}
             </Button>
-            <Button
+            {/* <Button
               size="lg"
               variant={inCompare ? 'default' : 'outline'}
               onClick={handleCompare}
             >
               <GitCompare className="w-4 h-4 mr-2" />
               {inCompare ? 'Comparing' : 'Compare'}
-            </Button>
+            </Button> */}
           </div>
 
           <div className="flex gap-3">
@@ -1988,7 +2001,7 @@ export function ProductDetailsPage() {
         <TabsList className="w-full justify-start flex-wrap h-auto p-1 gap-1">
           <TabsTrigger value="description">Description</TabsTrigger>
           <TabsTrigger value="specifications">Specifications</TabsTrigger>
-          <TabsTrigger value="features">Features</TabsTrigger>
+          {/* <TabsTrigger value="features">Features</TabsTrigger> */}
           {uniqueSpecTypes.length > 0 && (
             <TabsTrigger value="spec-comparison">Spec Comparison</TabsTrigger>
           )}
@@ -2022,7 +2035,7 @@ export function ProductDetailsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="features" className="mt-6">
+        {/* <TabsContent value="features" className="mt-6">
           <Card className="p-6">
             <h2 className="text-xl font-bold mb-6">Key Features</h2>
             {product.features.length > 0 ? (
@@ -2048,7 +2061,7 @@ export function ProductDetailsPage() {
               </p>
             )}
           </Card>
-        </TabsContent>
+        </TabsContent> */}
 
         {uniqueSpecTypes.length > 0 && (
           <TabsContent value="spec-comparison" className="mt-6">

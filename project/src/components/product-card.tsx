@@ -1,6 +1,6 @@
 // product-card.tsx
-import { Link } from 'react-router-dom';
-import { Heart, GitCompare, Eye, Star, BadgeCheck } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Heart, GitCompare, Eye, Star, BadgeCheck, FileSpreadsheet } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import type { Product } from '@/types';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useState } from 'react';
+import { baseurl } from '@/Baseurl/baseurl';
 
 interface ProductCardProps {
   product: Product;
@@ -23,22 +24,84 @@ export function ProductCard({ product }: ProductCardProps) {
     removeFromCompare, 
     isInWishlist, 
     isInCompare,
-    loadingWishlist 
+    loadingWishlist,
+    isLoggedIn
   } = useApp();
   
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [localWishlistState, setLocalWishlistState] = useState<boolean | null>(null);
+  const [isCompareLoading, setIsCompareLoading] = useState(false);
+  const [isQuotationLoading, setIsQuotationLoading] = useState(false);
 
   // Use local state if available, otherwise use the context state
   const inWishlist = localWishlistState !== null ? localWishlistState : isInWishlist(product.id);
   const inCompare = isInCompare(product.id);
   const compareFull = compareList.length >= 4;
 
+  const getUserId = (): number | undefined => {
+    const session = localStorage.getItem('userSession');
+    if (session) {
+      try {
+        return JSON.parse(session).userId;
+      } catch {
+        return undefined;
+      }
+    }
+    return undefined;
+  };
+
+  const getUserDetails = () => {
+    const session = localStorage.getItem('userSession');
+    if (session) {
+      try {
+        const user = JSON.parse(session);
+        return {
+          id: user.userId,
+          name: user.name || '',
+          email: user.email || '',
+          mobile: user.mobile || ''
+        };
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  };
+
   const handleWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
     if (isLoading || loadingWishlist) return;
+    
+    // Check if user is logged in
+    if (!isLoggedIn) {
+      toast.error('Please login to sync wishlist', {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+        action: {
+          label: 'Login',
+          onClick: () => window.location.href = '/login'
+        }
+      });
+      // Redirect to login after a short delay
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 1500);
+      return;
+    }
     
     setIsLoading(true);
     
@@ -103,50 +166,159 @@ export function ProductCard({ product }: ProductCardProps) {
     }
   };
 
-  const handleCompare = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
+  // Shared toggle logic used by BOTH the compare icon and the checkbox
+  const toggleCompare = async (): Promise<boolean> => {
+    if (isCompareLoading) return false;
+
+    if (!inCompare && compareFull) {
+      toast.warning('You can compare up to 4 products', {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#F59E0B',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+      });
+      return false;
+    }
+
+    setIsCompareLoading(true);
+    const uid = getUserId();
+
     try {
       if (inCompare) {
-        await removeFromCompare(product.id);
-        toast.success('Removed from compare', {
-          duration: 2000,
-          position: 'top-right',
-          style: {
-            background: '#EF4444',
-            color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '500',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            marginTop: '70px',
-          },
-        });
+        await removeFromCompare(product.id, uid);
       } else {
-        if (compareFull) {
-          toast.error('You can compare up to 4 products at a time', {
-            duration: 3000,
-            position: 'top-right',
-            style: {
-              background: '#F59E0B',
-              color: 'white',
-              border: 'none',
-              padding: '12px 24px',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '500',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-              marginTop: '70px',
-            },
-          });
-          return;
+        await addToCompare(product.id, uid);
+      }
+      return true;
+    } catch (error) {
+      console.error('Error toggling compare:', error);
+      toast.error('Failed to update compare list');
+      return false;
+    } finally {
+      setIsCompareLoading(false);
+    }
+  };
+
+  // Compare icon: toggle, then take user to the compare page
+  const handleCompareClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (inCompare) {
+      // Already added — just view the comparison
+      navigate('/compare');
+      return;
+    }
+
+    const added = await toggleCompare();
+    if (added) {
+      navigate('/compare');
+    }
+  };
+
+  // Checkbox: toggle and navigate to compare page
+  const handleCompareCheckbox = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    
+    // If already in compare, just navigate to compare page
+    if (inCompare) {
+      navigate('/compare');
+      return;
+    }
+    
+    const added = await toggleCompare();
+    if (added) {
+      navigate('/compare');
+    }
+  };
+
+  // Handle Quotation Request
+  const handleQuotationRequest = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const userId = getUserId();
+    if (!userId) {
+      toast.error('Please login to request a quotation', {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+        action: {
+          label: 'Login',
+          onClick: () => window.location.href = '/login'
         }
-        await addToCompare(product.id);
-        toast.success('Added to compare', {
-          duration: 2000,
+      });
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 1500);
+      return;
+    }
+
+    setIsQuotationLoading(true);
+
+    try {
+      const user = getUserDetails();
+      
+      // Get the actual price - use minPrice/maxPrice if available
+      let actualPrice = product.price;
+      if (product.maxPrice !== undefined && product.maxPrice !== null && product.maxPrice > 0) {
+        actualPrice = product.maxPrice;
+      } else if (product.minPrice !== undefined && product.minPrice !== null && product.minPrice > 0) {
+        actualPrice = product.minPrice;
+      }
+
+      // Get the actual discount percentage
+      const actualDiscount = product.discountPercentage || 0;
+      
+      const payload = {
+        user_id: userId,
+        product_id: parseInt(product.id),
+        product_name: product.name,
+        product_code: product.sku,
+        product_brand: product.brandName,
+        price: actualPrice,
+        discount: actualDiscount,
+        quantity: 1,
+        remarks: `Quotation requested for ${product.name}`,
+        customer_name: user?.name || '',
+        customer_mobile: user?.mobile || '',
+        customer_email: user?.email || ''
+      };
+
+      console.log('Sending quotation payload:', payload);
+
+      const response = await fetch(`${baseurl}/api/quotations/single`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(`Quotation #${data.quotation_no} generated successfully!`, {
+          duration: 3000,
           position: 'top-right',
           style: {
             background: '#10B981',
@@ -160,11 +332,28 @@ export function ProductCard({ product }: ProductCardProps) {
             marginTop: '70px',
           },
         });
+        navigate('/wishlist/quotation');
+      } else {
+        toast.error(data.message || 'Failed to submit quotation request', {
+          duration: 3000,
+          position: 'top-right',
+          style: {
+            background: '#EF4444',
+            color: 'white',
+            border: 'none',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            marginTop: '70px',
+          },
+        });
       }
     } catch (error) {
-      console.error('Error toggling compare:', error);
-      toast.error('Failed to update compare list', {
-        duration: 2000,
+      console.error('Error submitting quotation:', error);
+      toast.error('Failed to submit quotation request. Please try again.', {
+        duration: 3000,
         position: 'top-right',
         style: {
           background: '#EF4444',
@@ -178,6 +367,8 @@ export function ProductCard({ product }: ProductCardProps) {
           marginTop: '70px',
         },
       });
+    } finally {
+      setIsQuotationLoading(false);
     }
   };
 
@@ -260,6 +451,31 @@ export function ProductCard({ product }: ProductCardProps) {
           </Badge>
         )}
       </div>
+
+      {/* Heart Icon at Top Right with Circle Background */}
+      <button
+        className={cn(
+          'absolute top-2 right-2 z-20 h-9 w-9 rounded-full',
+          'flex items-center justify-center',
+          'bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm',
+          'shadow-md hover:shadow-lg transition-all duration-200',
+          'border border-gray-200/50 dark:border-gray-700/50',
+          inWishlist && 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800',
+          (isLoading || loadingWishlist) && 'opacity-50 cursor-not-allowed'
+        )}
+        onClick={handleWishlist}
+        disabled={isLoading || loadingWishlist}
+        title={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+      >
+        {isLoading || loadingWishlist ? (
+          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin text-gray-400" />
+        ) : (
+          <Heart className={cn(
+            'w-4.5 h-4.5 transition-all duration-200',
+            inWishlist ? 'fill-red-500 text-red-500' : 'text-gray-600 dark:text-gray-300 hover:text-red-500'
+          )} />
+        )}
+      </button>
 
       {/* Image */}
       <Link to={`/products/${product.slug}`} className="block relative aspect-square overflow-hidden bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-t-2xl">
@@ -357,47 +573,70 @@ export function ProductCard({ product }: ProductCardProps) {
           )}
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2 mt-auto">
-          <Button 
-            asChild 
-            size="sm" 
-            className="flex-1 h-9 text-xs rounded-full bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl transition-all"
-          >
-            <Link to={`/products/${product.slug}`}>
-              View Details
-            </Link>
-          </Button>
-          <Button
-            size="icon"
-            variant="outline"
+        {/* Actions - Modified to include Quotation Button and remove Compare icon */}
+        <div className="flex flex-col gap-2">
+          {/* First row: View Details + Quotation */}
+          <div className="flex items-center gap-2">
+            <Button 
+              asChild 
+              size="sm" 
+              className="flex-1 h-9 text-xs rounded-full bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl transition-all"
+            >
+              <Link to={`/products/${product.slug}`}>
+                View Details
+              </Link>
+            </Button>
+
+            {/* Request for Quotation Button */}
+            <Button
+              size="sm"
+              variant="outline"
+              className={cn(
+                'h-9 px-3 shrink-0 rounded-full border-primary/30 text-primary hover:bg-primary hover:text-white transition-all duration-200',
+                isQuotationLoading && 'opacity-50 cursor-not-allowed'
+              )}
+              onClick={handleQuotationRequest}
+              disabled={isQuotationLoading}
+              title="Request for Quotation"
+            >
+              {isQuotationLoading ? (
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  <FileSpreadsheet className="w-4 h-4 mr-1" />
+                  <span className="text-xs font-medium hidden sm:inline">Quote</span>
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Second row: Add to Compare checkbox */}
+          <label
             className={cn(
-              'h-9 w-9 shrink-0 rounded-full transition-all duration-200 border-gray-200 dark:border-gray-700 hover:border-primary hover:text-primary',
-              inWishlist && 'border-red-500 text-red-500 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30',
-              (isLoading || loadingWishlist) && 'opacity-50 cursor-not-allowed'
+              'flex items-center gap-2 mt-1 select-none',
+              isCompareLoading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
             )}
-            onClick={handleWishlist}
-            disabled={isLoading || loadingWishlist}
-            title={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+            onClick={(e) => e.stopPropagation()}
           >
-            {isLoading || loadingWishlist ? (
-              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Heart className={cn('w-4 h-4 transition-all', inWishlist && 'fill-red-500')} />
+            <input
+              type="checkbox"
+              checked={inCompare}
+              disabled={isCompareLoading}
+              onChange={handleCompareCheckbox}
+              onClick={(e) => e.stopPropagation()}
+              className={cn(
+                'h-4 w-4 rounded border-gray-300 dark:border-gray-600',
+                'text-primary focus:ring-primary focus:ring-offset-0',
+                'accent-primary cursor-pointer disabled:cursor-not-allowed'
+              )}
+            />
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+              Add to compare
+            </span>
+            {isCompareLoading && (
+              <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin text-primary" />
             )}
-          </Button>
-          <Button
-            size="icon"
-            variant="outline"
-            className={cn(
-              'h-9 w-9 shrink-0 rounded-full transition-all duration-200 border-gray-200 dark:border-gray-700 hover:border-primary hover:text-primary',
-              inCompare && 'border-blue-500 text-blue-500 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30'
-            )}
-            onClick={handleCompare}
-            title={inCompare ? 'Remove from comparison' : 'Add to comparison'}
-          >
-            <GitCompare className="w-4 h-4" />
-          </Button>
+          </label>
         </div>
       </div>
     </Card>

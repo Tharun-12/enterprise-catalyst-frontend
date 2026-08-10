@@ -260,7 +260,7 @@ import { useSettings } from '@/hooks/use-settings';
 import { baseurl } from '@/Baseurl/baseurl';
 
 // Use environment variable or fallback to localhost
-const API_URL =  `${baseurl}/api`;
+const API_URL = `${baseurl}/api`;
 
 export function LoginPage() {
     const [email, setEmail] = useState('');
@@ -318,6 +318,12 @@ export function LoginPage() {
                     localStorage.removeItem('rememberMe');
                 }
                 
+<<<<<<< HEAD
+                // 🔥 IMPORTANT: Dispatch authChange event to notify all components
+                window.dispatchEvent(new Event('authChange'));
+                
+                toast.success(`Welcome back, ${response.data.user.name}!`);
+=======
                 // Show welcome toast at top-right with consistent styling
                 toast.success(`Welcome back, ${response.data.user.name}!`, {
                     duration: 3000,
@@ -336,6 +342,7 @@ export function LoginPage() {
                     },
                 });
                 
+>>>>>>> b953ca2ad07e81b4da02b8466255dc469601e138
                 setLoading(false);
                 navigate('/');
             }
