@@ -1514,7 +1514,6 @@ export function ProductDetailsPage() {
   // const handleCompare = async () => {
   //   if (!product) return;
     
-<<<<<<< HEAD
   //   if (isInCompare(product.id)) {
   //     await removeFromCompare(product.id);
   //   } else {
@@ -1525,7 +1524,6 @@ export function ProductDetailsPage() {
   //     await addToCompare(product.id);
   //   }
   // };
-=======
     if (isInCompare(product.id)) {
       await removeFromCompare(product.id);
       // toast.success('Removed from comparison', {
@@ -1583,7 +1581,6 @@ export function ProductDetailsPage() {
       // });
     }
   };
->>>>>>> b953ca2ad07e81b4da02b8466255dc469601e138
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
