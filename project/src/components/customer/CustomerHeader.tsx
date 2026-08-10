@@ -1928,7 +1928,7 @@ export function CustomerHeader() {
                 {/* <div className="text-[10px] text-transparent bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 bg-clip-text font-medium">
                   Enterprise E-Catalog
                 </div> */}
-                <div className="text-[10px] text-pink-500 font-medium">
+        <div className="text-[10px] text-pink-600 font-medium">
   Enterprise E-Catalog
 </div>
               </div>
