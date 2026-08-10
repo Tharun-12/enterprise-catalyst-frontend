@@ -1,10 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-<<<<<<< HEAD
-import {   Calendar, User, Mail, Phone, Package, Percent, CheckCircle, Clock, XCircle, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
-=======
 import { FileText, Calendar, User, Mail, Phone, Package, CheckCircle, Clock, XCircle, ChevronDown, ChevronUp, Loader, Percent } from 'lucide-react';
->>>>>>> 2e8bc42c94c77e1fbacbe6adb321f5e1cc84919e
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -50,11 +46,7 @@ interface Quotation {
 export function MyQuotations() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
-<<<<<<< HEAD
-  const [selectedQuotation, _setSelectedQuotation] = useState<Quotation | null>(null);
-=======
   const [selectedQuotation, _setSelectedQuotation] = useState<Quotation | null>(null); // Keep this if you're using it in the dialog
->>>>>>> 2e8bc42c94c77e1fbacbe6adb321f5e1cc84919e
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [expandedQuotation, setExpandedQuotation] = useState<number | null>(null);
   const navigate = useNavigate();
@@ -129,11 +121,11 @@ export function MyQuotations() {
     setExpandedQuotation(expandedQuotation === id ? null : id);
   };
 
-  // const calculateProductDiscountAmount = (detail: QuotationDetail) => {
-  //   const price = parseFloat(detail.price);
-  //   const discountPercent = parseFloat(detail.discount);
-  //   return (price * discountPercent) / 100;
-  // };
+  const calculateProductDiscountAmount = (detail: QuotationDetail) => {
+    const price = parseFloat(detail.price);
+    const discountPercent = parseFloat(detail.discount);
+    return (price * discountPercent) / 100;
+  };
 
   if (loading) {
     return (
@@ -173,7 +165,7 @@ export function MyQuotations() {
       {quotations.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            {/* <FileText className="w-16 h-16 text-muted-foreground/30 mb-4" /> */}
+            <FileText className="w-16 h-16 text-muted-foreground/30 mb-4" />
             <h3 className="text-lg font-semibold text-foreground">No quotations found</h3>
             <p className="text-muted-foreground text-sm mt-1">You haven't requested any quotations yet</p>
             <Button 
@@ -206,14 +198,9 @@ export function MyQuotations() {
                   {/* Quotation Header */}
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="space-y-2">
-<<<<<<< HEAD
-                      {/* <div className="flex items-center gap-3 flex-wrap">
-                        <h3 className="text-lg font-semibold">{quotation.quotation_no}</h3>
-=======
                       <div className="flex items-center gap-3 flex-wrap">
->>>>>>> 2e8bc42c94c77e1fbacbe6adb321f5e1cc84919e
                         {getStatusBadge(quotation.status)}
-                      </div> */}
+                      </div>
                       <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <User className="w-3.5 h-3.5" />
@@ -238,46 +225,32 @@ export function MyQuotations() {
                       </div>
                     </div>
                     <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
-                      {/* <div className="text-right">
+                      <div className="text-right">
                         <div className="text-sm text-muted-foreground">Grand Total</div>
                         <div className="text-xl font-bold text-primary">
                           {formatCurrency(quotation.grand_total)}
                         </div>
-<<<<<<< HEAD
-                      </div> */}
-                      {/* <Button
-                        onClick={() => {
-                          setSelectedQuotation(quotation);
-                          setIsDetailOpen(true);
-                        }}
-                        className="bg-gradient-to-r from-pink-500 via-orange-500 via-yellow-400 to-blue-600 text-white"
-                      >
-                        <Eye className="w-4 h-4 mr-2" />
-                        View Details
-                      </Button> */}
-=======
                       </div>
->>>>>>> 2e8bc42c94c77e1fbacbe6adb321f5e1cc84919e
                     </div>
                   </div>
 
-                  {/* Quotation Request Summary - Collapsible */}
+                  {/* Order Summary - Collapsible */}
                   <div className="mt-4 pt-4 border-t">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div>
-                        <h4 className="font-semibold text-sm mb-1">Quotation Request Summary</h4>
+                        <h4 className="font-semibold text-sm mb-1">Order Summary</h4>
                         <div className="text-sm space-y-1">
                           <p>Total Items: <span className="font-medium">{quotation.total_items}</span></p>
-                          {/* <p>Total Amount: <span className="font-medium">{formatCurrency(quotation.total_amount)}</span></p>
+                          <p>Total Amount: <span className="font-medium">{formatCurrency(quotation.total_amount)}</span></p>
                           {totalDiscountPercent > 0 && (
                             <p>Total Discount: <span className="font-medium text-green-600">{totalDiscountPercent.toFixed(1)}% off ({formatCurrency(totalDiscountAmount.toString())})</span></p>
-                          )} */}
+                          )}
                         </div>
-                        {/* {quotation.remarks && (
+                        {quotation.remarks && (
                           <div className="mt-2 p-2 bg-muted/30 rounded text-sm">
                             <span className="font-semibold">Remarks:</span> {quotation.remarks}
                           </div>
-                        )} */}
+                        )}
                       </div>
                     </div>
                   </div>
@@ -327,13 +300,7 @@ export function MyQuotations() {
                       {expandedQuotation === quotation.id && (
                         <div className="mt-4 space-y-3 animate-in slide-in-from-top-2 duration-200">
                           {quotation.details.map((detail) => {
-<<<<<<< HEAD
-                            // const discountAmount = calculateProductDiscountAmount(detail);
-                            // const price = parseFloat(detail.price);
-                            // const finalPrice = parseFloat(detail.final_price);
-=======
                             const discountAmount = calculateProductDiscountAmount(detail);
->>>>>>> 2e8bc42c94c77e1fbacbe6adb321f5e1cc84919e
                             
                             return (
                               <div key={detail.id} className="bg-gradient-to-r from-muted/10 to-muted/5 rounded-xl p-4 border border-muted/20 hover:border-primary/30 transition-all hover:shadow-sm">
@@ -355,7 +322,7 @@ export function MyQuotations() {
                                       </span>
                                     </div>
                                   </div>
-                                  {/* <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm w-full md:w-auto">
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm w-full md:w-auto">
                                     <div className="bg-background/50 rounded-lg px-3 py-1.5 text-center">
                                       <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Price</p>
                                       <p className="font-semibold text-foreground">{formatCurrency(detail.price)}</p>
@@ -376,7 +343,7 @@ export function MyQuotations() {
                                       <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Subtotal</p>
                                       <p className="font-bold text-foreground">{formatCurrency(detail.subtotal)}</p>
                                     </div>
-                                  </div> */}
+                                  </div>
                                 </div>
                               </div>
                             );

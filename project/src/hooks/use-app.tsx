@@ -1851,29 +1851,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const isInCompare = useCallback((productId: string) => compareList.includes(productId), [compareList]);
 
-  const clearCompare = useCallback(async (userId?: number) => {
-    const uid = userId || currentUserId;
+const clearCompare = useCallback(async (userId?: number) => {
+  const uid = userId || currentUserId;
 
-<<<<<<< HEAD
   if (!uid) {
     setCompareList([]);
-    toast.success('Compare list cleared');
+    toast.success('Compare list cleared', {
+      duration: 3000,
+      position: 'top-right',
+      style: {
+        background: '#10B981',
+        color: 'white',
+        border: 'none',
+        padding: '12px 24px',
+        borderRadius: '8px',
+        fontSize: '14px',
+        fontWeight: '500',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        marginTop: '70px',
+      },
+    });
     return;
   }
 
   try {
-    const response = await fetch(`${API_BASE}/clear/${uid}`, {
+    const response = await fetch(`${API_BASE}/compare/clear/${uid}`, {
       method: 'DELETE',
     });
 
     const result = await response.json();
 
     if (result.success) {
-=======
-    if (!uid) {
->>>>>>> 2e8bc42c94c77e1fbacbe6adb321f5e1cc84919e
       setCompareList([]);
-      toast.success('Compare list cleared', {
+      toast.success(result.message || 'Compare list cleared', {
         duration: 3000,
         position: 'top-right',
         style: {
@@ -1888,53 +1898,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           marginTop: '70px',
         },
       });
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_BASE}/compare/clear/${uid}`, {
-        method: 'DELETE',
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        setCompareList([]);
-        toast.success(result.message || 'Compare list cleared', {
-          duration: 3000,
-          position: 'top-right',
-          style: {
-            background: '#10B981',
-            color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '500',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            marginTop: '70px',
-          },
-        });
-      } else {
-        toast.error(result.message || 'Failed to clear compare list', {
-          duration: 3000,
-          position: 'top-right',
-          style: {
-            background: '#EF4444',
-            color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '500',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            marginTop: '70px',
-          },
-        });
-      }
-    } catch (error) {
-      console.error('Error clearing compare:', error);
-      toast.error('Failed to clear compare list', {
+    } else {
+      toast.error(result.message || 'Failed to clear compare list', {
         duration: 3000,
         position: 'top-right',
         style: {
@@ -1950,7 +1915,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
         },
       });
     }
-  }, [currentUserId]);
+  } catch (error) {
+    console.error('Error clearing compare:', error);
+    toast.error('Failed to clear compare list', {
+      duration: 3000,
+      position: 'top-right',
+      style: {
+        background: '#EF4444',
+        color: 'white',
+        border: 'none',
+        padding: '12px 24px',
+        borderRadius: '8px',
+        fontSize: '14px',
+        fontWeight: '500',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        marginTop: '70px',
+      },
+    });
+  }
+}, [currentUserId]);
 
   // Add this function to sync compare from API when user logs in
   const fetchCompareFromAPI = useCallback(async (userId: number) => {
