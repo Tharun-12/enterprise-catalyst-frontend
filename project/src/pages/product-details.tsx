@@ -14,7 +14,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { ProductCard } from '@/components/product-card';
 import { EmptyState } from '@/components/shared';
-import { WishlistLeadModal } from '@/components/wishlist-modal';
 import { useApp } from '@/hooks/use-app';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -984,8 +983,6 @@ export function ProductDetailsPage() {
           </div>
         </div>
       )}
-
-      <WishlistLeadModal product={product} open={wishlistOpen} onOpenChange={setWishlistOpen} />
     </div>
   );
 }

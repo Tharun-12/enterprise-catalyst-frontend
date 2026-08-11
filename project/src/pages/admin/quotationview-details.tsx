@@ -201,9 +201,9 @@ export function QuotationView() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold">Quotation Details</h1>
-            <p className="text-sm text-muted-foreground">
+            {/* <p className="text-sm text-muted-foreground">
               {quotation.quotationNumber}
-            </p>
+            </p> */}
           </div>
         </div>
         <div className="flex gap-2">
@@ -277,7 +277,7 @@ export function QuotationView() {
                         </div>
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                        <div>
+                        {/* <div>
                           <p className="text-xs text-muted-foreground">Unit Price</p>
                           <p className="font-medium">{formatCurrency(item.price)}</p>
                         </div>
@@ -296,7 +296,7 @@ export function QuotationView() {
                         <div>
                           <p className="text-xs text-muted-foreground">Subtotal</p>
                           <p className="font-semibold">{formatCurrency(item.subtotal)}</p>
-                        </div>
+                        </div> */}
                       </div>
                     </div>
                   </div>
@@ -310,33 +310,26 @@ export function QuotationView() {
       </Card>
 
       {/* Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-muted/30 p-3 rounded-lg">
-              <p className="text-xs text-muted-foreground">Total Items</p>
-              <p className="text-lg font-semibold">{quotation.totalItems}</p>
-            </div>
-            <div className="bg-muted/30 p-3 rounded-lg">
-              <p className="text-xs text-muted-foreground">Total Amount</p>
-              <p className="text-lg font-semibold">{formatCurrency(quotation.totalAmount)}</p>
-            </div>
-            <div className="bg-muted/30 p-3 rounded-lg">
-              <p className="text-xs text-muted-foreground">Total Discount</p>
-              <p className="text-lg font-semibold text-green-600">
-                {quotation.totalDiscount > 0 ? formatDiscount(quotation.totalDiscount) : '0%'}
-              </p>
-            </div>
-            <div className="bg-primary/5 p-3 rounded-lg border-2 border-primary/20">
-              <p className="text-xs text-muted-foreground">Grand Total</p>
-              <p className="text-2xl font-bold text-primary">{formatCurrency(quotation.grandTotal)}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* <div className="flex justify-end">
+  <Card className="w-full max-w-sm">
+    <CardHeader>
+      <CardTitle>Summary</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-muted-foreground">Total Items</span>
+          <span className="text-lg font-semibold">{quotation.totalItems}</span>
+        </div>
+        <Separator />
+        <div className="flex justify-between items-center bg-primary/5 p-3 rounded-lg border-2 border-primary/20">
+          <span className="text-sm font-medium">Grand Total</span>
+          <span className="text-2xl font-bold text-primary">{formatCurrency(quotation.grandTotal)}</span>
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+</div> */}
 
       {/* Notes */}
       {quotation.notes && (
