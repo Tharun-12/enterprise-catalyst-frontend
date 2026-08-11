@@ -1478,7 +1478,7 @@ export function ComparePage() {
 
       if (response.data.success) {
         toast.success(`Quotation #${response.data.quotation_no} generated successfully!`);
-        navigate('/wishlist/quotation');
+        navigate('/my-quotations');
       } else {
         toast.error(response.data.message || 'Failed to submit quotation request');
       }

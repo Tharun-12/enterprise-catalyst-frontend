@@ -1,7 +1,7 @@
 // src/components/admin/QuotationView.tsx
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mail, Phone } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, Image as ImageIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import axios from 'axios';
 import { baseurl } from '@/Baseurl/baseurl';
-import { cn } from '@/lib/utils'; // Add this import
+import { cn } from '@/lib/utils';
 
 type QuotationStatus = 'Pending' | 'Approved' | 'Rejected';
 
@@ -21,9 +21,14 @@ interface QuotationItem {
   brand: string;
   quantity: number;
   price: number;
+  minPrice: number | null;
+  maxPrice: number | null;
   discount: number;
+  discountAmount: number;
   finalPrice: number;
   subtotal: number;
+  variantImage: string | null;
+  variantDetails: any | null;
 }
 
 interface Quotation {
@@ -46,14 +51,21 @@ interface Quotation {
 
 interface ApiQuotationDetail {
   id: number;
+  product_id: number;
   product_name: string;
   product_code: string;
   brand: string;
   quantity: number;
   price: string;
+  min_price: string | null;
+  max_price: string | null;
   discount: string;
+  discount_amount: string;
   final_price: string;
   subtotal: string;
+  variant_image: string | null;
+  variant_details: string | null;
+  created_at: string;
 }
 
 const statusBadgeStyles: Record<QuotationStatus, string> = {
@@ -84,6 +96,15 @@ export function QuotationView() {
     return statusMap[apiStatus] || 'Pending';
   };
 
+  const getImageUrl = (imagePath: string | null) => {
+    if (!imagePath) return null;
+    if (imagePath.startsWith('http')) return imagePath;
+    if (imagePath.startsWith('/')) {
+      return `${baseurl}${imagePath}`;
+    }
+    return `${baseurl}/uploads/products/${imagePath}`;
+  };
+
   const fetchQuotationDetails = async (quotationId: string) => {
     try {
       setLoading(true);
@@ -94,10 +115,6 @@ export function QuotationView() {
       if (response.data && response.data.success) {
         const apiQuotation = response.data.quotation;
         const apiItems = response.data.items || [];
-        
-        const totalDiscountPercentage = apiItems.reduce((sum: number, item: ApiQuotationDetail) => {
-          return sum + (parseFloat(item.discount) || 0);
-        }, 0);
         
         const transformedData: Quotation = {
           id: apiQuotation.id.toString(),
@@ -113,13 +130,18 @@ export function QuotationView() {
             brand: item.brand || 'N/A',
             quantity: item.quantity,
             price: parseFloat(item.price) || 0,
+            minPrice: item.min_price ? parseFloat(item.min_price) : null,
+            maxPrice: item.max_price ? parseFloat(item.max_price) : null,
             discount: parseFloat(item.discount) || 0,
+            discountAmount: parseFloat(item.discount_amount) || 0,
             finalPrice: parseFloat(item.final_price) || 0,
             subtotal: parseFloat(item.subtotal) || 0,
+            variantImage: item.variant_image || null,
+            variantDetails: item.variant_details ? JSON.parse(item.variant_details) : null,
           })),
           totalItems: apiQuotation.total_items || apiItems.length || 0,
           totalAmount: parseFloat(apiQuotation.total_amount) || 0,
-          totalDiscount: totalDiscountPercentage,
+          totalDiscount: parseFloat(apiQuotation.total_discount) || 0,
           grandTotal: parseFloat(apiQuotation.grand_total) || 0,
           createdAt: apiQuotation.created_at,
           updatedAt: apiQuotation.updated_at,
@@ -156,11 +178,6 @@ export function QuotationView() {
       minimumFractionDigits: 2, 
       maximumFractionDigits: 2 
     })}`;
-  };
-
-  const formatDiscount = (discountPercent: number): string => {
-    if (discountPercent === 0) return '0%';
-    return `${discountPercent.toFixed(2)}%`;
   };
 
   if (loading) {
@@ -201,9 +218,6 @@ export function QuotationView() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold">Quotation Details</h1>
-            {/* <p className="text-sm text-muted-foreground">
-              {quotation.quotationNumber}
-            </p> */}
           </div>
         </div>
         <div className="flex gap-2">
@@ -260,47 +274,88 @@ export function QuotationView() {
           <div className="space-y-4">
             {quotation.items.length > 0 ? (
               <>
-                {quotation.items.map((item, index) => (
-                  <div key={item.id}>
-                    {index > 0 && <Separator className="my-4" />}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="font-semibold text-base">{item.productName}</h4>
-                          <Badge variant="outline" className="text-xs">
-                            {item.brand}
-                          </Badge>
-                        </div>
-                        <div className="text-sm text-muted-foreground mt-1 space-y-1">
-                          <p>Code: {item.productCode}</p>
-                          <p>Quantity: {item.quantity}</p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                        {/* <div>
-                          <p className="text-xs text-muted-foreground">Unit Price</p>
-                          <p className="font-medium">{formatCurrency(item.price)}</p>
-                        </div>
-                        {item.discount > 0 && (
+                {quotation.items.map((item, index) => {
+                  const imageUrl = getImageUrl(item.variantImage);
+                  
+                  return (
+                    <div key={item.id}>
+                      {index > 0 && <Separator className="my-4" />}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex items-start gap-4">
+                          {/* Product Image */}
+                          <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 border">
+                            {imageUrl ? (
+                              <img 
+                                src={imageUrl} 
+                                alt={item.productName}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = 'https://via.placeholder.com/80x80?text=No+Image';
+                                }}
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                                <ImageIcon className="w-8 h-8 text-gray-400" />
+                              </div>
+                            )}
+                          </div>
+                          
                           <div>
-                            <p className="text-xs text-muted-foreground">Discount</p>
-                            <p className="font-medium text-green-600">
-                              {formatDiscount(item.discount)}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-semibold text-base">{item.productName}</h4>
+                              <Badge variant="outline" className="text-xs">
+                                {item.brand}
+                              </Badge>
+                            </div>
+                            <div className="text-sm text-muted-foreground mt-1 space-y-1">
+                              <p>Code: {item.productCode}</p>
+                              <p>Quantity: {item.quantity}</p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Price Information with Min/Max */}
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          {/* Min Price */}
+                          {item.minPrice !== null && (
+                            <div className="bg-blue-50/50 rounded-lg px-3 py-2 text-center border border-blue-100">
+                              <p className="text-xs text-muted-foreground">Min Price</p>
+                              <p className="font-semibold text-blue-700 text-sm">
+                                {formatCurrency(item.minPrice)}
+                              </p>
+                            </div>
+                          )}
+                          
+                          {/* Max Price */}
+                          {item.maxPrice !== null && (
+                            <div className="bg-purple-50/50 rounded-lg px-3 py-2 text-center border border-purple-100">
+                              <p className="text-xs text-muted-foreground">Max Price</p>
+                              <p className="font-semibold text-purple-700 text-sm">
+                                {formatCurrency(item.maxPrice)}
+                              </p>
+                            </div>
+                          )}
+                          
+                          {/* Final Price */}
+                          <div className="bg-primary/5 rounded-lg px-3 py-2 text-center border border-primary/20">
+                            <p className="text-xs text-muted-foreground">Final Price</p>
+                            <p className="font-semibold text-primary text-sm">
+                              {formatCurrency(item.finalPrice)}
                             </p>
                           </div>
-                        )}
-                        <div>
-                          <p className="text-xs text-muted-foreground">Final Price</p>
-                          <p className="font-medium text-primary">{formatCurrency(item.finalPrice)}</p>
+                          
+                          {/* Subtotal */}
+                          <div className="bg-gray-50 rounded-lg px-3 py-2 text-center border">
+                            <p className="text-xs text-muted-foreground">Subtotal</p>
+                            <p className="font-semibold text-sm">
+                              {formatCurrency(item.subtotal)}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Subtotal</p>
-                          <p className="font-semibold">{formatCurrency(item.subtotal)}</p>
-                        </div> */}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </>
             ) : (
               <p className="text-sm text-muted-foreground">No products available</p>
@@ -310,26 +365,26 @@ export function QuotationView() {
       </Card>
 
       {/* Summary */}
-      {/* <div className="flex justify-end">
-  <Card className="w-full max-w-sm">
-    <CardHeader>
-      <CardTitle>Summary</CardTitle>
-    </CardHeader>
-    <CardContent>
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-muted-foreground">Total Items</span>
-          <span className="text-lg font-semibold">{quotation.totalItems}</span>
-        </div>
-        <Separator />
-        <div className="flex justify-between items-center bg-primary/5 p-3 rounded-lg border-2 border-primary/20">
-          <span className="text-sm font-medium">Grand Total</span>
-          <span className="text-2xl font-bold text-primary">{formatCurrency(quotation.grandTotal)}</span>
-        </div>
+      <div className="flex justify-end">
+        <Card className="w-full max-w-sm">
+          <CardHeader>
+            <CardTitle>Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Total Items</span>
+                <span className="text-lg font-semibold">{quotation.totalItems}</span>
+              </div>
+              <Separator />
+              <div className="flex justify-between items-center bg-primary/5 p-3 rounded-lg border-2 border-primary/20">
+                <span className="text-sm font-medium">Grand Total</span>
+                <span className="text-2xl font-bold text-primary">{formatCurrency(quotation.grandTotal)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
-    </CardContent>
-  </Card>
-</div> */}
 
       {/* Notes */}
       {quotation.notes && (

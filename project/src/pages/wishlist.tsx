@@ -682,7 +682,7 @@ export function WishlistPage() {
         if (userId) {
           await fetchWishlist(userId);
         }
-        navigate('/wishlist/quotation');
+        navigate('/my-quotations');
       }
     } catch (error: unknown) {
       console.error('Error generating quotation:', error);

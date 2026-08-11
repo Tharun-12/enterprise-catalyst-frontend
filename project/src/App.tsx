@@ -41,6 +41,9 @@ import { CustomerForgotPassword } from '@/pages/auth/CustomerForgotPassword';
 import { CustomerVerifyOTP } from '@/pages/auth/CustomerVerifyOTP';
 import { CustomerResetPassword } from '@/pages/auth/CustomerResetPassword';
 
+
+import { useScrollToTop } from '@/hooks/useScrollTop';
+
 // Protected Route component - checks if admin exists in localStorage
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = localStorage.getItem('adminAuth') === 'true';
@@ -54,74 +57,83 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+
+// Create a wrapper component that uses the hook
+function ScrollToTopWrapper({ children }: { children: React.ReactNode }) {
+  useScrollToTop();
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
     <AppProvider>
       <BrowserRouter>
-        <Routes>
-            {/* Auth routes */}
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/customer/forgot-password" element={<CustomerForgotPassword />} />
-          <Route path="/customer/verify-otp" element={<CustomerVerifyOTP />} />
-          <Route path="/customer/reset-password" element={<CustomerResetPassword />} />
+         <ScrollToTopWrapper>
+            <Routes>
+                {/* Auth routes */}
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/customer/forgot-password" element={<CustomerForgotPassword />} />
+              <Route path="/customer/verify-otp" element={<CustomerVerifyOTP />} />
+              <Route path="/customer/reset-password" element={<CustomerResetPassword />} />
 
-          {/* Customer routes */}
-          <Route element={<CustomerLayout />}>
-          
-            <Route path="/" element={<HomePage />} />
-            <Route path="/categories" element={<CategoriesPage />} />
-            <Route path="/products" element={<ProductsPage />} />
-            <Route path="/products/:slug" element={<ProductDetailsPage />} />
-            <Route path="/compare" element={<ComparePage />} />
-            <Route path="/wishlist" element={<WishlistPage />} />
-            <Route path="/wishlist/quotation" element={<QuotationPage />} />
-            <Route path="/my-quotations" element={<MyQuotations />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/contact" element={<ContactPage />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="*" element={<NotFoundPage />} />
-
-
-
-          </Route>
-
-          {/* Admin routes */}
-          <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin/forgot-password" element={<ForgotPassword />} />
-          <Route path="/admin/verify-otp" element={<VerifyOTP />} />
-          <Route path="/admin/reset-password" element={<ResetPassword />} />
-
-          <Route path="/admin" element={
-            <ProtectedRoute>
-              <AdminLayout />
-            </ProtectedRoute>
-          }>
-            {/* Dashboard - Changed to use path="dashboard" instead of index */}
-            <Route path="dashboard" element={<AdminDashboard />} />
-            <Route path="products" element={<AdminProducts />} />
-            <Route path="products/add" element={<ProductForm />} />
-            <Route path="products/edit/:id" element={<ProductForm />} />
-            <Route path="products/view/:id" element={<ProductView />} /> 
-            <Route path="categories" element={<AdminCategories />} />
-            {/* <Route path="categories/add" element={<CategoryForm />} />
-            <Route path="categories/add/:id" element={<CategoryForm />} /> */}
-            <Route path="brands" element={<AdminBrands />} />
-            {/* <Route path="brands/add" element={<BrandForm />} />
-            <Route path="brands/add/:id" element={<BrandForm />} /> */} 
+              {/* Customer routes */}
+              <Route element={<CustomerLayout />}>
+              
+                <Route path="/" element={<HomePage />} />
+                <Route path="/categories" element={<CategoriesPage />} />
+                <Route path="/products" element={<ProductsPage />} />
+                <Route path="/products/:slug" element={<ProductDetailsPage />} />
+                <Route path="/compare" element={<ComparePage />} />
+                <Route path="/wishlist" element={<WishlistPage />} />
+                {/* <Route path="/wishlist/quotation" element={<QuotationPage />} /> */}
+                <Route path="/my-quotations" element={<MyQuotations />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/contact" element={<ContactPage />} />
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="*" element={<NotFoundPage />} />
 
 
 
-            <Route path="specifications" element={<AdminSpecifications />} />
-            <Route path="specifications/add" element={<SpecificationsForm />} />
-            <Route path="specifications/edit/:id" element={<SpecificationsForm />} />
-            <Route path="leads" element={<AdminLeads />} />
-            <Route path="quotations" element={<AdminQuotations />} />
-            <Route path="quotations/view/:id" element={<QuotationView />} />
-            <Route path="inquiries" element={<AdminInquiries />} />
-            <Route path="settings" element={<AdminSettings />} />
-          </Route>
-        </Routes>
+              </Route>
+
+              {/* Admin routes */}
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin/forgot-password" element={<ForgotPassword />} />
+              <Route path="/admin/verify-otp" element={<VerifyOTP />} />
+              <Route path="/admin/reset-password" element={<ResetPassword />} />
+
+              <Route path="/admin" element={
+                <ProtectedRoute>
+                  <AdminLayout />
+                </ProtectedRoute>
+              }>
+                {/* Dashboard - Changed to use path="dashboard" instead of index */}
+                <Route path="dashboard" element={<AdminDashboard />} />
+                <Route path="products" element={<AdminProducts />} />
+                <Route path="products/add" element={<ProductForm />} />
+                <Route path="products/edit/:id" element={<ProductForm />} />
+                <Route path="products/view/:id" element={<ProductView />} /> 
+                <Route path="categories" element={<AdminCategories />} />
+                {/* <Route path="categories/add" element={<CategoryForm />} />
+                <Route path="categories/add/:id" element={<CategoryForm />} /> */}
+                <Route path="brands" element={<AdminBrands />} />
+                {/* <Route path="brands/add" element={<BrandForm />} />
+                <Route path="brands/add/:id" element={<BrandForm />} /> */} 
+
+
+
+                <Route path="specifications" element={<AdminSpecifications />} />
+                <Route path="specifications/add" element={<SpecificationsForm />} />
+                <Route path="specifications/edit/:id" element={<SpecificationsForm />} />
+                <Route path="leads" element={<AdminLeads />} />
+                <Route path="quotations" element={<AdminQuotations />} />
+                <Route path="quotations/view/:id" element={<QuotationView />} />
+                <Route path="inquiries" element={<AdminInquiries />} />
+                <Route path="settings" element={<AdminSettings />} />
+              </Route>
+            </Routes>
+        </ScrollToTopWrapper>
       </BrowserRouter>
       <Toaster position="top-right" richColors closeButton />
     </AppProvider>

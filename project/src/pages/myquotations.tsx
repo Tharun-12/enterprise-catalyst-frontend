@@ -1,6 +1,8 @@
+// my-quotations.tsx - Updated to show min/max prices at top right of card
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Calendar, User, Mail, Phone, Package, CheckCircle, Clock, XCircle, ChevronDown, ChevronUp, Loader, Percent } from 'lucide-react';
+import { FileText, Calendar, User, Mail, Phone, Package, CheckCircle, Clock, XCircle, ChevronDown, ChevronUp, Loader, Percent, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -19,9 +21,14 @@ interface QuotationDetail {
   brand: string;
   quantity: number;
   price: string;
+  min_price: string | null;
+  max_price: string | null;
   discount: string;
+  discount_amount: string;
   final_price: string;
   subtotal: string;
+  variant_image: string | null;
+  variant_details: string | null;
   created_at: string;
 }
 
@@ -46,7 +53,7 @@ interface Quotation {
 export function MyQuotations() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedQuotation, _setSelectedQuotation] = useState<Quotation | null>(null); // Keep this if you're using it in the dialog
+  const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [expandedQuotation, setExpandedQuotation] = useState<number | null>(null);
   const navigate = useNavigate();
@@ -54,7 +61,6 @@ export function MyQuotations() {
   useEffect(() => {
     fetchQuotations();
   }, []);
-
 
   const fetchQuotations = async () => {
     try {
@@ -121,11 +127,33 @@ export function MyQuotations() {
     setExpandedQuotation(expandedQuotation === id ? null : id);
   };
 
-  // const calculateProductDiscountAmount = (detail: QuotationDetail) => {
-  //   const price = parseFloat(detail.price);
-  //   const discountPercent = parseFloat(detail.discount);
-  //   return (price * discountPercent) / 100;
-  // };
+  const getImageUrl = (imagePath: string | null) => {
+    if (!imagePath) return null;
+    if (imagePath.startsWith('http')) return imagePath;
+    if (imagePath.startsWith('/')) {
+      return `${baseurl}${imagePath}`;
+    }
+    return `${baseurl}/uploads/products/${imagePath}`;
+  };
+
+  // Calculate min and max prices for a quotation
+  const getQuotationPriceRange = (details: QuotationDetail[]) => {
+    let minPrice: number | null = null;
+    let maxPrice: number | null = null;
+
+    details.forEach(detail => {
+      if (detail.min_price) {
+        const price = parseFloat(detail.min_price);
+        if (minPrice === null || price < minPrice) minPrice = price;
+      }
+      if (detail.max_price) {
+        const price = parseFloat(detail.max_price);
+        if (maxPrice === null || price > maxPrice) maxPrice = price;
+      }
+    });
+
+    return { minPrice, maxPrice };
+  };
 
   if (loading) {
     return (
@@ -179,28 +207,14 @@ export function MyQuotations() {
       ) : (
         <div className="space-y-4">
           {quotations.map((quotation) => {
-            // Calculate total discount percentage
-            let totalDiscountPercent = 0;
-            let totalDiscountAmount = 0;
+            const { minPrice, maxPrice } = getQuotationPriceRange(quotation.details);
             
-            if (quotation.details && quotation.details.length > 0) {
-              quotation.details.forEach(detail => {
-                const discountPercent = parseFloat(detail.discount);
-                totalDiscountPercent += discountPercent;
-                const price = parseFloat(detail.price);
-                totalDiscountAmount += (price * discountPercent) / 100;
-              });
-            }
-
             return (
               <Card key={quotation.id} className="hover:shadow-lg transition-shadow duration-300">
                 <CardContent className="p-6">
                   {/* Quotation Header */}
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="space-y-2">
-                      {/* <div className="flex items-center gap-3 flex-wrap">
-                        {getStatusBadge(quotation.status)}
-                      </div> */}
                       <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <User className="w-3.5 h-3.5" />
@@ -224,34 +238,40 @@ export function MyQuotations() {
                         </span>
                       </div>
                     </div>
-                    <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
-                      {/* <div className="text-right">
-                        <div className="text-sm text-muted-foreground">Grand Total</div>
-                        <div className="text-xl font-bold text-primary">
-                          {formatCurrency(quotation.grand_total)}
-                        </div>
-                      </div> */}
-                    </div>
-                  </div>
-
-                  {/* Quotation Request Summary - Collapsible */}
-                  <div className="mt-4 pt-4 border-t">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      <div>
-                        <h4 className="font-semibold text-sm mb-1">Quotation Request Summary</h4>
-                        <div className="text-sm space-y-1">
-                          <p>Total Items: <span className="font-medium">{quotation.total_items}</span></p>
-                          {/* <p>Total Amount: <span className="font-medium">{formatCurrency(quotation.total_amount)}</span></p> */}
-                          {/* {totalDiscountPercent > 0 && (
-                            <p>Total Discount: <span className="font-medium text-green-600">{totalDiscountPercent.toFixed(1)}% off ({formatCurrency(totalDiscountAmount.toString())})</span></p>
-                          )} */}
-                        </div>
-                        {/* {quotation.remarks && (
-                          <div className="mt-2 p-2 bg-muted/30 rounded text-sm">
-                            <span className="font-semibold">Remarks:</span> {quotation.remarks}
+                    {/* Price Range at Top Right */}
+                    <div className="flex flex-col items-end gap-1">
+                      {minPrice !== null && maxPrice !== null && minPrice !== maxPrice ? (
+                        <div className="text-right">
+                          <div className="text-xs text-muted-foreground">Price Range</div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-blue-600">
+                              {formatCurrency(String(minPrice))}
+                            </span>
+                            <span className="text-xs text-muted-foreground">to</span>
+                            <span className="text-sm font-semibold text-purple-600">
+                              {formatCurrency(String(maxPrice))}
+                            </span>
                           </div>
-                        )} */}
-                      </div>
+                        </div>
+                      ) : minPrice !== null ? (
+                        <div className="text-right">
+                          <div className="text-xs text-muted-foreground">Price</div>
+                          <span className="text-sm font-semibold text-primary">
+                            {formatCurrency(String(minPrice))}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="text-right">
+                          <div className="text-xs text-muted-foreground">Price</div>
+                          <span className="text-sm font-semibold text-primary">
+                            {formatCurrency(quotation.grand_total)}
+                          </span>
+                        </div>
+                      )}
+                      {/* Status Badge */}
+                      {/* <div className="mt-1">
+                        {getStatusBadge(quotation.status)}
+                      </div> */}
                     </div>
                   </div>
 
@@ -300,11 +320,29 @@ export function MyQuotations() {
                       {expandedQuotation === quotation.id && (
                         <div className="mt-4 space-y-3 animate-in slide-in-from-top-2 duration-200">
                           {quotation.details.map((detail) => {
-                            // const discountAmount = calculateProductDiscountAmount(detail);
+                            const imageUrl = getImageUrl(detail.variant_image);
                             
                             return (
                               <div key={detail.id} className="bg-gradient-to-r from-muted/10 to-muted/5 rounded-xl p-4 border border-muted/20 hover:border-primary/30 transition-all hover:shadow-sm">
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                <div className="flex flex-col md:flex-row md:items-center gap-4">
+                                  {/* Product Image */}
+                                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                                    {imageUrl ? (
+                                      <img 
+                                        src={imageUrl} 
+                                        alt={detail.product_name}
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                          (e.target as HTMLImageElement).src = 'https://via.placeholder.com/80x80?text=No+Image';
+                                        }}
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                                        <ImageIcon className="w-8 h-8 text-gray-400" />
+                                      </div>
+                                    )}
+                                  </div>
+
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <h5 className="font-semibold text-sm">{detail.product_name}</h5>
@@ -322,28 +360,26 @@ export function MyQuotations() {
                                       </span>
                                     </div>
                                   </div>
-                                  {/* <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm w-full md:w-auto">
-                                    <div className="bg-background/50 rounded-lg px-3 py-1.5 text-center">
-                                      <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Price</p>
-                                      <p className="font-semibold text-foreground">{formatCurrency(detail.price)}</p>
-                                    </div>
-                                    {parseFloat(detail.discount) > 0 && (
-                                      <div className="bg-green-50 rounded-lg px-3 py-1.5 text-center">
-                                        <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Discount</p>
-                                        <p className="font-semibold text-green-600">
-                                          {detail.discount}% ({formatCurrency(discountAmount.toString())})
-                                        </p>
+
+                                  {/* Min/Max Price for individual product */}
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm w-full md:w-auto">
+                                    {detail.min_price && (
+                                      <div className="bg-blue-50/50 rounded-lg px-3 py-1.5 text-center border border-blue-100">
+                                        <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Min</p>
+                                        <p className="font-semibold text-blue-700 text-sm">{formatCurrency(detail.min_price)}</p>
                                       </div>
                                     )}
-                                    <div className="bg-primary/5 rounded-lg px-3 py-1.5 text-center">
-                                      <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Final Price</p>
-                                      <p className="font-semibold text-primary">{formatCurrency(detail.final_price)}</p>
+                                    {detail.max_price && (
+                                      <div className="bg-purple-50/50 rounded-lg px-3 py-1.5 text-center border border-purple-100">
+                                        <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Max</p>
+                                        <p className="font-semibold text-purple-700 text-sm">{formatCurrency(detail.max_price)}</p>
+                                      </div>
+                                    )}
+                                    <div className="bg-primary/5 rounded-lg px-3 py-1.5 text-center border border-primary/20">
+                                      <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Final</p>
+                                      <p className="font-semibold text-primary text-sm">{formatCurrency(detail.final_price)}</p>
                                     </div>
-                                    <div className="bg-muted/30 rounded-lg px-3 py-1.5 text-center">
-                                      <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Subtotal</p>
-                                      <p className="font-bold text-foreground">{formatCurrency(detail.subtotal)}</p>
-                                    </div>
-                                  </div> */}
+                                  </div>
                                 </div>
                               </div>
                             );
@@ -419,10 +455,9 @@ export function MyQuotations() {
                           <TableHead>Code</TableHead>
                           <TableHead>Brand</TableHead>
                           <TableHead className="text-center">Qty</TableHead>
-                          <TableHead className="text-right">Price</TableHead>
-                          <TableHead className="text-right">Discount</TableHead>
+                          <TableHead className="text-right">Min Price</TableHead>
+                          <TableHead className="text-right">Max Price</TableHead>
                           <TableHead className="text-right">Final Price</TableHead>
-                          <TableHead className="text-right">Subtotal</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -432,19 +467,15 @@ export function MyQuotations() {
                             <TableCell className="text-sm text-muted-foreground">{detail.product_code}</TableCell>
                             <TableCell className="text-sm">{detail.brand}</TableCell>
                             <TableCell className="text-center">{detail.quantity}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(detail.price)}</TableCell>
-                            <TableCell className="text-right">
-                              {parseFloat(detail.discount) > 0 ? (
-                                <span className="flex items-center justify-end gap-1 text-green-600">
-                                  <Percent className="w-3 h-3" />
-                                  {detail.discount}%
-                                </span>
-                              ) : (
-                                <span className="text-muted-foreground">-</span>
-                              )}
+                            <TableCell className="text-right text-blue-700">
+                              {detail.min_price ? formatCurrency(detail.min_price) : '-'}
                             </TableCell>
-                            <TableCell className="text-right font-medium">{formatCurrency(detail.final_price)}</TableCell>
-                            <TableCell className="text-right font-semibold">{formatCurrency(detail.subtotal)}</TableCell>
+                            <TableCell className="text-right text-purple-700">
+                              {detail.max_price ? formatCurrency(detail.max_price) : '-'}
+                            </TableCell>
+                            <TableCell className="text-right font-semibold text-primary">
+                              {formatCurrency(detail.final_price)}
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>

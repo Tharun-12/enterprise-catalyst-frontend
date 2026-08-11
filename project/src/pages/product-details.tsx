@@ -139,7 +139,7 @@ const transformProduct = (
   // Use the product price directly from API
   const priceNum = parseFloat(product.price);
   const discountNum = parseFloat(product.discount || '0');
-  
+
   // Parse min and max prices from API
   const minPrice = product.min_price ? parseFloat(product.min_price) : undefined;
   const maxPrice = product.max_price ? parseFloat(product.max_price) : undefined;
@@ -155,35 +155,35 @@ const transformProduct = (
   if (product.product_series && product.product_series.trim() !== '') {
     specFields.push({ key: 'series', label: 'Series', value: product.product_series });
   }
-  
+
   if (product.product_type && product.product_type.trim() !== '') {
     specFields.push({ key: 'type', label: 'Type', value: product.product_type });
   }
-  
+
   if (product.conductor_type && product.conductor_type.trim() !== '') {
     specFields.push({ key: 'conductor_type', label: 'Conductor Type', value: product.conductor_type });
   }
-  
+
   if (product.cable_od && product.cable_od.trim() !== '') {
     specFields.push({ key: 'cable_od', label: 'Cable OD', value: product.cable_od });
   }
-  
+
   if (product.jacket_material && product.jacket_material.trim() !== '') {
     specFields.push({ key: 'jacket_material', label: 'Jacket Material', value: product.jacket_material });
   }
-  
+
   if (product.bandwidth && product.bandwidth.trim() !== '') {
     specFields.push({ key: 'bandwidth', label: 'Bandwidth', value: product.bandwidth });
   }
-  
+
   if (product.operating_temperature && product.operating_temperature.trim() !== '') {
     specFields.push({ key: 'operating_temperature', label: 'Operating Temperature', value: product.operating_temperature });
   }
-  
+
   if (product.poe_support && product.poe_support.trim() !== '') {
     specFields.push({ key: 'poe_support', label: 'PoE Support', value: product.poe_support });
   }
-  
+
   if (product.warranty && product.warranty.trim() !== '') {
     specFields.push({ key: 'warranty', label: 'Warranty', value: product.warranty });
   }
@@ -285,7 +285,7 @@ export function ProductDetailsPage() {
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
   const [wishlistOpen, setWishlistOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const { addToWishlist, removeFromWishlist, isInWishlist} = useApp();
+  const { addToWishlist, removeFromWishlist, isInWishlist } = useApp();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -316,7 +316,7 @@ export function ProductDetailsPage() {
 
           // Find the product by slug
           const decodedSlug = decodeURIComponent(slug || '');
-          
+
           let foundProduct = productsData.find((p: ApiProduct) => {
             const productSlug = p.product_name.toLowerCase().replace(/\s+/g, '-');
             return productSlug === decodedSlug;
@@ -338,7 +338,7 @@ export function ProductDetailsPage() {
 
           if (foundProduct) {
             setProductData(foundProduct);
-            
+
             // Fetch spec comparison if product has variants
             if (foundProduct.variants && foundProduct.variants.length > 0) {
               setLoadingSpecs(true);
@@ -385,15 +385,15 @@ export function ProductDetailsPage() {
     const extendedProduct = product as ExtendedProduct;
     const productType = extendedProduct.productType;
 
-    const hasValidProductType = productType && 
-                                productType !== 'N/A' && 
-                                productType.trim() !== '';
+    const hasValidProductType = productType &&
+      productType !== 'N/A' &&
+      productType.trim() !== '';
 
     if (!hasValidProductType) {
       return [];
     }
 
-    const sameTypeProducts = allProducts.filter(p => 
+    const sameTypeProducts = allProducts.filter(p =>
       String(p.product_category_id) === product.categoryId &&
       String(p.id) !== product.id &&
       p.product_type === productType
@@ -412,7 +412,7 @@ export function ProductDetailsPage() {
     });
 
     const topRelated = sameTypeProducts.slice(0, 4);
-    
+
     return topRelated.map(p => transformProduct(p, categories, brands));
   }, [product, allProducts, categories, brands]);
 
@@ -463,7 +463,7 @@ export function ProductDetailsPage() {
 
   // const handleCompare = async () => {
   //   if (!product) return;
-    
+
   //   if (isInCompare(product.id)) {
   //     await removeFromCompare(product.id);
   //   } else {
@@ -482,72 +482,167 @@ export function ProductDetailsPage() {
     setZoomPos({ x, y });
   };
 
-  const handleSingleQuotation = async () => {
-    if (!product) return;
+ // Updated handleSingleQuotation function in product-details.tsx
 
-    const userId = getUserId();
-    if (!userId) {
-      toast.error('Please login to request a quotation');
-      return;
+// product-details.tsx - Updated handleSingleQuotation
+
+const handleSingleQuotation = async () => {
+  if (!product) return;
+
+  const userId = getUserId();
+  if (!userId) {
+    toast.error('Please login to request a quotation', {
+      duration: 3000,
+      position: 'top-right',
+      style: {
+        background: '#EF4444',
+        color: 'white',
+        border: 'none',
+        padding: '12px 24px',
+        borderRadius: '8px',
+        fontSize: '14px',
+        fontWeight: '500',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        marginTop: '70px',
+      },
+      action: {
+        label: 'Login',
+        onClick: () => window.location.href = '/login'
+      }
+    });
+    setTimeout(() => {
+      window.location.href = '/login';
+    }, 1500);
+    return;
+  }
+
+  setSubmitting(true);
+
+  try {
+    const user = getUserDetails();
+
+    // Use maxPrice if available, otherwise minPrice
+    let actualPrice = product.price;
+    let minPrice = extendedProduct.minPrice;
+    let maxPrice = extendedProduct.maxPrice;
+    
+    if (extendedProduct.maxPrice !== undefined && extendedProduct.maxPrice > 0) {
+      actualPrice = extendedProduct.maxPrice;
+    } else if (extendedProduct.minPrice !== undefined && extendedProduct.minPrice > 0) {
+      actualPrice = extendedProduct.minPrice;
     }
 
-    setSubmitting(true);
-
-    try {
-      const user = getUserDetails();
-      
-      // Use the actual product price from the product data
-      // If minPrice and maxPrice are available and different, use the maxPrice for quotation
-      let actualPrice = product.price;
-      if (extendedProduct.maxPrice !== undefined && extendedProduct.maxPrice > 0) {
-        actualPrice = extendedProduct.maxPrice;
-      } else if (extendedProduct.minPrice !== undefined && extendedProduct.minPrice > 0) {
-        actualPrice = extendedProduct.minPrice;
+    // Get variant image from the first variant
+    let variantImage = null;
+    let variantDetails = null;
+    
+    if (product.variants && product.variants.length > 0) {
+      const firstVariant = product.variants[0] as any;
+      if (firstVariant.image_url) {
+        variantImage = firstVariant.image_url;
       }
-      
-      // Get the actual discount percentage from the product
-      const actualDiscount = product.discountPercentage || 0;
-      
-      const payload = {
-        user_id: userId,
-        product_id: parseInt(product.id),
-        product_name: product.name,
-        product_code: product.sku,
-        product_brand: product.brandName,
-        price: actualPrice, // Send the actual price
-        discount: actualDiscount, // Send the discount percentage
-        quantity: 1,
-        remarks: `Quotation requested for ${product.name}`,
-        customer_name: user?.name || '',
-        customer_mobile: user?.mobile || '',
-        customer_email: user?.email || ''
-      };
+      // Store all variant details
+      variantDetails = JSON.stringify(product.variants.map((v: any) => ({
+        id: v.id,
+        variant_name: v.variant_name,
+        part_code: v.part_code,
+        spec_type: v.spec_type,
+        color: v.color,
+        size: v.size,
+        price: v.price,
+        image_url: v.image_url,
+        stock: v.stock
+      })));
+    }
 
-      console.log('Sending quotation payload:', payload); // Debug log
+    const actualDiscount = product.discountPercentage || 0;
 
-      const response = await fetch(`${baseurl}/api/quotations/single`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+    const payload = {
+      user_id: userId,
+      product_id: parseInt(product.id),
+      product_name: product.name,
+      product_code: product.sku,
+      product_brand: product.brandName,
+      price: actualPrice,
+      min_price: minPrice,
+      max_price: maxPrice,
+      discount: actualDiscount,
+      quantity: 1,
+      remarks: `Quotation requested for ${product.name}`,
+      customer_name: user?.name || '',
+      customer_mobile: user?.mobile || '',
+      customer_email: user?.email || '',
+      variant_image: variantImage,
+      variant_details: variantDetails
+    };
+
+    console.log('Sending quotation payload:', payload);
+
+    const response = await fetch(`${baseurl}/api/quotations/single`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      toast.success("Requested Quotation Successfully!", {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#10B981',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
         },
-        body: JSON.stringify(payload),
       });
-
-      const data = await response.json();
-
-      if (data.success) {
-        toast.success(`Quotation #${data.quotation_no} generated successfully!`);
-        navigate('/wishlist/quotation');
-      } else {
-        toast.error(data.message || 'Failed to submit quotation request');
-      }
-    } catch (error) {
-      console.error('Error submitting quotation:', error);
-      toast.error('Failed to submit quotation request. Please try again.');
-    } finally {
-      setSubmitting(false);
+      navigate('/my-quotations');
+    } else {
+      toast.error(data.message || 'Failed to submit quotation request', {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+      });
     }
-  };
+  } catch (error) {
+    console.error('Error submitting quotation:', error);
+    toast.error('Failed to submit quotation request. Please try again.', {
+      duration: 3000,
+      position: 'top-right',
+      style: {
+        background: '#EF4444',
+        color: 'white',
+        border: 'none',
+        padding: '12px 24px',
+        borderRadius: '8px',
+        fontSize: '14px',
+        fontWeight: '500',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        marginTop: '70px',
+      },
+    });
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   if (loading) {
     return (
@@ -727,10 +822,10 @@ export function ProductDetailsPage() {
               )}
             </div>
             {/* Show price range note if min and max are different */}
-            {extendedProduct.minPrice !== undefined && extendedProduct.maxPrice !== undefined && 
-             extendedProduct.minPrice !== extendedProduct.maxPrice && (
-              <p className="text-xs text-muted-foreground mt-1">Price range based on variants</p>
-            )}
+            {extendedProduct.minPrice !== undefined && extendedProduct.maxPrice !== undefined &&
+              extendedProduct.minPrice !== extendedProduct.maxPrice && (
+                <p className="text-xs text-muted-foreground mt-1">Price range based on variants</p>
+              )}
           </div>
 
           {/* Key specs preview - show relevant specs */}
@@ -760,9 +855,9 @@ export function ProductDetailsPage() {
 
           {/* Actions */}
           <div className="flex flex-wrap gap-3 mb-4">
-            <Button 
-              size="lg" 
-              className="flex-1 min-w-[160px]" 
+            <Button
+              size="lg"
+              className="flex-1 min-w-[160px]"
               onClick={handleSingleQuotation}
               disabled={submitting}
             >
@@ -796,9 +891,9 @@ export function ProductDetailsPage() {
           </div>
 
           <div className="flex gap-3">
-            <Button variant="ghost" size="sm" onClick={() => { 
-              navigator.clipboard?.writeText(window.location.href); 
-              toast.success('Link copied to clipboard'); 
+            <Button variant="ghost" size="sm" onClick={() => {
+              navigator.clipboard?.writeText(window.location.href);
+              toast.success('Link copied to clipboard');
             }}>
               <Share2 className="w-4 h-4 mr-1.5" /> Share
             </Button>

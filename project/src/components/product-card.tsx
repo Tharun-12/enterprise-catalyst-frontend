@@ -889,13 +889,133 @@ export function ProductCard({ product }: ProductCardProps) {
   };
 
   // Handle Quotation Request
-  const handleQuotationRequest = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+ // product-card.tsx - Updated handleQuotationRequest
 
-    const userId = getUserId();
-    if (!userId) {
-      toast.error('Please login to request a quotation', {
+// product-card.tsx - Fixed handleQuotationRequest with proper type handling
+
+const handleQuotationRequest = async (e: React.MouseEvent) => {
+  e.preventDefault();
+  e.stopPropagation();
+
+  const userId = getUserId();
+  if (!userId) {
+    toast.error('Please login to request a quotation', {
+      duration: 3000,
+      position: 'top-right',
+      style: {
+        background: '#EF4444',
+        color: 'white',
+        border: 'none',
+        padding: '12px 24px',
+        borderRadius: '8px',
+        fontSize: '14px',
+        fontWeight: '500',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        marginTop: '70px',
+      },
+      action: {
+        label: 'Login',
+        onClick: () => window.location.href = '/login'
+      }
+    });
+    setTimeout(() => {
+      window.location.href = '/login';
+    }, 1500);
+    return;
+  }
+
+  setIsQuotationLoading(true);
+
+  try {
+    const user = getUserDetails();
+    
+    // Get the actual price - use maxPrice if available, otherwise minPrice
+    let actualPrice = product.price;
+    let minPrice = product.minPrice;
+    let maxPrice = product.maxPrice;
+    
+    if (product.maxPrice !== undefined && product.maxPrice !== null && product.maxPrice > 0) {
+      actualPrice = product.maxPrice;
+    } else if (product.minPrice !== undefined && product.minPrice !== null && product.minPrice > 0) {
+      actualPrice = product.minPrice;
+    }
+
+    // Get variant image from the first variant
+    let variantImage = null;
+    let variantDetails = null;
+    
+    if (product.variants && product.variants.length > 0) {
+      const firstVariant = product.variants[0] as any; // Use type assertion to access all properties
+      if (firstVariant.image_url) {
+        variantImage = firstVariant.image_url;
+      }
+      // Store all variant details - use type assertion for variant properties
+      variantDetails = JSON.stringify(product.variants.map((v: any) => ({
+        id: v.id,
+        variant_name: v.variant_name || v.color_name || 'Default',
+        part_code: v.part_code || '',
+        spec_type: v.spec_type || '',
+        color: v.color || v.color_name || '',
+        size: v.size || '',
+        price: v.price,
+        image_url: v.image_url,
+        stock: v.stock
+      })));
+    }
+
+    // Get the actual discount percentage
+    const actualDiscount = product.discountPercentage || 0;
+    
+    const payload = {
+      user_id: userId,
+      product_id: parseInt(product.id),
+      product_name: product.name,
+      product_code: product.sku,
+      product_brand: product.brandName,
+      price: actualPrice,
+      min_price: minPrice,
+      max_price: maxPrice,
+      discount: actualDiscount,
+      quantity: 1,
+      remarks: `Quotation requested for ${product.name}`,
+      customer_name: user?.name || '',
+      customer_mobile: user?.mobile || '',
+      customer_email: user?.email || '',
+      variant_image: variantImage,
+      variant_details: variantDetails
+    };
+
+    console.log('Sending quotation payload:', payload);
+
+    const response = await fetch(`${baseurl}/api/quotations/single`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      toast.success("Requested Quotation Successfully!", {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#10B981',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+      });
+      navigate('/my-quotations');
+    } else {
+      toast.error(data.message || 'Failed to submit quotation request', {
         duration: 3000,
         position: 'top-right',
         style: {
@@ -909,115 +1029,29 @@ export function ProductCard({ product }: ProductCardProps) {
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
           marginTop: '70px',
         },
-        action: {
-          label: 'Login',
-          onClick: () => window.location.href = '/login'
-        }
       });
-      setTimeout(() => {
-        window.location.href = '/login';
-      }, 1500);
-      return;
     }
-
-    setIsQuotationLoading(true);
-
-    try {
-      const user = getUserDetails();
-      
-      // Get the actual price - use minPrice/maxPrice if available
-      let actualPrice = product.price;
-      if (product.maxPrice !== undefined && product.maxPrice !== null && product.maxPrice > 0) {
-        actualPrice = product.maxPrice;
-      } else if (product.minPrice !== undefined && product.minPrice !== null && product.minPrice > 0) {
-        actualPrice = product.minPrice;
-      }
-
-      // Get the actual discount percentage
-      const actualDiscount = product.discountPercentage || 0;
-      
-      const payload = {
-        user_id: userId,
-        product_id: parseInt(product.id),
-        product_name: product.name,
-        product_code: product.sku,
-        product_brand: product.brandName,
-        price: actualPrice,
-        discount: actualDiscount,
-        quantity: 1,
-        remarks: `Quotation requested for ${product.name}`,
-        customer_name: user?.name || '',
-        customer_mobile: user?.mobile || '',
-        customer_email: user?.email || ''
-      };
-
-      console.log('Sending quotation payload:', payload);
-
-      const response = await fetch(`${baseurl}/api/quotations/single`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        toast.success(`Quotation #${data.quotation_no} generated successfully!`, {
-          duration: 3000,
-          position: 'top-right',
-          style: {
-            background: '#10B981',
-            color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '500',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            marginTop: '70px',
-          },
-        });
-        navigate('/wishlist/quotation');
-      } else {
-        toast.error(data.message || 'Failed to submit quotation request', {
-          duration: 3000,
-          position: 'top-right',
-          style: {
-            background: '#EF4444',
-            color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '500',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            marginTop: '70px',
-          },
-        });
-      }
-    } catch (error) {
-      console.error('Error submitting quotation:', error);
-      toast.error('Failed to submit quotation request. Please try again.', {
-        duration: 3000,
-        position: 'top-right',
-        style: {
-          background: '#EF4444',
-          color: 'white',
-          border: 'none',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '500',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          marginTop: '70px',
-        },
-      });
-    } finally {
-      setIsQuotationLoading(false);
-    }
-  };
+  } catch (error) {
+    console.error('Error submitting quotation:', error);
+    toast.error('Failed to submit quotation request. Please try again.', {
+      duration: 3000,
+      position: 'top-right',
+      style: {
+        background: '#EF4444',
+        color: 'white',
+        border: 'none',
+        padding: '12px 24px',
+        borderRadius: '8px',
+        fontSize: '14px',
+        fontWeight: '500',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        marginTop: '70px',
+      },
+    });
+  } finally {
+    setIsQuotationLoading(false);
+  }
+};
 
   // Format price in Indian Rupees
   const formatPrice = (price: number) => {
