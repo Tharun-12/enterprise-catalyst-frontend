@@ -756,39 +756,39 @@ export function ProductCard({ product }: ProductCardProps) {
       if (inWishlist) {
         await removeFromWishlist(product.id);
         setLocalWishlistState(false);
-        toast.success('Removed from wishlist', {
-          duration: 2000,
-          position: 'top-right',
-          style: {
-            background: '#EF4444',
-            color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '500',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            marginTop: '70px',
-          },
-        });
+        // toast.success('Removed from wishlist', {
+        //   duration: 2000,
+        //   position: 'top-right',
+        //   style: {
+        //     background: '#EF4444',
+        //     color: 'white',
+        //     border: 'none',
+        //     padding: '12px 24px',
+        //     borderRadius: '8px',
+        //     fontSize: '14px',
+        //     fontWeight: '500',
+        //     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        //     marginTop: '70px',
+        //   },
+        // });
       } else {
         await addToWishlist(product.id);
         setLocalWishlistState(true);
-        toast.success('Added to wishlist', {
-          duration: 2000,
-          position: 'top-right',
-          style: {
-            background: '#10B981',
-            color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '500',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            marginTop: '70px',
-          },
-        });
+        // toast.success('Added to wishlist', {
+        //   duration: 2000,
+        //   position: 'top-right',
+        //   style: {
+        //     background: '#10B981',
+        //     color: 'white',
+        //     border: 'none',
+        //     padding: '12px 24px',
+        //     borderRadius: '8px',
+        //     fontSize: '14px',
+        //     fontWeight: '500',
+        //     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        //     marginTop: '70px',
+        //   },
+        // });
       }
     } catch (error) {
       console.error('Error toggling wishlist:', error);

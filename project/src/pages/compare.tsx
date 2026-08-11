@@ -1118,7 +1118,7 @@ export function ComparePage() {
       // Get user ID for API call
       const userId = getUserId();
       await addToCompare(String(selectedProduct.id), userId || undefined);
-      toast.success('Product added to compare list');
+      // toast.success('Product added to compare list');
     } catch (error: any) {
       console.error('Error adding to compare:', error);
       if (error?.response?.data?.message?.includes('Cannot compare different product types')) {
@@ -1613,7 +1613,7 @@ export function ComparePage() {
           <div className="flex items-center gap-2 flex-wrap">
             <Button variant="outline" size="sm" onClick={async () => { 
               await clearCompare(); 
-              toast.success('Comparison cleared');
+              // toast.success('Comparison cleared');
               // Reset dropdowns
               const resetSlots = slotDropdowns.map(() => ({
                 brand: 'all',
