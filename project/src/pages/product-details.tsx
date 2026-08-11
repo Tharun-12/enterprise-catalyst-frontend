@@ -283,7 +283,7 @@ export function ProductDetailsPage() {
   const [activeImage, setActiveImage] = useState(0);
   const [zoomed, setZoomed] = useState(false);
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
-  const [wishlistOpen, setWishlistOpen] = useState(false);
+  const [_wishlistOpen, setWishlistOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const { addToWishlist, removeFromWishlist, isInWishlist } = useApp();
 

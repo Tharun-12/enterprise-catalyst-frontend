@@ -57,7 +57,7 @@ interface FormData {
     bandwidth: string;
     operating_temperature: string;
     poe_support: string;
-    product_series: string; // Moved to specifications
+    product_series: string;
 }
 
 interface Variant {
@@ -110,7 +110,7 @@ const ProductForm = () => {
         bandwidth: '',
         operating_temperature: '',
         poe_support: '',
-        product_series: '' // Moved to specifications
+        product_series: ''
     });
 
     // Variants State
@@ -234,12 +234,13 @@ const ProductForm = () => {
                 product_series: productData.product_series || ''
             });
 
+            // FIX: Properly map variants with all fields and ensure category is string
             if (productData.variants && Array.isArray(productData.variants)) {
                 const formattedVariants = productData.variants.map((v: any) => ({
                     id: v.id,
                     variant_name: v.variant_name || '',
                     part_code: v.part_code || '',
-                    category: v.category || '',
+                    category: v.category ? String(v.category) : '', // Ensure category is string
                     brand: v.brand || '',
                     description: v.description || '',
                     spec_type: v.spec_type || '',
@@ -267,16 +268,24 @@ const ProductForm = () => {
         try {
             const response = await axios.get(`${API_URL}/api/products/spec-comparison/${id}`);
             const data = response.data;
+            
+            // FIX: Properly convert object to array
             const comparisons = [];
-            if (data.CAT6) {
-                comparisons.push({ ...data.CAT6, spec_type: 'CAT6' });
-            }
-            if (data.CAT6A) {
-                comparisons.push({ ...data.CAT6A, spec_type: 'CAT6A' });
+            if (data) {
+                // Handle both array and object responses
+                if (Array.isArray(data)) {
+                    comparisons.push(...data);
+                } else {
+                    // Convert object to array
+                    Object.keys(data).forEach(key => {
+                        comparisons.push({ ...data[key], spec_type: key });
+                    });
+                }
             }
             setSpecComparisons(comparisons);
         } catch (error) {
             console.error('Error fetching spec comparisons:', error);
+            // Don't show error for missing spec comparisons
         }
     };
 
@@ -320,7 +329,7 @@ const ProductForm = () => {
 
     const handleRemoveSpecComparison = (index: number) => {
         const spec = specComparisons[index];
-        if (spec.id) {
+        if (spec.id && id) {
             axios.delete(`${API_URL}/api/products/spec-comparison/${id}/${spec.spec_type}`)
                 .then(() => {
                     const updated = specComparisons.filter((_, i) => i !== index);
@@ -467,7 +476,14 @@ const ProductForm = () => {
         }
     };
 
-    // Get filtered brands by category - FIXED: Only show brands that exist in the color_brand_mapping for the selected spec
+    // Helper function to get category name by ID
+    const getCategoryNameById = (categoryId: string): string => {
+        if (!categoryId) return '-';
+        const category = categories.find(c => c.id === parseInt(categoryId));
+        return category ? category.category_name : categoryId;
+    };
+
+    // FIX: Get filtered brands by category, spec type, and color
     const getFilteredBrandsByCategory = (categoryId: string, specType: string, color: string) => {
         if (!categoryId || !specType || !color) return [];
         
@@ -634,7 +650,10 @@ const ProductForm = () => {
                     }
                 }
 
+                // Delete existing spec comparisons
                 await axios.delete(`${API_URL}/api/products/spec-comparison/${productId}/all`);
+                
+                // Save new spec comparisons
                 for (const spec of specComparisons) {
                     await axios.post(`${API_URL}/api/products/spec-comparison`, {
                         product_id: productId,
@@ -1094,9 +1113,10 @@ const ProductForm = () => {
                                 </button>
                             </div>
 
+                            {/* FIX: Show spec comparisons table with proper data */}
                             {specComparisons.length > 0 && (
                                 <div className="comparison-list">
-                                    <h4>Spec Comparisons</h4>
+                                    <h4>Spec Comparisons ({specComparisons.length})</h4>
                                     <table className="comparison-table">
                                         <thead>
                                             <tr>
@@ -1112,10 +1132,10 @@ const ProductForm = () => {
                                             {specComparisons.map((spec, index) => (
                                                 <tr key={index}>
                                                     <td><strong>{spec.spec_type}</strong></td>
-                                                    <td>{spec.bandwidth}</td>
-                                                    <td>{spec.max_data_rate}</td>
-                                                    <td>{spec.internal_design}</td>
-                                                    <td>{spec.typical_applications}</td>
+                                                    <td>{spec.bandwidth || '-'}</td>
+                                                    <td>{spec.max_data_rate || '-'}</td>
+                                                    <td>{spec.internal_design || '-'}</td>
+                                                    <td>{spec.typical_applications || '-'}</td>
                                                     <td>
                                                         <button
                                                             type="button"
@@ -1410,7 +1430,8 @@ const ProductForm = () => {
                                         <div className="variant-info">
                                             <strong>{variant.variant_name}</strong>
                                             <span>Part: {variant.part_code}</span>
-                                            <span>Category: {categories.find(c => c.id === parseInt(variant.category))?.category_name || variant.category || '-'}</span>
+                                            {/* FIX: Use helper function to get category name */}
+                                            <span>Category: {getCategoryNameById(variant.category)}</span>
                                             {variant.spec_type && <span className="spec-badge">{variant.spec_type}</span>}
                                             {variant.color && <span>Color: {variant.color}</span>}
                                             {variant.brand && <span>Brand: {variant.brand}</span>}

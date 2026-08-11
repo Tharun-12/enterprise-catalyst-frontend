@@ -390,11 +390,11 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
                           <span className="text-muted-foreground text-xs">-</span>
                           <span className="font-medium text-sm">₹{parseFloat(product.max_price || product.price).toLocaleString('en-IN')}</span>
                         </div>
-                        {parseFloat(product.discount) > 0 && (
+                        {/* {parseFloat(product.discount) > 0 && (
                           <span className="text-xs text-green-600 font-medium">
                             {product.discount}% OFF
                           </span>
-                        )}
+                        )} */}
                       </div>
                     </td>
                     <td className="p-3 hidden lg:table-cell text-sm text-muted-foreground">

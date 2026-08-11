@@ -315,10 +315,10 @@ export function QuotationView() {
                         </div>
                         
                         {/* Price Information with Min/Max */}
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-2 md:grid-cols-2 gap-3">
                           {/* Min Price */}
                           {item.minPrice !== null && (
-                            <div className="bg-blue-50/50 rounded-lg px-3 py-2 text-center border border-blue-100">
+                            <div className="bg-blue-50/50 rounded-lg px-3 py-5 text-center border border-blue-100">
                               <p className="text-xs text-muted-foreground">Min Price</p>
                               <p className="font-semibold text-blue-700 text-sm">
                                 {formatCurrency(item.minPrice)}
@@ -328,7 +328,7 @@ export function QuotationView() {
                           
                           {/* Max Price */}
                           {item.maxPrice !== null && (
-                            <div className="bg-purple-50/50 rounded-lg px-3 py-2 text-center border border-purple-100">
+                            <div className="bg-purple-50/50 rounded-lg px-3 py-5 text-center border border-purple-100">
                               <p className="text-xs text-muted-foreground">Max Price</p>
                               <p className="font-semibold text-purple-700 text-sm">
                                 {formatCurrency(item.maxPrice)}
@@ -337,20 +337,20 @@ export function QuotationView() {
                           )}
                           
                           {/* Final Price */}
-                          <div className="bg-primary/5 rounded-lg px-3 py-2 text-center border border-primary/20">
+                          {/* <div className="bg-primary/5 rounded-lg px-3 py-2 text-center border border-primary/20">
                             <p className="text-xs text-muted-foreground">Final Price</p>
                             <p className="font-semibold text-primary text-sm">
                               {formatCurrency(item.finalPrice)}
                             </p>
-                          </div>
+                          </div> */}
                           
                           {/* Subtotal */}
-                          <div className="bg-gray-50 rounded-lg px-3 py-2 text-center border">
+                          {/* <div className="bg-gray-50 rounded-lg px-3 py-2 text-center border">
                             <p className="text-xs text-muted-foreground">Subtotal</p>
                             <p className="font-semibold text-sm">
                               {formatCurrency(item.subtotal)}
                             </p>
-                          </div>
+                          </div> */}
                         </div>
                       </div>
                     </div>
@@ -365,7 +365,7 @@ export function QuotationView() {
       </Card>
 
       {/* Summary */}
-      <div className="flex justify-end">
+      {/* <div className="flex justify-end">
         <Card className="w-full max-w-sm">
           <CardHeader>
             <CardTitle>Summary</CardTitle>
@@ -384,10 +384,10 @@ export function QuotationView() {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </div> */}
 
       {/* Notes */}
-      {quotation.notes && (
+      {/* {quotation.notes && (
         <Card>
           <CardHeader>
             <CardTitle>Notes</CardTitle>
@@ -396,7 +396,7 @@ export function QuotationView() {
             <p className="text-sm whitespace-pre-wrap">{quotation.notes}</p>
           </CardContent>
         </Card>
-      )}
+      )} */}
     </div>
   );
 }

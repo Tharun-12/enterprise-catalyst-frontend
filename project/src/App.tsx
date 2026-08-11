@@ -9,7 +9,7 @@ import { ProductsPage } from '@/pages/products';
 import { ProductDetailsPage } from '@/pages/product-details';
 import { ComparePage } from '@/pages/compare';
 import { WishlistPage } from '@/pages/wishlist';
-import { QuotationPage } from '@/pages/quotation';
+// import { QuotationPage } from '@/pages/quotation';
 import { MyQuotations } from '@/pages/myquotations';
 import { Profile } from '@/pages/profile';
 import { ContactPage } from '@/pages/contact';

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Calendar, User, Mail, Phone, Package, CheckCircle, Clock, XCircle, ChevronDown, ChevronUp, Loader, Percent, Image as ImageIcon } from 'lucide-react';
+import { FileText, Calendar, User, Mail, Phone, Package, CheckCircle, Clock, XCircle, ChevronDown, ChevronUp, Loader, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -53,7 +53,7 @@ interface Quotation {
 export function MyQuotations() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
+  const [selectedQuotation, _setSelectedQuotation] = useState<Quotation | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [expandedQuotation, setExpandedQuotation] = useState<number | null>(null);
   const navigate = useNavigate();
@@ -362,7 +362,7 @@ export function MyQuotations() {
                                   </div>
 
                                   {/* Min/Max Price for individual product */}
-                                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm w-full md:w-auto">
+                                  <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 text-sm w-full md:w-auto">
                                     {detail.min_price && (
                                       <div className="bg-blue-50/50 rounded-lg px-3 py-1.5 text-center border border-blue-100">
                                         <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Min</p>
@@ -375,10 +375,10 @@ export function MyQuotations() {
                                         <p className="font-semibold text-purple-700 text-sm">{formatCurrency(detail.max_price)}</p>
                                       </div>
                                     )}
-                                    <div className="bg-primary/5 rounded-lg px-3 py-1.5 text-center border border-primary/20">
+                                    {/* <div className="bg-primary/5 rounded-lg px-3 py-1.5 text-center border border-primary/20">
                                       <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Final</p>
                                       <p className="font-semibold text-primary text-sm">{formatCurrency(detail.final_price)}</p>
-                                    </div>
+                                    </div> */}
                                   </div>
                                 </div>
                               </div>

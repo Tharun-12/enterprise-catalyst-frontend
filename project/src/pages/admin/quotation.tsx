@@ -287,7 +287,7 @@ export function AdminQuotations() {
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Customer</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Email</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Phone</th>
-                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
+                {/* <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th> */}
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Date</th>
                 <th className="p-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
@@ -328,9 +328,9 @@ export function AdminQuotations() {
                     <td className="p-3 hidden lg:table-cell">
                       <div className="text-sm">{quotation.customerPhone || '—'}</div>
                     </td>
-                    <td className="p-3">
+                    {/* <td className="p-3">
                       <div className="text-sm font-medium">₹{quotation.grandTotal.toLocaleString()}</div>
-                    </td>
+                    </td> */}
                     <td className="p-3">
                       <Badge className={cn(
                         "text-xs font-medium",
