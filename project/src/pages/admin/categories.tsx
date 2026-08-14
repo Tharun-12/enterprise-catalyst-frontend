@@ -1,7 +1,7 @@
 // src/components/admin/AdminCategories.tsx
 import { useState, useEffect, ChangeEvent } from 'react';
-// import { useNavigate } from 'react-router-dom';
-import { Plus, Edit, Trash2, Loader2, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Edit, Trash2, Loader2, Search, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,15 +13,22 @@ import { baseurl } from '@/Baseurl/baseurl';
 
 const API_URL = `${baseurl}/api`;
 
-// Define the Category type
+interface Subcategory {
+  id: number;
+  subcategory_name: string;
+  created_at: string;
+}
+
 interface Category {
   id: number;
   category_name: string;
+  description?: string;
+  category_image?: string | null;
+  subcategories: Subcategory[];
   created_at: string;
   updated_at: string;
 }
 
-// Define API response types
 interface ApiResponse<T> {
   success: boolean;
   data: T;
@@ -29,24 +36,17 @@ interface ApiResponse<T> {
 }
 
 export function AdminCategories() {
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
+  const [expandedCategories, setExpandedCategories] = useState<number[]>([]);
   
-  // State for add/edit modal
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [categoryName, setCategoryName] = useState<string>('');
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-
-  // Pagination and search
   const [search, setSearch] = useState<string>('');
   const [page, setPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
 
-  // Fetch categories from API
   useEffect(() => {
     fetchCategories();
   }, [page, pageSize]);
@@ -68,12 +68,18 @@ export function AdminCategories() {
     }
   };
 
-  // Filter categories based on search
+  const toggleExpand = (categoryId: number) => {
+    setExpandedCategories(prev => 
+      prev.includes(categoryId) 
+        ? prev.filter(id => id !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
+
   const filteredCategories = categories.filter(cat =>
     cat.category_name.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Paginate filtered categories
   const paginatedCategories = filteredCategories.slice(
     (page - 1) * pageSize,
     page * pageSize
@@ -81,78 +87,12 @@ export function AdminCategories() {
 
   const totalPages = Math.ceil(filteredCategories.length / pageSize);
 
-  // Open modal for adding new category
-  const handleOpenAddModal = (): void => {
-    setEditingCategory(null);
-    setCategoryName('');
-    setIsModalOpen(true);
+  const handleNavigateToAdd = () => {
+    navigate('/admin/categories/add');
   };
 
-  // Open modal for editing category
-  const handleOpenEditModal = (category: Category): void => {
-    setEditingCategory(category);
-    setCategoryName(category.category_name);
-    setIsModalOpen(true);
-  };
-
-  // Close modal
-  const handleCloseModal = (): void => {
-    setIsModalOpen(false);
-    setEditingCategory(null);
-    setCategoryName('');
-  };
-
-  // Handle form submit for add/edit
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
-    e.preventDefault();
-    
-    const trimmedName = categoryName.trim();
-    if (!trimmedName) {
-      toast.error('Category name is required');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      if (editingCategory) {
-        // Update existing category
-        const response = await axios.put<ApiResponse<Category>>(
-          `${API_URL}/categories/${editingCategory.id}`,
-          { category_name: trimmedName }
-        );
-
-        if (response.data.success) {
-          toast.success('Category updated successfully!');
-          await fetchCategories();
-          handleCloseModal();
-        } else {
-          toast.error(response.data.message || 'Failed to update category');
-        }
-      } else {
-        // Add new category
-        const response = await axios.post<ApiResponse<Category>>(
-          `${API_URL}/categories`,
-          { category_name: trimmedName }
-        );
-
-        if (response.data.success) {
-          toast.success('Category added successfully!');
-          await fetchCategories();
-          // Go to last page to show new category
-          const newTotalPages = Math.ceil((filteredCategories.length + 1) / pageSize);
-          setPage(newTotalPages);
-          handleCloseModal();
-        } else {
-          toast.error(response.data.message || 'Failed to add category');
-        }
-      }
-    } catch (error: unknown) {
-      console.error('Error saving category:', error);
-      const axiosError = error as AxiosError<{ message: string }>;
-      toast.error(axiosError.response?.data?.message || 'Failed to save category');
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleNavigateToEdit = (categoryId: number) => {
+    navigate(`/admin/categories/add/${categoryId}`);
   };
 
   const handleDelete = async (): Promise<void> => {
@@ -183,10 +123,9 @@ export function AdminCategories() {
     setDeleteTarget(null);
   };
 
-  // Handle page size change
   const handlePageSizeChange = (value: string): void => {
     setPageSize(Number(value));
-    setPage(1); // Reset to first page when changing page size
+    setPage(1);
   };
 
   if (isLoading) {
@@ -202,18 +141,16 @@ export function AdminCategories() {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold">Category Management</h2>
           <p className="text-sm text-muted-foreground">Manage your product categories</p>
         </div>
-        <Button onClick={handleOpenAddModal}>
+        <Button onClick={handleNavigateToAdd}>
           <Plus className="w-4 h-4 mr-1.5" /> Add Category
         </Button>
       </div>
 
-      {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div className="relative w-full sm:w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -232,16 +169,15 @@ export function AdminCategories() {
         </div>
       </div>
 
-      {/* Table */}
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-muted/50 border-b">
               <tr>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">#</th>
-                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Category Name</th>
-                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Created At</th>
-                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Updated At</th>
+                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Category</th>
+                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Subcategories</th>
+                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Created At</th>
                 <th className="p-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
@@ -253,58 +189,97 @@ export function AdminCategories() {
                   </td>
                 </tr>
               ) : (
-                paginatedCategories.map((cat, index) => (
-                  <tr key={cat.id} className="border-b hover:bg-muted/30 transition-colors">
-                    <td className="p-3 text-sm">
-                      {(page - 1) * pageSize + index + 1}
-                    </td>
-                    <td className="p-3">
-                      <span className="font-medium">{cat.category_name}</span>
-                    </td>
-                    <td className="p-3 hidden md:table-cell text-sm text-muted-foreground">
-                      {new Date(cat.created_at).toLocaleDateString('en-IN', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric'
-                      })}
-                    </td>
-                    <td className="p-3 hidden lg:table-cell text-sm text-muted-foreground">
-                      {new Date(cat.updated_at).toLocaleDateString('en-IN', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric'
-                      })}
-                    </td>
-                    <td className="p-3">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8" 
-                          onClick={() => handleOpenEditModal(cat)}
-                          aria-label={`Edit ${cat.category_name}`}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 text-destructive hover:text-destructive" 
-                          onClick={() => setDeleteTarget(cat)}
-                          aria-label={`Delete ${cat.category_name}`}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                paginatedCategories.map((cat, index) => {
+                  const isExpanded = expandedCategories.includes(cat.id);
+                  
+                  return (
+                    <tr key={cat.id} className="border-b hover:bg-muted/30 transition-colors">
+                      <td className="p-3 text-sm">
+                        {(page - 1) * pageSize + index + 1}
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-3">
+                          {cat.category_image && (
+                            <img 
+                              src={`${baseurl}/uploads/categories/${cat.category_image}`}
+                              alt={cat.category_name}
+                              className="w-10 h-10 object-cover rounded"
+                            />
+                          )}
+                          <div>
+                            <span className="font-medium">{cat.category_name}</span>
+                            {cat.description && (
+                              <p className="text-xs text-muted-foreground truncate max-w-xs">
+                                {cat.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-3 hidden md:table-cell">
+                        {cat.subcategories && cat.subcategories.length > 0 ? (
+                          <div>
+                            <button
+                              onClick={() => toggleExpand(cat.id)}
+                              className="flex items-center gap-1 text-sm text-primary hover:underline"
+                            >
+                              {cat.subcategories.length} subcategories
+                              {isExpanded ? 
+                                <ChevronUp className="h-4 w-4" /> : 
+                                <ChevronDown className="h-4 w-4" />
+                              }
+                            </button>
+                            {isExpanded && (
+                              <div className="mt-2 space-y-1">
+                                {cat.subcategories.map((sub) => (
+                                  <div key={sub.id} className="text-sm text-muted-foreground">
+                                    • {sub.subcategory_name}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">No subcategories</span>
+                        )}
+                      </td>
+                      <td className="p-3 hidden lg:table-cell text-sm text-muted-foreground">
+                        {new Date(cat.created_at).toLocaleDateString('en-IN', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric'
+                        })}
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8" 
+                            onClick={() => handleNavigateToEdit(cat.id)}
+                            aria-label={`Edit ${cat.category_name}`}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-destructive hover:text-destructive" 
+                            onClick={() => setDeleteTarget(cat)}
+                            aria-label={`Delete ${cat.category_name}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
 
-        {/* Pagination */}
         {filteredCategories.length > 0 && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t">
             <div className="flex items-center gap-4">
@@ -348,65 +323,6 @@ export function AdminCategories() {
           </div>
         )}
       </Card>
-
-      {/* Add/Edit Category Modal */}
-      <Dialog open={isModalOpen} onOpenChange={(open: boolean) => !open && handleCloseModal()}>
-        <DialogContent className="sm:max-w-[450px]">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold text-gray-900">
-              {editingCategory ? 'Edit Category' : 'Add New Category'}
-            </DialogTitle>
-            <DialogDescription className="text-gray-600">
-              {editingCategory 
-                ? `Update the category name for "${editingCategory.category_name}"` 
-                : 'Enter a name for the new category'}
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-4 py-4">
-              <div>
-                <label htmlFor="categoryName" className="block text-sm font-medium text-gray-700 mb-1">
-                  Category Name <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  id="categoryName"
-                  placeholder="Enter category name..."
-                  value={categoryName}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setCategoryName(e.target.value)}
-                  disabled={isSubmitting}
-                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                  autoFocus
-                />
-              </div>
-            </div>
-            <div className="flex gap-3 pt-4 border-t">
-              <Button 
-                type="button"
-                variant="outline" 
-                className="flex-1 border-gray-300 hover:bg-gray-50" 
-                onClick={handleCloseModal}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                disabled={isSubmitting || !categoryName.trim()}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {editingCategory ? 'Updating...' : 'Adding...'}
-                  </>
-                ) : (
-                  editingCategory ? 'Update Category' : 'Add Category'
-                )}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!deleteTarget} onOpenChange={(open: boolean) => !open && handleCancelDelete()}>

@@ -643,11 +643,13 @@
 //   );
 // }
 
+// product-card.tsx
 
+// product-card.tsx
 
 // product-card.tsx
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, Eye, Star, BadgeCheck, FileSpreadsheet } from 'lucide-react';
+import { Heart, Eye, Star, BadgeCheck, FileSpreadsheet, Minus, Plus } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -680,8 +682,8 @@ export function ProductCard({ product }: ProductCardProps) {
   const [localWishlistState, setLocalWishlistState] = useState<boolean | null>(null);
   const [isCompareLoading, setIsCompareLoading] = useState(false);
   const [isQuotationLoading, setIsQuotationLoading] = useState(false);
+  const [quantity, setQuantity] = useState(1);
 
-  // Use local state if available, otherwise use the context state
   const inWishlist = localWishlistState !== null ? localWishlistState : isInWishlist(product.id);
   const inCompare = isInCompare(product.id);
   const compareFull = compareList.length >= 4;
@@ -716,13 +718,33 @@ export function ProductCard({ product }: ProductCardProps) {
     return null;
   };
 
+  const handleQuantityChange = (newQuantity: number) => {
+    const maxStock = product.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 10;
+    if (newQuantity >= 1 && newQuantity <= maxStock) {
+      setQuantity(newQuantity);
+    } else if (newQuantity > maxStock) {
+      toast.warning(`Only ${maxStock} items available in stock`, {
+        duration: 2000,
+        position: 'top-right',
+        style: {
+          background: '#F59E0B',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+      });
+    }
+  };
+
   const handleWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
     if (isLoading || loadingWishlist) return;
-    
-    // Check if user is logged in
     if (!isLoggedIn) {
       toast.error('Please login to sync wishlist', {
         duration: 3000,
@@ -743,52 +765,17 @@ export function ProductCard({ product }: ProductCardProps) {
           onClick: () => window.location.href = '/login'
         }
       });
-      // Redirect to login after a short delay
-      setTimeout(() => {
-        window.location.href = '/login';
-      }, 1500);
+      setTimeout(() => window.location.href = '/login', 1500);
       return;
     }
-    
     setIsLoading(true);
-    
     try {
       if (inWishlist) {
         await removeFromWishlist(product.id);
         setLocalWishlistState(false);
-        // toast.success('Removed from wishlist', {
-        //   duration: 2000,
-        //   position: 'top-right',
-        //   style: {
-        //     background: '#EF4444',
-        //     color: 'white',
-        //     border: 'none',
-        //     padding: '12px 24px',
-        //     borderRadius: '8px',
-        //     fontSize: '14px',
-        //     fontWeight: '500',
-        //     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        //     marginTop: '70px',
-        //   },
-        // });
       } else {
         await addToWishlist(product.id);
         setLocalWishlistState(true);
-        // toast.success('Added to wishlist', {
-        //   duration: 2000,
-        //   position: 'top-right',
-        //   style: {
-        //     background: '#10B981',
-        //     color: 'white',
-        //     border: 'none',
-        //     padding: '12px 24px',
-        //     borderRadius: '8px',
-        //     fontSize: '14px',
-        //     fontWeight: '500',
-        //     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        //     marginTop: '70px',
-        //   },
-        // });
       }
     } catch (error) {
       console.error('Error toggling wishlist:', error);
@@ -813,10 +800,8 @@ export function ProductCard({ product }: ProductCardProps) {
     }
   };
 
-  // Shared toggle logic used by BOTH the compare icon and the checkbox
   const toggleCompare = async (): Promise<boolean> => {
     if (isCompareLoading) return false;
-
     if (!inCompare && compareFull) {
       toast.warning('You can compare up to 4 products', {
         duration: 3000,
@@ -835,10 +820,8 @@ export function ProductCard({ product }: ProductCardProps) {
       });
       return false;
     }
-
     setIsCompareLoading(true);
     const uid = getUserId();
-
     try {
       if (inCompare) {
         await removeFromCompare(product.id, uid);
@@ -855,154 +838,27 @@ export function ProductCard({ product }: ProductCardProps) {
     }
   };
 
-  // Compare icon: toggle, then take user to the compare page
-  // const handleCompareClick = async (e: React.MouseEvent) => {
-  //   e.preventDefault();
-  //   e.stopPropagation();
-
-  //   if (inCompare) {
-  //     // Already added — just view the comparison
-  //     navigate('/compare');
-  //     return;
-  //   }
-
-  //   const added = await toggleCompare();
-  //   if (added) {
-  //     navigate('/compare');
-  //   }
-  // };
-
-  // Checkbox: toggle and navigate to compare page
   const handleCompareCheckbox = async (e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
-    
-    // If already in compare, just navigate to compare page
     if (inCompare) {
       navigate('/compare');
       return;
     }
-    
     const added = await toggleCompare();
-    if (added) {
-      navigate('/compare');
-    }
+    if (added) navigate('/compare');
   };
 
-  // Handle Quotation Request
- // product-card.tsx - Updated handleQuotationRequest
+  const handleQuotationRequest = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
 
-// product-card.tsx - Fixed handleQuotationRequest with proper type handling
-
-const handleQuotationRequest = async (e: React.MouseEvent) => {
-  e.preventDefault();
-  e.stopPropagation();
-
-  const userId = getUserId();
-  if (!userId) {
-    toast.error('Please login to request a quotation', {
-      duration: 3000,
-      position: 'top-right',
-      style: {
-        background: '#EF4444',
-        color: 'white',
-        border: 'none',
-        padding: '12px 24px',
-        borderRadius: '8px',
-        fontSize: '14px',
-        fontWeight: '500',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        marginTop: '70px',
-      },
-      action: {
-        label: 'Login',
-        onClick: () => window.location.href = '/login'
-      }
-    });
-    setTimeout(() => {
-      window.location.href = '/login';
-    }, 1500);
-    return;
-  }
-
-  setIsQuotationLoading(true);
-
-  try {
-    const user = getUserDetails();
-    
-    // Get the actual price - use maxPrice if available, otherwise minPrice
-    let actualPrice = product.price;
-    let minPrice = product.minPrice;
-    let maxPrice = product.maxPrice;
-    
-    if (product.maxPrice !== undefined && product.maxPrice !== null && product.maxPrice > 0) {
-      actualPrice = product.maxPrice;
-    } else if (product.minPrice !== undefined && product.minPrice !== null && product.minPrice > 0) {
-      actualPrice = product.minPrice;
-    }
-
-    // Get variant image from the first variant
-    let variantImage = null;
-    let variantDetails = null;
-    
-    if (product.variants && product.variants.length > 0) {
-      const firstVariant = product.variants[0] as any; // Use type assertion to access all properties
-      if (firstVariant.image_url) {
-        variantImage = firstVariant.image_url;
-      }
-      // Store all variant details - use type assertion for variant properties
-      variantDetails = JSON.stringify(product.variants.map((v: any) => ({
-        id: v.id,
-        variant_name: v.variant_name || v.color_name || 'Default',
-        part_code: v.part_code || '',
-        spec_type: v.spec_type || '',
-        color: v.color || v.color_name || '',
-        size: v.size || '',
-        price: v.price,
-        image_url: v.image_url,
-        stock: v.stock
-      })));
-    }
-
-    // Get the actual discount percentage
-    const actualDiscount = product.discountPercentage || 0;
-    
-    const payload = {
-      user_id: userId,
-      product_id: parseInt(product.id),
-      product_name: product.name,
-      product_code: product.sku,
-      product_brand: product.brandName,
-      price: actualPrice,
-      min_price: minPrice,
-      max_price: maxPrice,
-      discount: actualDiscount,
-      quantity: 1,
-      remarks: `Quotation requested for ${product.name}`,
-      customer_name: user?.name || '',
-      customer_mobile: user?.mobile || '',
-      customer_email: user?.email || '',
-      variant_image: variantImage,
-      variant_details: variantDetails
-    };
-
-    console.log('Sending quotation payload:', payload);
-
-    const response = await fetch(`${baseurl}/api/quotations/single`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await response.json();
-
-    if (data.success) {
-      toast.success("Requested Quotation Successfully!", {
+    const userId = getUserId();
+    if (!userId) {
+      toast.error('Please login to request a quotation', {
         duration: 3000,
         position: 'top-right',
         style: {
-          background: '#10B981',
+          background: '#EF4444',
           color: 'white',
           border: 'none',
           padding: '12px 24px',
@@ -1012,10 +868,111 @@ const handleQuotationRequest = async (e: React.MouseEvent) => {
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
           marginTop: '70px',
         },
+        action: {
+          label: 'Login',
+          onClick: () => window.location.href = '/login'
+        }
       });
-      navigate('/my-quotations');
-    } else {
-      toast.error(data.message || 'Failed to submit quotation request', {
+      setTimeout(() => window.location.href = '/login', 1500);
+      return;
+    }
+
+    setIsQuotationLoading(true);
+
+    try {
+      const user = getUserDetails();
+      let actualPrice = product.price;
+      let minPrice = product.minPrice;
+      let maxPrice = product.maxPrice;
+      
+      if (product.maxPrice !== undefined && product.maxPrice !== null && product.maxPrice > 0) {
+        actualPrice = product.maxPrice;
+      } else if (product.minPrice !== undefined && product.minPrice !== null && product.minPrice > 0) {
+        actualPrice = product.minPrice;
+      }
+
+      let variantImage = null;
+      let variantDetails = null;
+      if (product.variants && product.variants.length > 0) {
+        const firstVariant = product.variants[0] as any;
+        if (firstVariant.image_url) variantImage = firstVariant.image_url;
+        variantDetails = JSON.stringify(product.variants.map((v: any) => ({
+          id: v.id,
+          variant_name: v.variant_name || v.color_name || 'Default',
+          part_code: v.part_code || '',
+          spec_type: v.spec_type || '',
+          color: v.color || v.color_name || '',
+          size: v.size || '',
+          price: v.price,
+          image_url: v.image_url,
+          stock: v.stock
+        })));
+      }
+
+      const actualDiscount = product.discountPercentage || 0;
+      const payload = {
+        user_id: userId,
+        product_id: parseInt(product.id),
+        product_name: product.name,
+        product_code: product.sku,
+        product_brand: product.brandName,
+        price: actualPrice,
+        min_price: minPrice,
+        max_price: maxPrice,
+        discount: actualDiscount,
+        quantity: quantity,
+        remarks: `Quotation requested for ${product.name} (Qty: ${quantity})`,
+        customer_name: user?.name || '',
+        customer_mobile: user?.mobile || '',
+        customer_email: user?.email || '',
+        variant_image: variantImage,
+        variant_details: variantDetails
+      };
+
+      const response = await fetch(`${baseurl}/api/quotations/single`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success(`Quotation requested for ${quantity} item(s)!`, {
+          duration: 3000,
+          position: 'top-right',
+          style: {
+            background: '#10B981',
+            color: 'white',
+            border: 'none',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            marginTop: '70px',
+          },
+        });
+        navigate('/my-quotations');
+      } else {
+        toast.error(data.message || 'Failed to submit quotation request', {
+          duration: 3000,
+          position: 'top-right',
+          style: {
+            background: '#EF4444',
+            color: 'white',
+            border: 'none',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            marginTop: '70px',
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Error submitting quotation:', error);
+      toast.error('Failed to submit quotation request. Please try again.', {
         duration: 3000,
         position: 'top-right',
         style: {
@@ -1030,30 +987,11 @@ const handleQuotationRequest = async (e: React.MouseEvent) => {
           marginTop: '70px',
         },
       });
+    } finally {
+      setIsQuotationLoading(false);
     }
-  } catch (error) {
-    console.error('Error submitting quotation:', error);
-    toast.error('Failed to submit quotation request. Please try again.', {
-      duration: 3000,
-      position: 'top-right',
-      style: {
-        background: '#EF4444',
-        color: 'white',
-        border: 'none',
-        padding: '12px 24px',
-        borderRadius: '8px',
-        fontSize: '14px',
-        fontWeight: '500',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        marginTop: '70px',
-      },
-    });
-  } finally {
-    setIsQuotationLoading(false);
-  }
-};
+  };
 
-  // Format price in Indian Rupees
   const formatPrice = (price: number) => {
     if (isNaN(price) || !isFinite(price)) return '₹0';
     return new Intl.NumberFormat('en-IN', {
@@ -1064,53 +1002,42 @@ const handleQuotationRequest = async (e: React.MouseEvent) => {
     }).format(price);
   };
 
-  // Get display price - show min/max range
-  const getDisplayPrice = () => {
-    // Check if product has minPrice and maxPrice from API
-    if (product.minPrice !== undefined && product.minPrice !== null && 
-        product.maxPrice !== undefined && product.maxPrice !== null) {
+  // ---- FIXED: always use minPrice and maxPrice if they exist and are valid numbers ----
+  const getDisplayPrice = (): string => {
+    // 1. Use product-level min/max if available
+    if (product.minPrice != null && product.maxPrice != null) {
       const min = Number(product.minPrice);
       const max = Number(product.maxPrice);
-      
       if (!isNaN(min) && !isNaN(max)) {
-        if (min === max) {
-          return formatPrice(min);
-        }
+        if (min === max) return formatPrice(min);
         return `${formatPrice(min)} - ${formatPrice(max)}`;
       }
     }
-    
-    // Fallback to variants
+    // 2. Fallback to variant prices
     if (product.variants && product.variants.length > 0) {
-      const variantPrices = product.variants
+      const prices = product.variants
         .map(v => parseFloat(v.price))
         .filter(p => !isNaN(p) && isFinite(p));
-      
-      if (variantPrices.length > 0) {
-        const minPrice = Math.min(...variantPrices);
-        const maxPrice = Math.max(...variantPrices);
-        
-        if (minPrice === maxPrice) {
-          return formatPrice(minPrice);
-        }
-        return `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`;
+      if (prices.length > 0) {
+        const min = Math.min(...prices);
+        const max = Math.max(...prices);
+        if (min === max) return formatPrice(min);
+        return `${formatPrice(min)} - ${formatPrice(max)}`;
       }
     }
-    
-    // Fallback to product price
+    // 3. Final fallback to product.price
     if (product.price && !isNaN(product.price) && isFinite(product.price)) {
       return formatPrice(product.price);
     }
-    
     return 'Price on request';
   };
 
-  // Check if product has discount
   const hasDiscount = (product.discountPercentage ?? 0) > 0;
-  const discountedPrice = hasDiscount && product.price ? product.price * (1 - (product.discountPercentage ?? 0) / 100) : product.price;
-
-  // Get stock with fallback
+  const discountedPrice = hasDiscount && product.price ? product.price * (1 - (product.discountPercentage ?? 0) / 100) : null;
   const stock = product.stock ?? 0;
+  const maxStock = product.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 10;
+
+  const showPriceRange = product.minPrice != null && product.maxPrice != null && product.minPrice !== product.maxPrice;
 
   return (
     <Card className="group relative overflow-hidden border border-gray-200 dark:border-gray-800 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 flex flex-col bg-white dark:bg-gray-900 rounded-2xl">
@@ -1133,7 +1060,6 @@ const handleQuotationRequest = async (e: React.MouseEvent) => {
         )}
       </div>
 
-      {/* Heart Icon at Top Right with Circle Background */}
       <button
         className={cn(
           'absolute top-2 right-2 z-20 h-9 w-9 rounded-full',
@@ -1158,7 +1084,6 @@ const handleQuotationRequest = async (e: React.MouseEvent) => {
         )}
       </button>
 
-      {/* Image */}
       <Link to={`/products/${product.slug}`} className="block relative aspect-square overflow-hidden bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-t-2xl">
         <img
           src={product.gallery[0]}
@@ -1166,15 +1091,9 @@ const handleQuotationRequest = async (e: React.MouseEvent) => {
           loading="lazy"
           className="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500"
         />
-        {/* Quick actions overlay */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
           <div className="flex gap-2">
-            <Button 
-              size="icon" 
-              variant="secondary" 
-              className="w-10 h-10 rounded-full shadow-lg hover:scale-110 transition-transform"
-              asChild
-            >
+            <Button size="icon" variant="secondary" className="w-10 h-10 rounded-full shadow-lg hover:scale-110 transition-transform" asChild>
               <Link to={`/products/${product.slug}`}>
                 <Eye className="w-4 h-4" />
               </Link>
@@ -1183,9 +1102,7 @@ const handleQuotationRequest = async (e: React.MouseEvent) => {
         </div>
       </Link>
 
-      {/* Content */}
       <div className="p-4 flex flex-col flex-1">
-        {/* Brand & Category */}
         <div className="flex items-center gap-1.5 mb-2">
           <BadgeCheck className="w-3.5 h-3.5 text-primary" />
           <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{product.brandName}</span>
@@ -1193,14 +1110,13 @@ const handleQuotationRequest = async (e: React.MouseEvent) => {
           <span className="text-xs text-gray-500 dark:text-gray-500">{product.categoryName}</span>
         </div>
 
-        {/* Product Name */}
         <Link to={`/products/${product.slug}`}>
           <h3 className="font-semibold text-sm leading-snug mb-1.5 line-clamp-2 group-hover:text-primary transition-colors text-gray-900 dark:text-white">
             {product.name}
           </h3>
         </Link>
 
-        {/* Price Section - Fixed to show min/max properly */}
+        {/* Price Section - FIXED to always show range if min/max exist */}
         <div className="mb-2 mt-1">
           {hasDiscount && discountedPrice ? (
             <div className="flex flex-wrap items-center gap-2">
@@ -1208,7 +1124,7 @@ const handleQuotationRequest = async (e: React.MouseEvent) => {
                 {formatPrice(discountedPrice)}
               </span>
               <span className="text-sm text-gray-400 line-through">
-                {formatPrice(product.price)}
+                {getDisplayPrice()}
               </span>
             </div>
           ) : (
@@ -1216,24 +1132,15 @@ const handleQuotationRequest = async (e: React.MouseEvent) => {
               {getDisplayPrice()}
             </span>
           )}
-          {/* Show min/max label if different */}
-          {product.minPrice !== undefined && product.maxPrice !== undefined && 
-           product.minPrice !== product.maxPrice && 
-           !isNaN(product.minPrice) && !isNaN(product.maxPrice) && (
+          {showPriceRange && (
             <p className="text-xs text-gray-400 mt-0.5">Price range based on variants</p>
-          )}
-          {product.variants && product.variants.length > 1 && 
-           !(product.minPrice !== undefined && product.maxPrice !== undefined) && (
-            <p className="text-xs text-gray-400 mt-0.5">*Price varies by variant</p>
           )}
         </div>
 
-        {/* Short Description */}
         <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3 flex-1">
           {product.shortDescription}
         </p>
 
-        {/* Rating */}
         <div className="flex items-center gap-1.5 mb-3">
           <div className="flex items-center">
             {[1, 2, 3, 4, 5].map((star) => (
@@ -1254,22 +1161,47 @@ const handleQuotationRequest = async (e: React.MouseEvent) => {
           )}
         </div>
 
-        {/* Actions - Modified to have View Details and Quote same size */}
-        <div className="flex flex-col gap-2">
-          {/* First row: View Details + Quotation - Same size */}
-          <div className="flex items-center gap-2">
-            {/* View Details Button - Flex 1 */}
-            <Button 
-              asChild 
-              size="sm" 
-              className="flex-1 h-9 text-xs rounded-full bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl transition-all"
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Qty:</span>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              className="h-7 w-7 rounded-full border-gray-300 dark:border-gray-600 hover:bg-primary hover:text-white hover:border-primary transition-colors"
+              onClick={() => handleQuantityChange(quantity - 1)}
+              disabled={quantity <= 1}
             >
+              <Minus className="w-3 h-3" />
+            </Button>
+            <span className="w-8 text-center text-sm font-medium text-gray-900 dark:text-white">
+              {quantity}
+            </span>
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              className="h-7 w-7 rounded-full border-gray-300 dark:border-gray-600 hover:bg-primary hover:text-white hover:border-primary transition-colors"
+              onClick={() => handleQuantityChange(quantity + 1)}
+              disabled={quantity >= maxStock}
+            >
+              <Plus className="w-3 h-3" />
+            </Button>
+          </div>
+          {maxStock > 0 && (
+            <span className="text-[10px] text-gray-400 ml-1">
+              Max: {maxStock}
+            </span>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <Button asChild size="sm" className="flex-1 h-9 text-xs rounded-full bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl transition-all">
               <Link to={`/products/${product.slug}`}>
                 View Details
               </Link>
             </Button>
-
-            {/* Quote Button - Also Flex 1 to match View Details */}
             <Button
               size="sm"
               variant="outline"
@@ -1292,7 +1224,6 @@ const handleQuotationRequest = async (e: React.MouseEvent) => {
             </Button>
           </div>
 
-          {/* Second row: Add to Compare checkbox */}
           <label
             className={cn(
               'flex items-center gap-2 mt-1 select-none',

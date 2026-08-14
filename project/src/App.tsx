@@ -24,7 +24,7 @@ import { AdminProducts } from '@/pages/admin/products';
 import { ProductForm } from '@/pages/admin/product-form';
 import { ProductView } from '@/pages/admin/productview-details';
 import { AdminCategories } from '@/pages/admin/categories';
-// import { CategoryForm } from '@/pages/admin/categories-form';
+import { CategoryForm } from '@/pages/admin/categories-form';
 import { AdminBrands } from '@/pages/admin/brands';
 import {  AdminSpecifications } from '@/pages/admin/specifications';
 import {  SpecificationsForm } from '@/pages/admin/specialization-form';
@@ -115,8 +115,8 @@ export default function App() {
                 <Route path="products/edit/:id" element={<ProductForm />} />
                 <Route path="products/view/:id" element={<ProductView />} /> 
                 <Route path="categories" element={<AdminCategories />} />
-                {/* <Route path="categories/add" element={<CategoryForm />} />
-                <Route path="categories/add/:id" element={<CategoryForm />} /> */}
+                <Route path="categories/add" element={<CategoryForm />} />
+                <Route path="categories/add/:id" element={<CategoryForm />} />
                 <Route path="brands" element={<AdminBrands />} />
                 {/* <Route path="brands/add" element={<BrandForm />} />
                 <Route path="brands/add/:id" element={<BrandForm />} /> */} 

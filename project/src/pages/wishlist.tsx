@@ -369,10 +369,13 @@
 // }
 
 
+// src/pages/wishlist.tsx
 
 // src/pages/wishlist.tsx
+
+// src/pages/wishlist.tsx - Updated with correct endpoint
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, ArrowRight, Trash2, Loader2, FileText } from 'lucide-react';
+import { Heart, ArrowRight, Trash2, Loader2, FileText, Eye, Star, BadgeCheck, FileSpreadsheet, Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -431,6 +434,11 @@ interface DisplayProduct {
   isNew: boolean;
   createdAt: string;
   variants: ApiProduct['variants'];
+  sku: string;
+  minPrice?: number;
+  maxPrice?: number;
+  discountPercentage?: number;
+  stock: number;
 }
 
 function isApiProduct(item: any): item is ApiProduct {
@@ -439,12 +447,16 @@ function isApiProduct(item: any): item is ApiProduct {
 
 export function WishlistPage() {
   const navigate = useNavigate();
-  const { wishlistProducts, removeFromWishlist, clearWishlist, fetchWishlist } = useApp();
+  const { wishlistProducts, removeFromWishlist, clearWishlist, fetchWishlist, addToCompare, removeFromCompare, isInCompare, compareList } = useApp();
   const [userId, setUserId] = useState<number | null>(null);
   const [initialLoad, setInitialLoad] = useState(true);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [isClearing, setIsClearing] = useState(false);
   const [isGeneratingQuotation, setIsGeneratingQuotation] = useState(false);
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [isCompareLoading, setIsCompareLoading] = useState<Record<string, boolean>>({});
+  const [isQuotationLoading, setIsQuotationLoading] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const session = localStorage.getItem('userSession');
@@ -487,6 +499,19 @@ export function WishlistPage() {
           v.image_url ? `${baseurl}${v.image_url}` : null
         ).filter((url): url is string => Boolean(url)) || [];
         
+        const totalStock = p.variants?.reduce((sum, v) => sum + v.stock, 0) || 0;
+        
+        // Calculate min and max price from variants
+        let minPrice: number | undefined;
+        let maxPrice: number | undefined;
+        if (p.variants && p.variants.length > 0) {
+          const prices = p.variants.map(v => parseFloat(v.price)).filter(p => !isNaN(p) && isFinite(p));
+          if (prices.length > 0) {
+            minPrice = Math.min(...prices);
+            maxPrice = Math.max(...prices);
+          }
+        }
+        
         return {
           id: String(p.id),
           name: p.product_name,
@@ -505,9 +530,69 @@ export function WishlistPage() {
           isNew: false,
           createdAt: p.created_at,
           variants: p.variants || [],
+          sku: p.product_code,
+          discountPercentage: parseFloat(p.discount) || 0,
+          stock: totalStock,
+          minPrice: minPrice,
+          maxPrice: maxPrice,
         };
       });
   }, [wishlistProducts]);
+
+  // Initialize quantities for products
+  useEffect(() => {
+    const initialQuantities: Record<string, number> = {};
+    displayProducts.forEach(p => {
+      initialQuantities[p.id] = 1;
+    });
+    setQuantities(initialQuantities);
+  }, [displayProducts]);
+
+  const handleQuantityChange = (productId: string, newQuantity: number) => {
+    const product = displayProducts.find(p => p.id === productId);
+    if (!product) return;
+    
+    const maxStock = product.stock || 10;
+    if (newQuantity >= 1 && newQuantity <= maxStock) {
+      setQuantities(prev => ({ ...prev, [productId]: newQuantity }));
+    } else if (newQuantity > maxStock) {
+      toast.warning(`Only ${maxStock} items available in stock`, {
+        duration: 2000,
+        position: 'top-right',
+        style: {
+          background: '#F59E0B',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+      });
+    }
+  };
+
+  const toggleProductSelection = (productId: string) => {
+    setSelectedProducts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(productId)) {
+        newSet.delete(productId);
+      } else {
+        newSet.add(productId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedProducts.size === displayProducts.length) {
+      setSelectedProducts(new Set());
+    } else {
+      setSelectedProducts(new Set(displayProducts.map(p => p.id)));
+    }
+  };
 
   const handleRemove = useCallback(async (productId: string): Promise<void> => {
     if (removingId) return;
@@ -518,6 +603,11 @@ export function WishlistPage() {
       if (userId) {
         await fetchWishlist(userId);
       }
+      setSelectedProducts(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(productId);
+        return newSet;
+      });
       toast.success('Removed from wishlist', {
         duration: 3000,
         position: 'top-right',
@@ -573,6 +663,7 @@ export function WishlistPage() {
           await removeFromWishlist(p.id, undefined);
         });
       }
+      setSelectedProducts(new Set());
       toast.success('Wishlist cleared successfully', {
         duration: 3000,
         position: 'top-right',
@@ -612,8 +703,8 @@ export function WishlistPage() {
   }, [clearWishlist, userId, fetchWishlist, displayProducts, removeFromWishlist, isClearing]);
 
   const handleGenerateQuotation = useCallback(async (): Promise<void> => {
-    if (displayProducts.length === 0) {
-      toast.error('Your wishlist is empty. Add products to generate a quotation.', {
+    if (selectedProducts.size === 0) {
+      toast.error('Please select at least one product to generate a quotation.', {
         duration: 3000,
         position: 'top-right',
         style: {
@@ -657,13 +748,30 @@ export function WishlistPage() {
     setIsGeneratingQuotation(true);
 
     try {
-      const response = await axios.post(`${baseurl}/api/quotations/generate`, {
+      // Get selected products with their quantities
+      const selectedProductsData = displayProducts
+        .filter(p => selectedProducts.has(p.id))
+        .map(p => ({
+          product_id: parseInt(p.id),
+          quantity: quantities[p.id] || 1,
+          product_name: p.name,
+          product_code: p.sku,
+          product_brand: p.brandName,
+          price: p.price,
+          min_price: p.minPrice || null,
+          max_price: p.maxPrice || null,
+          discount: p.discountPercentage || 0,
+        }));
+
+      // Use the correct endpoint - /api/quotations/generate-from-wishlist
+      const response = await axios.post(`${baseurl}/api/quotations/generate-from-wishlist`, {
         user_id: userId,
-        remarks: ''
+        products: selectedProductsData,
+        remarks: `Quotation for ${selectedProductsData.length} selected wishlist items`
       });
 
       if (response.data.success) {
-        toast.success('Quotation generated successfully!', {
+        toast.success(`Quotation generated for ${selectedProductsData.length} product(s)!`, {
           duration: 3000,
           position: 'top-right',
           style: {
@@ -679,6 +787,7 @@ export function WishlistPage() {
             letterSpacing: '0.3px',
           },
         });
+        setSelectedProducts(new Set());
         if (userId) {
           await fetchWishlist(userId);
         }
@@ -707,9 +816,165 @@ export function WishlistPage() {
     } finally {
       setIsGeneratingQuotation(false);
     }
-  }, [displayProducts.length, userId, fetchWishlist, navigate]);
+  }, [selectedProducts, displayProducts, quantities, userId, fetchWishlist, navigate]);
 
-  
+  // Handle individual product quotation
+  const handleIndividualQuotation = async (productId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const session = localStorage.getItem('userSession');
+    if (!session) {
+      toast.error('Please login to request a quotation', {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+        action: {
+          label: 'Login',
+          onClick: () => window.location.href = '/login'
+        }
+      });
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 1500);
+      return;
+    }
+
+    setIsQuotationLoading(prev => ({ ...prev, [productId]: true }));
+
+    try {
+      const product = displayProducts.find(p => p.id === productId);
+      if (!product) throw new Error('Product not found');
+
+      const quantity = quantities[productId] || 1;
+      
+      const payload = {
+        user_id: userId,
+        product_id: parseInt(productId),
+        product_name: product.name,
+        product_code: product.sku,
+        product_brand: product.brandName,
+        price: product.price,
+        min_price: product.minPrice || null,
+        max_price: product.maxPrice || null,
+        discount: product.discountPercentage || 0,
+        quantity: quantity,
+        remarks: `Quotation requested for ${product.name} (Qty: ${quantity})`,
+      };
+
+      const response = await axios.post(`${baseurl}/api/quotations/single`, payload);
+
+      if (response.data.success) {
+        toast.success(`Quotation requested for ${quantity} item(s)!`, {
+          duration: 3000,
+          position: 'top-right',
+          style: {
+            background: '#10B981',
+            color: 'white',
+            border: 'none',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            marginTop: '70px',
+          },
+        });
+        navigate('/my-quotations');
+      }
+    } catch (error) {
+      console.error('Error submitting quotation:', error);
+      toast.error('Failed to submit quotation request. Please try again.', {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+      });
+    } finally {
+      setIsQuotationLoading(prev => ({ ...prev, [productId]: false }));
+    }
+  };
+
+  // Handle compare toggle for individual product
+  const handleCompareToggle = async (productId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    setIsCompareLoading(prev => ({ ...prev, [productId]: true }));
+    
+    try {
+      const inCompare = isInCompare(productId);
+      if (inCompare) {
+        await removeFromCompare(productId, userId || undefined);
+        toast.success('Removed from compare');
+      } else {
+        if (compareList.length >= 4) {
+          toast.warning('You can compare up to 4 products');
+          setIsCompareLoading(prev => ({ ...prev, [productId]: false }));
+          return;
+        }
+        await addToCompare(productId, userId || undefined);
+        toast.success('Added to compare');
+        navigate('/compare');
+      }
+    } catch (error) {
+      console.error('Error toggling compare:', error);
+      toast.error('Failed to update compare list');
+    } finally {
+      setIsCompareLoading(prev => ({ ...prev, [productId]: false }));
+    }
+  };
+
+  // Format price
+  const formatPrice = (price: number) => {
+    if (isNaN(price) || !isFinite(price)) return '₹0';
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(price);
+  };
+
+  // Get display price - show min/max range like ProductCard
+  const getDisplayPrice = (product: DisplayProduct) => {
+    if (product.minPrice !== undefined && product.maxPrice !== undefined) {
+      const min = product.minPrice;
+      const max = product.maxPrice;
+      
+      if (min === max) {
+        return formatPrice(min);
+      }
+      return `${formatPrice(min)} - ${formatPrice(max)}`;
+    }
+    
+    return formatPrice(product.price);
+  };
+
+  // Check if product has discount
+  const hasDiscount = (product: DisplayProduct) => {
+    return (product.discountPercentage || 0) > 0;
+  };
+
   if (initialLoad) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -742,12 +1007,22 @@ export function WishlistPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold">My Wishlist</h1>
-          <p className="text-sm text-muted-foreground mt-1">{displayProducts.length} products saved</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {displayProducts.length} products saved · {selectedProducts.size} selected
+          </p>
         </div>
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           <Button 
+            onClick={toggleSelectAll}
+            variant="outline"
+            size="sm"
+            className="flex-1 sm:flex-none"
+          >
+            {selectedProducts.size === displayProducts.length ? 'Deselect All' : 'Select All'}
+          </Button>
+          <Button 
             onClick={handleGenerateQuotation}
-            disabled={displayProducts.length === 0 || isGeneratingQuotation}
+            disabled={selectedProducts.size === 0 || isGeneratingQuotation}
             className="flex items-center gap-2 flex-1 sm:flex-none bg-primary hover:bg-primary/90"
           >
             {isGeneratingQuotation ? (
@@ -755,7 +1030,7 @@ export function WishlistPage() {
             ) : (
               <FileText className="w-4 h-4" />
             )}
-            Request For Quotation
+            Request Quote ({selectedProducts.size})
           </Button>
           <Button 
             variant="destructive" 
@@ -775,27 +1050,49 @@ export function WishlistPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-        {displayProducts.map((product: DisplayProduct) => (
-          <Card 
-            key={product.id} 
-            className="group relative overflow-hidden border-border hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col"
-          >
-            <Link to={`/products/${product.slug}`} className="block relative aspect-square overflow-hidden bg-muted/30">
-              <img
-                src={product.image}
-                alt={product.name}
-                loading="lazy"
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                  (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x400';
-                }}
-              />
-              
+        {displayProducts.map((product: DisplayProduct) => {
+          const isSelected = selectedProducts.has(product.id);
+          const inCompare = isInCompare(product.id);
+          const maxStock = product.stock || 10;
+          const quantity = quantities[product.id] || 1;
+          const discount = hasDiscount(product);
+          const displayPrice = getDisplayPrice(product);
+          const isPriceRange = product.minPrice !== undefined && product.maxPrice !== undefined && product.minPrice !== product.maxPrice;
+
+          return (
+            <Card 
+              key={product.id} 
+              className={cn(
+                'group relative overflow-hidden border hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col',
+                isSelected ? 'border-primary ring-2 ring-primary/20' : 'border-border'
+              )}
+            >
+              {/* Selection checkbox */}
+              <div className="absolute top-3 left-3 z-20">
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => toggleProductSelection(product.id)}
+                  className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary focus:ring-offset-0 accent-primary cursor-pointer"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+
+              {/* Badges */}
+              <div className="absolute top-3 left-12 z-10 flex flex-col gap-1.5">
+                {discount && (
+                  <Badge className="bg-gradient-to-r from-red-500 to-red-600 text-white text-[10px] font-semibold shadow-lg rounded-full px-3 py-1">
+                    {product.discountPercentage}% OFF
+                  </Badge>
+                )}
+              </div>
+
+              {/* Remove button */}
               <Button
                 size="icon"
                 variant="ghost"
                 className={cn(
-                  'absolute top-2 right-2 w-8 h-8 rounded-full transition-all duration-200',
+                  'absolute top-2 right-2 z-20 w-8 h-8 rounded-full transition-all duration-200',
                   'bg-white/80 hover:bg-white shadow-md backdrop-blur-sm',
                   'border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600',
                   removingId === product.id && 'opacity-50 cursor-not-allowed'
@@ -814,46 +1111,192 @@ export function WishlistPage() {
                   <Heart className="w-4 h-4 fill-red-500" />
                 )}
               </Button>
-            </Link>
 
-            <div className="p-4 flex flex-col flex-1">
-              <div className="flex items-center gap-1.5 mb-2">
-                <Badge className="text-[10px] font-semibold bg-primary/10 text-primary border-0">
-                  {product.brandName}
-                </Badge>
-                <span className="text-xs text-muted-foreground/50">·</span>
-                <span className="text-xs text-muted-foreground">{product.categoryName}</span>
-              </div>
-
-              <Link to={`/products/${product.slug}`}>
-                <h3 className="font-semibold text-sm leading-snug mb-1.5 line-clamp-2 group-hover:text-primary transition-colors">
-                  {product.name}
-                </h3>
+              {/* Image */}
+              <Link to={`/products/${product.slug}`} className="block relative aspect-square overflow-hidden bg-muted/30">
+                <img
+                  src={product.image}
+                  alt={product.name}
+                  loading="lazy"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x400';
+                  }}
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                  <Button 
+                    size="icon" 
+                    variant="secondary" 
+                    className="w-10 h-10 rounded-full shadow-lg hover:scale-110 transition-transform"
+                    asChild
+                  >
+                    <Link to={`/products/${product.slug}`}>
+                      <Eye className="w-4 h-4" />
+                    </Link>
+                  </Button>
+                </div>
               </Link>
 
-              <p className="text-xs text-muted-foreground line-clamp-2 mb-3 flex-1">
-                {product.shortDescription}
-              </p>
-
-              <div className="flex items-center gap-1.5">
-                <div className="flex items-center">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <span
-                      key={star}
-                      className={cn(
-                        'text-sm',
-                        star <= Math.floor(product.rating) ? 'text-red-500' : 'text-muted-foreground/30'
-                      )}
-                    >
-                      ★
-                    </span>
-                  ))}
+              <div className="p-4 flex flex-col flex-1">
+                {/* Brand & Category */}
+                <div className="flex items-center gap-1.5 mb-2">
+                  <BadgeCheck className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{product.brandName}</span>
+                  <span className="text-xs text-gray-300 dark:text-gray-600">·</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-500">{product.categoryName}</span>
                 </div>
-                <span className="text-xs text-muted-foreground">({product.reviewCount})</span>
+
+                {/* Product Name */}
+                <Link to={`/products/${product.slug}`}>
+                  <h3 className="font-semibold text-sm leading-snug mb-1.5 line-clamp-2 group-hover:text-primary transition-colors text-gray-900 dark:text-white">
+                    {product.name}
+                  </h3>
+                </Link>
+
+                {/* Price */}
+                <div className="mb-2 mt-1">
+                  <span className="text-lg font-bold text-primary">
+                    {displayPrice}
+                  </span>
+                  {isPriceRange && (
+                    <p className="text-xs text-gray-400 mt-0.5">Price range based on variants</p>
+                  )}
+                </div>
+
+                {/* Short Description */}
+                <p className="text-xs text-muted-foreground line-clamp-2 mb-3 flex-1">
+                  {product.shortDescription}
+                </p>
+
+                {/* Rating & Stock */}
+                <div className="flex items-center gap-1.5 mb-3">
+                  <div className="flex items-center">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={cn(
+                          'w-3.5 h-3.5',
+                          star <= Math.floor(product.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300 dark:text-gray-600'
+                        )}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">({product.reviewCount})</span>
+                  {product.stock > 0 && (
+                    <span className="text-xs text-green-600 dark:text-green-400 ml-auto">
+                      {product.stock > 10 ? 'In Stock' : `Only ${product.stock} left`}
+                    </span>
+                  )}
+                </div>
+
+                {/* Quantity Selector */}
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Qty:</span>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      className="h-7 w-7 rounded-full border-gray-300 dark:border-gray-600 hover:bg-primary hover:text-white hover:border-primary transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleQuantityChange(product.id, quantity - 1);
+                      }}
+                      disabled={quantity <= 1}
+                    >
+                      <Minus className="w-3 h-3" />
+                    </Button>
+                    <span className="w-8 text-center text-sm font-medium text-gray-900 dark:text-white">
+                      {quantity}
+                    </span>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      className="h-7 w-7 rounded-full border-gray-300 dark:border-gray-600 hover:bg-primary hover:text-white hover:border-primary transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleQuantityChange(product.id, quantity + 1);
+                      }}
+                      disabled={quantity >= maxStock}
+                    >
+                      <Plus className="w-3 h-3" />
+                    </Button>
+                  </div>
+                  {maxStock > 0 && (
+                    <span className="text-[10px] text-gray-400 ml-1">
+                      Max: {maxStock}
+                    </span>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      asChild 
+                      size="sm" 
+                      className="flex-1 h-9 text-xs rounded-full bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl transition-all"
+                    >
+                      <Link to={`/products/${product.slug}`}>
+                        View Details
+                      </Link>
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className={cn(
+                        'flex-1 h-9 text-xs rounded-full border-primary/30 text-primary hover:bg-primary hover:text-white transition-all duration-200',
+                        isQuotationLoading[product.id] && 'opacity-50 cursor-not-allowed'
+                      )}
+                      onClick={(e) => handleIndividualQuotation(product.id, e)}
+                      disabled={isQuotationLoading[product.id]}
+                      title="Request for Quotation"
+                    >
+                      {isQuotationLoading[product.id] ? (
+                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mx-auto" />
+                      ) : (
+                        <>
+                          <FileSpreadsheet className="w-4 h-4 mr-1.5" />
+                          <span>Quote</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Add to Compare */}
+                  <button
+                    className={cn(
+                      'flex items-center gap-2 mt-1 select-none text-xs font-medium',
+                      isCompareLoading[product.id] ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
+                      inCompare ? 'text-primary' : 'text-gray-600 dark:text-gray-400'
+                    )}
+                    onClick={(e) => handleCompareToggle(product.id, e)}
+                    disabled={isCompareLoading[product.id]}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={inCompare}
+                      disabled={isCompareLoading[product.id]}
+                      onChange={() => {}}
+                      onClick={(e) => e.stopPropagation()}
+                      className={cn(
+                        'h-4 w-4 rounded border-gray-300 dark:border-gray-600',
+                        'text-primary focus:ring-primary focus:ring-offset-0',
+                        'accent-primary cursor-pointer disabled:cursor-not-allowed'
+                      )}
+                    />
+                    <span>{inCompare ? 'Added to compare' : 'Add to compare'}</span>
+                    {isCompareLoading[product.id] && (
+                      <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin text-primary" />
+                    )}
+                  </button>
+                </div>
               </div>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </div>
     </div>
   );
