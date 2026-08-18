@@ -852,8 +852,7 @@ export function ProductCard({ product }: ProductCardProps) {
     e.preventDefault();
     e.stopPropagation();
 
-    const userId = getUserId();
-    if (!userId) {
+    if (!isLoggedIn) {
       toast.error('Please login to request a quotation', {
         duration: 3000,
         position: 'top-right',
@@ -874,6 +873,26 @@ export function ProductCard({ product }: ProductCardProps) {
         }
       });
       setTimeout(() => window.location.href = '/login', 1500);
+      return;
+    }
+
+    const userId = getUserId();
+    if (!userId) {
+      toast.error('Please login to request a quotation', {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+      });
       return;
     }
 
@@ -1161,6 +1180,7 @@ export function ProductCard({ product }: ProductCardProps) {
           )}
         </div>
 
+        {/* Quantity Selector */}
         <div className="flex items-center gap-2 mb-3">
           <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Qty:</span>
           <div className="flex items-center gap-1">

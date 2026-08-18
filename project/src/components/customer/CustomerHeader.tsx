@@ -1988,7 +1988,7 @@ export function CustomerHeader() {
                       {wishlist.length}
                     </Badge>
                   )}
-                  <span className="hidden xl:inline ml-1.5 text-gray-600">Wishlist</span>
+                  <span className="hidden xl:inline ml-1.5 text-gray-600">Wishlist for Quotation</span>
                 </Button>
               </Link>
 

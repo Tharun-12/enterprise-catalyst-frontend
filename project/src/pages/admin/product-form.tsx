@@ -12,6 +12,12 @@ const API_URL = baseurl;
 interface Category {
     id: number;
     category_name: string;
+    subcategories?: SubCategory[];
+}
+
+interface SubCategory {
+    id: number;
+    subcategory_name: string;
 }
 
 interface Brand {
@@ -47,10 +53,10 @@ interface FormData {
     max_price: string;
     discount: string;
     product_description: string;
+    extra_information: string;
     warranty: string;
     product_details_pdf: File | null;
     existing_pdf?: string;
-    product_type: string;
     conductor_type: string;
     cable_od: string;
     jacket_material: string;
@@ -65,6 +71,7 @@ interface Variant {
     variant_name: string;
     part_code: string;
     category: string;
+    sub_category: string;
     brand: string;
     description: string;
     spec_type: string;
@@ -100,10 +107,10 @@ const ProductForm = () => {
         max_price: '',
         discount: '0',
         product_description: '',
+        extra_information: '',
         warranty: '',
         product_details_pdf: null,
         existing_pdf: '',
-        product_type: '',
         conductor_type: '',
         cable_od: '',
         jacket_material: '',
@@ -119,6 +126,7 @@ const ProductForm = () => {
         variant_name: '',
         part_code: '',
         category: '',
+        sub_category: '',
         brand: '',
         description: '',
         spec_type: '',
@@ -144,6 +152,7 @@ const ProductForm = () => {
     });
 
     const [categories, setCategories] = useState<Category[]>([]);
+    const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
     const [_brands, setBrands] = useState<Brand[]>([]);
     const [specializations, setSpecializations] = useState<Specialization[]>([]);
     const [specTypes, setSpecTypes] = useState<string[]>([]);
@@ -172,6 +181,20 @@ const ProductForm = () => {
         const types = specializations.map((spec: Specialization) => spec.spec_name);
         setSpecTypes([...new Set<string>(types)]);
     }, [specializations]);
+
+    // Update sub categories when category changes in current variant
+    useEffect(() => {
+        if (currentVariant.category) {
+            const selectedCategory = categories.find(c => c.id === parseInt(currentVariant.category));
+            if (selectedCategory && selectedCategory.subcategories) {
+                setSubCategories(selectedCategory.subcategories);
+            } else {
+                setSubCategories([]);
+            }
+        } else {
+            setSubCategories([]);
+        }
+    }, [currentVariant.category, categories]);
 
     const fetchCategories = async (): Promise<void> => {
         try {
@@ -221,10 +244,10 @@ const ProductForm = () => {
                 max_price: productData.max_price || '',
                 discount: productData.discount || '0',
                 product_description: productData.product_description || '',
+                extra_information: productData.extra_information || '',
                 warranty: productData.warranty || '',
                 product_details_pdf: null,
                 existing_pdf: productData.product_details_pdf || '',
-                product_type: productData.product_type || '',
                 conductor_type: productData.conductor_type || '',
                 cable_od: productData.cable_od || '',
                 jacket_material: productData.jacket_material || '',
@@ -234,13 +257,14 @@ const ProductForm = () => {
                 product_series: productData.product_series || ''
             });
 
-            // FIX: Properly map variants with all fields and ensure category is string
+            // Properly map variants with all fields
             if (productData.variants && Array.isArray(productData.variants)) {
                 const formattedVariants = productData.variants.map((v: any) => ({
                     id: v.id,
                     variant_name: v.variant_name || '',
                     part_code: v.part_code || '',
-                    category: v.category ? String(v.category) : '', // Ensure category is string
+                    category: v.category ? String(v.category) : '',
+                    sub_category: v.sub_category || '',
                     brand: v.brand || '',
                     description: v.description || '',
                     spec_type: v.spec_type || '',
@@ -269,14 +293,11 @@ const ProductForm = () => {
             const response = await axios.get(`${API_URL}/api/products/spec-comparison/${id}`);
             const data = response.data;
             
-            // FIX: Properly convert object to array
             const comparisons = [];
             if (data) {
-                // Handle both array and object responses
                 if (Array.isArray(data)) {
                     comparisons.push(...data);
                 } else {
-                    // Convert object to array
                     Object.keys(data).forEach(key => {
                         comparisons.push({ ...data[key], spec_type: key });
                     });
@@ -285,7 +306,6 @@ const ProductForm = () => {
             setSpecComparisons(comparisons);
         } catch (error) {
             console.error('Error fetching spec comparisons:', error);
-            // Don't show error for missing spec comparisons
         }
     };
 
@@ -399,6 +419,7 @@ const ProductForm = () => {
             variant_name: '',
             part_code: '',
             category: '',
+            sub_category: '',
             brand: '',
             description: '',
             spec_type: '',
@@ -435,6 +456,7 @@ const ProductForm = () => {
             variant_name: '',
             part_code: '',
             category: '',
+            sub_category: '',
             brand: '',
             description: '',
             spec_type: '',
@@ -461,6 +483,7 @@ const ProductForm = () => {
                 variant_name: '',
                 part_code: '',
                 category: '',
+                sub_category: '',
                 brand: '',
                 description: '',
                 spec_type: '',
@@ -483,17 +506,27 @@ const ProductForm = () => {
         return category ? category.category_name : categoryId;
     };
 
-    // FIX: Get filtered brands by category, spec type, and color
+    // Helper function to get sub category name by ID
+    const getSubCategoryNameById = (subCategoryId: string): string => {
+        if (!subCategoryId) return '-';
+        for (const category of categories) {
+            if (category.subcategories) {
+                const sub = category.subcategories.find(s => s.id === parseInt(subCategoryId));
+                if (sub) return sub.subcategory_name;
+            }
+        }
+        return subCategoryId;
+    };
+
+    // Get filtered brands by category, spec type, and color
     const getFilteredBrandsByCategory = (categoryId: string, specType: string, color: string) => {
         if (!categoryId || !specType || !color) return [];
         
-        // Find the specialization that matches the category and spec type
         const spec = specializations.find(
             s => s.category_id === parseInt(categoryId) && s.spec_name === specType
         );
         
         if (spec && spec.color_brand_mapping && spec.color_brand_mapping[color]) {
-            // Return only the brands that are mapped to this color in the specialization
             return spec.color_brand_mapping[color];
         }
         
@@ -561,8 +594,8 @@ const ProductForm = () => {
                     max_price: formData.max_price,
                     discount: formData.discount,
                     product_description: formData.product_description,
+                    extra_information: formData.extra_information,
                     warranty: formData.warranty,
-                    product_type: formData.product_type,
                     conductor_type: formData.conductor_type,
                     cable_od: formData.cable_od,
                     jacket_material: formData.jacket_material,
@@ -618,6 +651,7 @@ const ProductForm = () => {
                     variantData.append('variant_name', variant.variant_name || '');
                     variantData.append('part_code', variant.part_code || '');
                     variantData.append('category', variant.category || '');
+                    variantData.append('sub_category', variant.sub_category || '');
                     variantData.append('brand', variant.brand || '');
                     variantData.append('description', variant.description || '');
                     variantData.append('spec_type', variant.spec_type || '');
@@ -675,8 +709,8 @@ const ProductForm = () => {
                     max_price: formData.max_price,
                     discount: formData.discount,
                     product_description: formData.product_description,
+                    extra_information: formData.extra_information,
                     warranty: formData.warranty,
-                    product_type: formData.product_type,
                     conductor_type: formData.conductor_type,
                     cable_od: formData.cable_od,
                     jacket_material: formData.jacket_material,
@@ -718,6 +752,7 @@ const ProductForm = () => {
                     variantData.append('variant_name', variant.variant_name || '');
                     variantData.append('part_code', variant.part_code || '');
                     variantData.append('category', variant.category || '');
+                    variantData.append('sub_category', variant.sub_category || '');
                     variantData.append('brand', variant.brand || '');
                     variantData.append('description', variant.description || '');
                     variantData.append('spec_type', variant.spec_type || '');
@@ -821,18 +856,6 @@ const ProductForm = () => {
                         </div>
 
                         <div className="form-group">
-                            <label htmlFor="product_type">Product Type</label>
-                            <input
-                                type="text"
-                                id="product_type"
-                                name="product_type"
-                                value={formData.product_type}
-                                onChange={handleInputChange}
-                                placeholder="e.g., Patch Cord, Cable, Panel"
-                            />
-                        </div>
-
-                        <div className="form-group">
                             <label htmlFor="product_description">Description *</label>
                             <input
                                 type="text"
@@ -928,6 +951,20 @@ const ProductForm = () => {
                                     </a>
                                 </div>
                             )}
+                        </div>
+
+                        {/* Extra Information - Moved below Data Sheet */}
+                        <div className="form-group full-width">
+                            <label htmlFor="extra_information">Extra Information</label>
+                            <textarea
+                                id="extra_information"
+                                name="extra_information"
+                                value={formData.extra_information}
+                                onChange={handleInputChange}
+                                placeholder="Enter any additional information about the product..."
+                                rows={4}
+                                className="textarea-field"
+                            />
                         </div>
                     </div>
                 </div>
@@ -1113,7 +1150,6 @@ const ProductForm = () => {
                                 </button>
                             </div>
 
-                            {/* FIX: Show spec comparisons table with proper data */}
                             {specComparisons.length > 0 && (
                                 <div className="comparison-list">
                                     <h4>Spec Comparisons ({specComparisons.length})</h4>
@@ -1222,6 +1258,25 @@ const ProductForm = () => {
                                 </div>
 
                                 <div className="form-group">
+                                    <label>Sub Category</label>
+                                    <select
+                                        name="sub_category"
+                                        value={currentVariant.sub_category}
+                                        onChange={handleVariantChange}
+                                    >
+                                        <option value="">Select Sub Category</option>
+                                        {subCategories.map(sub => (
+                                            <option key={sub.id} value={String(sub.id)}>
+                                                {sub.subcategory_name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {currentVariant.category && subCategories.length === 0 && (
+                                        <small className="text-gray-500">No sub categories available for this category</small>
+                                    )}
+                                </div>
+
+                                <div className="form-group">
                                     <label>Spec Type *</label>
                                     <select
                                         name="spec_type"
@@ -1270,7 +1325,6 @@ const ProductForm = () => {
                                         required
                                     >
                                         <option value="">Select Brand</option>
-                                        {/* Only show brands from the color_brand_mapping */}
                                         {getFilteredBrandsByCategory(
                                             currentVariant.category, 
                                             currentVariant.spec_type, 
@@ -1430,8 +1484,10 @@ const ProductForm = () => {
                                         <div className="variant-info">
                                             <strong>{variant.variant_name}</strong>
                                             <span>Part: {variant.part_code}</span>
-                                            {/* FIX: Use helper function to get category name */}
                                             <span>Category: {getCategoryNameById(variant.category)}</span>
+                                            {variant.sub_category && (
+                                                <span>Sub Category: {getSubCategoryNameById(variant.sub_category)}</span>
+                                            )}
                                             {variant.spec_type && <span className="spec-badge">{variant.spec_type}</span>}
                                             {variant.color && <span>Color: {variant.color}</span>}
                                             {variant.brand && <span>Brand: {variant.brand}</span>}

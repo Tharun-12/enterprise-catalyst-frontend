@@ -1,11 +1,10 @@
-// product-details.tsx - Fixed quotation price handling
+// product-details.tsx - Fixed with quantity and wishlist
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-// import { motion } from 'framer-motion';
 import {
   Heart, Download, FileText, Star, ChevronRight,
   ZoomIn, Share2, ShieldCheck, Package, ArrowLeft,
-  BadgeCheck, Truck, Wrench, FileSpreadsheet
+  BadgeCheck, Truck, Wrench, FileSpreadsheet, Minus, Plus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -144,10 +143,6 @@ const transformProduct = (
   const minPrice = product.min_price ? parseFloat(product.min_price) : undefined;
   const maxPrice = product.max_price ? parseFloat(product.max_price) : undefined;
 
-  // Get unique spec types from variants
-  // const specTypes = product.variants?.map(v => v.spec_type).filter(Boolean) as string[] || [];
-  // const uniqueSpecTypes = [...new Set(specTypes)];
-
   // Build specifications - include ALL product fields
   const specFields: { key: string; label: string; value: string }[] = [];
 
@@ -283,9 +278,37 @@ export function ProductDetailsPage() {
   const [activeImage, setActiveImage] = useState(0);
   const [zoomed, setZoomed] = useState(false);
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
-  const [_wishlistOpen, setWishlistOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const { addToWishlist, removeFromWishlist, isInWishlist } = useApp();
+  const [quantity, setQuantity] = useState(1);
+  const { addToWishlist, removeFromWishlist, isInWishlist, isLoggedIn } = useApp();
+
+  // Get max stock from variants
+  const maxStock = useMemo(() => {
+    if (!productData?.variants) return 10;
+    return productData.variants.reduce((sum, v) => sum + v.stock, 0);
+  }, [productData]);
+
+  const handleQuantityChange = (newQuantity: number) => {
+    if (newQuantity >= 1 && newQuantity <= maxStock) {
+      setQuantity(newQuantity);
+    } else if (newQuantity > maxStock) {
+      toast.warning(`Only ${maxStock} items available in stock`, {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#F59E0B',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+      });
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -449,151 +472,13 @@ export function ProductDetailsPage() {
 
   const handleWishlist = async () => {
     if (!product) return;
-    const userId = getUserId();
-
-    if (isInWishlist(product.id)) {
-      await removeFromWishlist(product.id, userId || undefined);
-    } else {
-      await addToWishlist(product.id, userId || undefined);
-      if (!userId) {
-        setWishlistOpen(true);
-      }
-    }
-  };
-
-  // const handleCompare = async () => {
-  //   if (!product) return;
-
-  //   if (isInCompare(product.id)) {
-  //     await removeFromCompare(product.id);
-  //   } else {
-  //     if (compareList.length >= 4) {
-  //       toast.error('You can compare up to 4 products at a time');
-  //       return;
-  //     }
-  //     await addToCompare(product.id);
-  //   }
-  // };
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    setZoomPos({ x, y });
-  };
-
- // Updated handleSingleQuotation function in product-details.tsx
-
-// product-details.tsx - Updated handleSingleQuotation
-
-const handleSingleQuotation = async () => {
-  if (!product) return;
-
-  const userId = getUserId();
-  if (!userId) {
-    toast.error('Please login to request a quotation', {
-      duration: 3000,
-      position: 'top-right',
-      style: {
-        background: '#EF4444',
-        color: 'white',
-        border: 'none',
-        padding: '12px 24px',
-        borderRadius: '8px',
-        fontSize: '14px',
-        fontWeight: '500',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        marginTop: '70px',
-      },
-      action: {
-        label: 'Login',
-        onClick: () => window.location.href = '/login'
-      }
-    });
-    setTimeout(() => {
-      window.location.href = '/login';
-    }, 1500);
-    return;
-  }
-
-  setSubmitting(true);
-
-  try {
-    const user = getUserDetails();
-
-    // Use maxPrice if available, otherwise minPrice
-    let actualPrice = product.price;
-    let minPrice = extendedProduct.minPrice;
-    let maxPrice = extendedProduct.maxPrice;
     
-    if (extendedProduct.maxPrice !== undefined && extendedProduct.maxPrice > 0) {
-      actualPrice = extendedProduct.maxPrice;
-    } else if (extendedProduct.minPrice !== undefined && extendedProduct.minPrice > 0) {
-      actualPrice = extendedProduct.minPrice;
-    }
-
-    // Get variant image from the first variant
-    let variantImage = null;
-    let variantDetails = null;
-    
-    if (product.variants && product.variants.length > 0) {
-      const firstVariant = product.variants[0] as any;
-      if (firstVariant.image_url) {
-        variantImage = firstVariant.image_url;
-      }
-      // Store all variant details
-      variantDetails = JSON.stringify(product.variants.map((v: any) => ({
-        id: v.id,
-        variant_name: v.variant_name,
-        part_code: v.part_code,
-        spec_type: v.spec_type,
-        color: v.color,
-        size: v.size,
-        price: v.price,
-        image_url: v.image_url,
-        stock: v.stock
-      })));
-    }
-
-    const actualDiscount = product.discountPercentage || 0;
-
-    const payload = {
-      user_id: userId,
-      product_id: parseInt(product.id),
-      product_name: product.name,
-      product_code: product.sku,
-      product_brand: product.brandName,
-      price: actualPrice,
-      min_price: minPrice,
-      max_price: maxPrice,
-      discount: actualDiscount,
-      quantity: 1,
-      remarks: `Quotation requested for ${product.name}`,
-      customer_name: user?.name || '',
-      customer_mobile: user?.mobile || '',
-      customer_email: user?.email || '',
-      variant_image: variantImage,
-      variant_details: variantDetails
-    };
-
-    console.log('Sending quotation payload:', payload);
-
-    const response = await fetch(`${baseurl}/api/quotations/single`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await response.json();
-
-    if (data.success) {
-      toast.success("Requested Quotation Successfully!", {
+    if (!isLoggedIn) {
+      toast.error('Please login to sync wishlist', {
         duration: 3000,
         position: 'top-right',
         style: {
-          background: '#10B981',
+          background: '#EF4444',
           color: 'white',
           border: 'none',
           padding: '12px 24px',
@@ -603,10 +488,60 @@ const handleSingleQuotation = async () => {
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
           marginTop: '70px',
         },
+        action: {
+          label: 'Login',
+          onClick: () => window.location.href = '/login'
+        }
       });
-      navigate('/my-quotations');
+      setTimeout(() => window.location.href = '/login', 1500);
+      return;
+    }
+
+    const userId = getUserId();
+    if (isInWishlist(product.id)) {
+      await removeFromWishlist(product.id, userId || undefined);
     } else {
-      toast.error(data.message || 'Failed to submit quotation request', {
+      await addToWishlist(product.id, userId || undefined);
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setZoomPos({ x, y });
+  };
+
+  const handleSingleQuotation = async () => {
+    if (!product) return;
+
+    if (!isLoggedIn) {
+      toast.error('Please login to request a quotation', {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+        action: {
+          label: 'Login',
+          onClick: () => window.location.href = '/login'
+        }
+      });
+      setTimeout(() => window.location.href = '/login', 1500);
+      return;
+    }
+
+    const userId = getUserId();
+    if (!userId) {
+      toast.error('Please login to request a quotation', {
         duration: 3000,
         position: 'top-right',
         style: {
@@ -621,28 +556,136 @@ const handleSingleQuotation = async () => {
           marginTop: '70px',
         },
       });
+      return;
     }
-  } catch (error) {
-    console.error('Error submitting quotation:', error);
-    toast.error('Failed to submit quotation request. Please try again.', {
-      duration: 3000,
-      position: 'top-right',
-      style: {
-        background: '#EF4444',
-        color: 'white',
-        border: 'none',
-        padding: '12px 24px',
-        borderRadius: '8px',
-        fontSize: '14px',
-        fontWeight: '500',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        marginTop: '70px',
-      },
-    });
-  } finally {
-    setSubmitting(false);
-  }
-};
+
+    setSubmitting(true);
+
+    try {
+      const user = getUserDetails();
+
+      // Use maxPrice if available, otherwise minPrice
+      let actualPrice = product.price;
+      let minPrice = extendedProduct.minPrice;
+      let maxPrice = extendedProduct.maxPrice;
+      
+      if (extendedProduct.maxPrice !== undefined && extendedProduct.maxPrice > 0) {
+        actualPrice = extendedProduct.maxPrice;
+      } else if (extendedProduct.minPrice !== undefined && extendedProduct.minPrice > 0) {
+        actualPrice = extendedProduct.minPrice;
+      }
+
+      // Get variant image from the first variant
+      let variantImage = null;
+      let variantDetails = null;
+      
+      if (product.variants && product.variants.length > 0) {
+        const firstVariant = product.variants[0] as any;
+        if (firstVariant.image_url) {
+          variantImage = firstVariant.image_url;
+        }
+        // Store all variant details
+        variantDetails = JSON.stringify(product.variants.map((v: any) => ({
+          id: v.id,
+          variant_name: v.variant_name,
+          part_code: v.part_code,
+          spec_type: v.spec_type,
+          color: v.color,
+          size: v.size,
+          price: v.price,
+          image_url: v.image_url,
+          stock: v.stock
+        })));
+      }
+
+      const actualDiscount = product.discountPercentage || 0;
+
+      const payload = {
+        user_id: userId,
+        product_id: parseInt(product.id),
+        product_name: product.name,
+        product_code: product.sku,
+        product_brand: product.brandName,
+        price: actualPrice,
+        min_price: minPrice,
+        max_price: maxPrice,
+        discount: actualDiscount,
+        quantity: quantity,
+        remarks: `Quotation requested for ${product.name} (Qty: ${quantity})`,
+        customer_name: user?.name || '',
+        customer_mobile: user?.mobile || '',
+        customer_email: user?.email || '',
+        variant_image: variantImage,
+        variant_details: variantDetails
+      };
+
+      console.log('Sending quotation payload:', payload);
+
+      const response = await fetch(`${baseurl}/api/quotations/single`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(`Quotation requested for ${quantity} item(s)!`, {
+          duration: 3000,
+          position: 'top-right',
+          style: {
+            background: '#10B981',
+            color: 'white',
+            border: 'none',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            marginTop: '70px',
+          },
+        });
+        navigate('/my-quotations');
+      } else {
+        toast.error(data.message || 'Failed to submit quotation request', {
+          duration: 3000,
+          position: 'top-right',
+          style: {
+            background: '#EF4444',
+            color: 'white',
+            border: 'none',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            marginTop: '70px',
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Error submitting quotation:', error);
+      toast.error('Failed to submit quotation request. Please try again.', {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -677,7 +720,6 @@ const handleSingleQuotation = async () => {
   }
 
   const inWishlist = isInWishlist(product.id);
-  // const inCompare = isInCompare(product.id);
 
   // Get variant spec types
   const variantSpecTypes = product.variants?.map(v => (v as any).spec_type).filter(Boolean) as string[] || [];
@@ -698,20 +740,6 @@ const handleSingleQuotation = async () => {
     }
     return `₹${product.price.toLocaleString()}`;
   };
-
-  // Get display price for original (without discount)
-  // const getDisplayOriginalPrice = () => {
-  //   if (extendedProduct.minPrice !== undefined && extendedProduct.maxPrice !== undefined) {
-  //     const min = extendedProduct.minPrice * (1 + (product.discountPercentage || 0) / 100);
-  //     const max = extendedProduct.maxPrice * (1 + (product.discountPercentage || 0) / 100);
-  //     if (min === max) {
-  //       return `₹${min.toLocaleString()}`;
-  //     }
-  //     return `₹${min.toLocaleString()} - ₹${max.toLocaleString()}`;
-  //   }
-  //   const originalPrice = product.price * (1 + (product.discountPercentage || 0) / 100);
-  //   return `₹${originalPrice.toLocaleString()}`;
-  // };
 
   // Check if product has discount
   const hasDiscount = (product.discountPercentage ?? 0) > 0;
@@ -816,7 +844,6 @@ const handleSingleQuotation = async () => {
               <span className="text-3xl font-bold text-primary">{getDisplayPrice()}</span>
               {hasDiscount && (
                 <>
-                  {/* <span className="text-lg text-muted-foreground line-through">{getDisplayOriginalPrice()}</span> */}
                   <Badge variant="destructive" className="text-sm">{product.discountPercentage}% OFF</Badge>
                 </>
               )}
@@ -826,6 +853,44 @@ const handleSingleQuotation = async () => {
               extendedProduct.minPrice !== extendedProduct.maxPrice && (
                 <p className="text-xs text-muted-foreground mt-1">Price range based on variants</p>
               )}
+          </div>
+
+          {/* Quantity Selector */}
+          <div className="flex items-center gap-4 mb-6">
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Quantity:</span>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                className="h-9 w-9 rounded-full border-gray-300 dark:border-gray-600 hover:bg-primary hover:text-white hover:border-primary transition-colors"
+                onClick={() => handleQuantityChange(quantity - 1)}
+                disabled={quantity <= 1}
+              >
+                <Minus className="w-4 h-4" />
+              </Button>
+              <span className="w-12 text-center text-base font-medium text-gray-900 dark:text-white">
+                {quantity}
+              </span>
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                className="h-9 w-9 rounded-full border-gray-300 dark:border-gray-600 hover:bg-primary hover:text-white hover:border-primary transition-colors"
+                onClick={() => handleQuantityChange(quantity + 1)}
+                disabled={quantity >= maxStock}
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+            {maxStock > 0 && (
+              <span className="text-xs text-gray-400">
+                Max: {maxStock} {maxStock > 1 ? 'items' : 'item'} available
+              </span>
+            )}
+            {maxStock === 0 && (
+              <span className="text-xs text-red-500 font-medium">Out of Stock</span>
+            )}
           </div>
 
           {/* Key specs preview - show relevant specs */}
@@ -859,7 +924,7 @@ const handleSingleQuotation = async () => {
               size="lg"
               className="flex-1 min-w-[160px]"
               onClick={handleSingleQuotation}
-              disabled={submitting}
+              disabled={submitting || maxStock === 0}
             >
               {submitting ? (
                 <>
@@ -880,14 +945,6 @@ const handleSingleQuotation = async () => {
               <Heart className={cn('w-4 h-4 mr-2', inWishlist && 'fill-current')} />
               {inWishlist ? 'Wishlisted' : 'Wishlist'}
             </Button>
-            {/* <Button
-              size="lg"
-              variant={inCompare ? 'default' : 'outline'}
-              onClick={handleCompare}
-            >
-              <GitCompare className="w-4 h-4 mr-2" />
-              {inCompare ? 'Comparing' : 'Compare'}
-            </Button> */}
           </div>
 
           <div className="flex gap-3">
@@ -911,7 +968,6 @@ const handleSingleQuotation = async () => {
         <TabsList className="w-full justify-start flex-wrap h-auto p-1 gap-1">
           <TabsTrigger value="description">Description</TabsTrigger>
           <TabsTrigger value="specifications">Specifications</TabsTrigger>
-          {/* <TabsTrigger value="features">Features</TabsTrigger> */}
           {uniqueSpecTypes.length > 0 && (
             <TabsTrigger value="spec-comparison">Spec Comparison</TabsTrigger>
           )}
@@ -944,34 +1000,6 @@ const handleSingleQuotation = async () => {
             )}
           </Card>
         </TabsContent>
-
-        {/* <TabsContent value="features" className="mt-6">
-          <Card className="p-6">
-            <h2 className="text-xl font-bold mb-6">Key Features</h2>
-            {product.features.length > 0 ? (
-              <div className="grid sm:grid-cols-2 gap-4">
-                {product.features.map((feature, idx) => (
-                  <motion.div
-                    key={idx}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center shrink-0 mt-0.5">
-                      <Check className="w-3.5 h-3.5 text-green-600" />
-                    </div>
-                    <span className="text-sm font-medium">{feature}</span>
-                  </motion.div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-8">
-                No features listed for this product.
-              </p>
-            )}
-          </Card>
-        </TabsContent> */}
 
         {uniqueSpecTypes.length > 0 && (
           <TabsContent value="spec-comparison" className="mt-6">

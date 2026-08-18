@@ -1,8 +1,7 @@
-// my-quotations.tsx - Updated to show min/max prices at top right of card
-
+// my-quotations.tsx - Updated with direct quantity editing
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Calendar, User, Mail, Phone, Package, CheckCircle, Clock, XCircle, ChevronDown, ChevronUp, Loader, Image as ImageIcon } from 'lucide-react';
+import { FileText, Calendar, User, Mail, Phone, Package, CheckCircle, Clock, XCircle, ChevronDown, ChevronUp, Loader, Image as ImageIcon, Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -53,9 +52,11 @@ interface Quotation {
 export function MyQuotations() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedQuotation, _setSelectedQuotation] = useState<Quotation | null>(null);
+  const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [expandedQuotation, setExpandedQuotation] = useState<number | null>(null);
+  const [updatingItem, setUpdatingItem] = useState<{ quotationId: number; itemId: number } | null>(null);
+  const [updatingQuantity, setUpdatingQuantity] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -115,12 +116,14 @@ export function MyQuotations() {
     });
   };
 
-  const formatCurrency = (amount: string) => {
+  const formatCurrency = (amount: string | number) => {
+    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+    if (isNaN(num)) return '₹0.00';
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
       minimumFractionDigits: 2
-    }).format(parseFloat(amount));
+    }).format(num);
   };
 
   const toggleExpand = (id: number) => {
@@ -136,23 +139,88 @@ export function MyQuotations() {
     return `${baseurl}/uploads/products/${imagePath}`;
   };
 
-  // Calculate min and max prices for a quotation
+  // Calculate min and max prices for a quotation based on quantity
   const getQuotationPriceRange = (details: QuotationDetail[]) => {
     let minPrice: number | null = null;
     let maxPrice: number | null = null;
 
     details.forEach(detail => {
       if (detail.min_price) {
-        const price = parseFloat(detail.min_price);
+        const price = parseFloat(detail.min_price) * detail.quantity;
         if (minPrice === null || price < minPrice) minPrice = price;
       }
       if (detail.max_price) {
-        const price = parseFloat(detail.max_price);
+        const price = parseFloat(detail.max_price) * detail.quantity;
         if (maxPrice === null || price > maxPrice) maxPrice = price;
       }
     });
 
     return { minPrice, maxPrice };
+  };
+
+  // Get individual item price based on quantity
+  const getItemPriceRange = (detail: QuotationDetail) => {
+    const minPrice = detail.min_price ? parseFloat(detail.min_price) * detail.quantity : null;
+    const maxPrice = detail.max_price ? parseFloat(detail.max_price) * detail.quantity : null;
+    return { minPrice, maxPrice };
+  };
+
+  // Update quantity
+  const updateQuantity = async (quotationId: number, itemId: number, newQuantity: number) => {
+    if (newQuantity < 1) {
+      toast.error('Quantity must be at least 1');
+      return;
+    }
+
+    setUpdatingItem({ quotationId, itemId });
+    setUpdatingQuantity(true);
+    
+    try {
+      const session = localStorage.getItem('userSession');
+      if (!session) {
+        toast.error('Please login');
+        return;
+      }
+
+      const user = JSON.parse(session);
+      const response = await fetch(`${baseurl}/api/quotations/update-quantity`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: user.userId,
+          quotation_id: quotationId,
+          item_id: itemId,
+          quantity: newQuantity
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success('Quantity updated successfully!');
+        // Refresh quotations
+        await fetchQuotations();
+      } else {
+        toast.error(result.message || 'Failed to update quantity');
+      }
+    } catch (error) {
+      console.error('Error updating quantity:', error);
+      toast.error('Something went wrong');
+    } finally {
+      setUpdatingItem(null);
+      setUpdatingQuantity(false);
+    }
+  };
+
+  // Calculate total for a quotation
+  const calculateQuotationTotal = (details: QuotationDetail[]) => {
+    let total = 0;
+    details.forEach(detail => {
+      total += parseFloat(detail.final_price) * detail.quantity;
+    });
+    return total;
   };
 
   if (loading) {
@@ -208,6 +276,7 @@ export function MyQuotations() {
         <div className="space-y-4">
           {quotations.map((quotation) => {
             const { minPrice, maxPrice } = getQuotationPriceRange(quotation.details);
+            const isPending = quotation.status === 'Pending';
             
             return (
               <Card key={quotation.id} className="hover:shadow-lg transition-shadow duration-300">
@@ -245,11 +314,11 @@ export function MyQuotations() {
                           <div className="text-xs text-muted-foreground">Price Range</div>
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-semibold text-blue-600">
-                              {formatCurrency(String(minPrice))}
+                              {formatCurrency(minPrice)}
                             </span>
                             <span className="text-xs text-muted-foreground">to</span>
                             <span className="text-sm font-semibold text-purple-600">
-                              {formatCurrency(String(maxPrice))}
+                              {formatCurrency(maxPrice)}
                             </span>
                           </div>
                         </div>
@@ -257,7 +326,7 @@ export function MyQuotations() {
                         <div className="text-right">
                           <div className="text-xs text-muted-foreground">Price</div>
                           <span className="text-sm font-semibold text-primary">
-                            {formatCurrency(String(minPrice))}
+                            {formatCurrency(minPrice)}
                           </span>
                         </div>
                       ) : (
@@ -268,10 +337,6 @@ export function MyQuotations() {
                           </span>
                         </div>
                       )}
-                      {/* Status Badge */}
-                      {/* <div className="mt-1">
-                        {getStatusBadge(quotation.status)}
-                      </div> */}
                     </div>
                   </div>
 
@@ -303,6 +368,9 @@ export function MyQuotations() {
                             <span className="ml-2 text-xs text-muted-foreground">
                               ({quotation.details.length} items)
                             </span>
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              Total: {formatCurrency(calculateQuotationTotal(quotation.details))}
+                            </span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -321,6 +389,8 @@ export function MyQuotations() {
                         <div className="mt-4 space-y-3 animate-in slide-in-from-top-2 duration-200">
                           {quotation.details.map((detail) => {
                             const imageUrl = getImageUrl(detail.variant_image);
+                            const { minPrice: itemMin, maxPrice: itemMax } = getItemPriceRange(detail);
+                            const isUpdating = updatingItem?.quotationId === quotation.id && updatingItem?.itemId === detail.id;
                             
                             return (
                               <div key={detail.id} className="bg-gradient-to-r from-muted/10 to-muted/5 rounded-xl p-4 border border-muted/20 hover:border-primary/30 transition-all hover:shadow-sm">
@@ -343,7 +413,7 @@ export function MyQuotations() {
                                     )}
                                   </div>
 
-                                  <div className="flex-1">
+                                  <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <h5 className="font-semibold text-sm">{detail.product_name}</h5>
                                       <Badge variant="outline" className="text-xs bg-primary/5">
@@ -356,29 +426,54 @@ export function MyQuotations() {
                                       </span>
                                       <span className="w-px h-3 bg-muted-foreground/20 hidden sm:block" />
                                       <span className="flex items-center gap-1">
-                                        <span className="font-medium">Qty:</span> {detail.quantity}
+                                        <span className="font-medium">Qty:</span>
+                                        {isPending ? (
+                                          <div className="flex items-center gap-1 ml-1">
+                                            <Button
+                                              type="button"
+                                              size="icon"
+                                              variant="outline"
+                                              className="h-7 w-7 rounded-full border-gray-300 dark:border-gray-600 hover:bg-primary hover:text-white hover:border-primary transition-colors"
+                                              onClick={() => updateQuantity(quotation.id, detail.id, detail.quantity - 1)}
+                                              disabled={isUpdating || detail.quantity <= 1}
+                                            >
+                                              <Minus className="w-3 h-3" />
+                                            </Button>
+                                            <span className="w-8 text-center text-sm font-medium text-gray-900 dark:text-white">
+                                              {isUpdating ? <Loader className="w-3 h-3 animate-spin mx-auto" /> : detail.quantity}
+                                            </span>
+                                            <Button
+                                              type="button"
+                                              size="icon"
+                                              variant="outline"
+                                              className="h-7 w-7 rounded-full border-gray-300 dark:border-gray-600 hover:bg-primary hover:text-white hover:border-primary transition-colors"
+                                              onClick={() => updateQuantity(quotation.id, detail.id, detail.quantity + 1)}
+                                              disabled={isUpdating}
+                                            >
+                                              <Plus className="w-3 h-3" />
+                                            </Button>
+                                          </div>
+                                        ) : (
+                                          <span className="font-medium ml-1">{detail.quantity}</span>
+                                        )}
                                       </span>
                                     </div>
                                   </div>
 
-                                  {/* Min/Max Price for individual product */}
+                                  {/* Min/Max Price for individual product with quantity */}
                                   <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 text-sm w-full md:w-auto">
-                                    {detail.min_price && (
+                                    {itemMin !== null && (
                                       <div className="bg-blue-50/50 rounded-lg px-3 py-1.5 text-center border border-blue-100">
                                         <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Min</p>
-                                        <p className="font-semibold text-blue-700 text-sm">{formatCurrency(detail.min_price)}</p>
+                                        <p className="font-semibold text-blue-700 text-sm">{formatCurrency(itemMin)}</p>
                                       </div>
                                     )}
-                                    {detail.max_price && (
+                                    {itemMax !== null && (
                                       <div className="bg-purple-50/50 rounded-lg px-3 py-1.5 text-center border border-purple-100">
                                         <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Max</p>
-                                        <p className="font-semibold text-purple-700 text-sm">{formatCurrency(detail.max_price)}</p>
+                                        <p className="font-semibold text-purple-700 text-sm">{formatCurrency(itemMax)}</p>
                                       </div>
                                     )}
-                                    {/* <div className="bg-primary/5 rounded-lg px-3 py-1.5 text-center border border-primary/20">
-                                      <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Final</p>
-                                      <p className="font-semibold text-primary text-sm">{formatCurrency(detail.final_price)}</p>
-                                    </div> */}
                                   </div>
                                 </div>
                               </div>
@@ -468,13 +563,13 @@ export function MyQuotations() {
                             <TableCell className="text-sm">{detail.brand}</TableCell>
                             <TableCell className="text-center">{detail.quantity}</TableCell>
                             <TableCell className="text-right text-blue-700">
-                              {detail.min_price ? formatCurrency(detail.min_price) : '-'}
+                              {detail.min_price ? formatCurrency(parseFloat(detail.min_price) * detail.quantity) : '-'}
                             </TableCell>
                             <TableCell className="text-right text-purple-700">
-                              {detail.max_price ? formatCurrency(detail.max_price) : '-'}
+                              {detail.max_price ? formatCurrency(parseFloat(detail.max_price) * detail.quantity) : '-'}
                             </TableCell>
                             <TableCell className="text-right font-semibold text-primary">
-                              {formatCurrency(detail.final_price)}
+                              {formatCurrency(parseFloat(detail.final_price) * detail.quantity)}
                             </TableCell>
                           </TableRow>
                         ))}

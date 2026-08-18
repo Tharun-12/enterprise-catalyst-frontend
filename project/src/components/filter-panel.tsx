@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 
 export interface FilterState {
   category: string | null;
+  subcategory: string | null;
   brands: string[];
   specs: Record<string, string[]>;
   search: string;
@@ -27,6 +28,7 @@ interface FilterPanelProps {
   resultCount: number;
   brands: Brand[];
   categories: Category[];
+  subcategories?: Record<string, Category[]>; // Category ID -> Subcategories mapping
   specOptions?: Record<string, string[]>;
   variantOptions?: Record<string, string[]>;
   priceRange?: { min: number; max: number };
@@ -55,11 +57,15 @@ export function FilterPanel({
   onFilterChange, 
   resultCount, 
   brands,
+  categories = [],
+  subcategories = {},
   specOptions = {},
   variantOptions = {},
   priceRange = { min: 0, max: 100000 }
 }: FilterPanelProps) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    category: true,
+    subcategory: true,
     brands: true,
     price: true,
     specifications: true,
@@ -86,6 +92,30 @@ export function FilterPanel({
 
   const toggleSection = (key: string) => {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const toggleCategory = (categoryId: string) => {
+    // If clicking the same category, deselect it
+    if (filters.category === categoryId) {
+      onFilterChange({
+        ...filters,
+        category: null,
+        subcategory: null, // Clear subcategory when category is deselected
+      });
+    } else {
+      onFilterChange({
+        ...filters,
+        category: categoryId,
+        subcategory: null, // Clear subcategory when category changes
+      });
+    }
+  };
+
+  const toggleSubcategory = (subcategoryId: string) => {
+    onFilterChange({
+      ...filters,
+      subcategory: filters.subcategory === subcategoryId ? null : subcategoryId,
+    });
   };
 
   const toggleBrand = (brandId: string) => {
@@ -132,7 +162,8 @@ export function FilterPanel({
     setLocalMinPrice('');
     setLocalMaxPrice('');
     onFilterChange({
-      category: filters.category,
+      category: null,
+      subcategory: null,
       brands: [],
       specs: {},
       search: filters.search,
@@ -145,7 +176,9 @@ export function FilterPanel({
   const hasActiveFilters = filters.brands.length > 0 || 
     Object.values(filters.specs).some((v) => v.length > 0) ||
     filters.minPrice !== undefined ||
-    filters.maxPrice !== undefined;
+    filters.maxPrice !== undefined ||
+    filters.category !== null ||
+    filters.subcategory !== null;
 
   // Get active spec sections (those that have options)
   const activeSpecSections = Object.keys(specOptions).filter(key => specOptions[key]?.length > 0);
@@ -158,6 +191,9 @@ export function FilterPanel({
       maximumFractionDigits: 0,
     }).format(amount);
   };
+
+  // Get subcategories for selected category
+  const selectedCategorySubcategories = filters.category ? subcategories[filters.category] || [] : [];
 
   return (
     <div className="bg-card border rounded-xl overflow-hidden h-full flex flex-col">
@@ -234,6 +270,66 @@ export function FilterPanel({
 
           <Separator />
 
+          {/* Category Section */}
+          {categories.length > 0 && (
+            <>
+              <Collapsible open={openSections['category'] ?? true} onOpenChange={() => toggleSection('category')}>
+                <CollapsibleTrigger className="flex items-center justify-between w-full py-2 group">
+                  <span className="font-medium text-sm">Category</span>
+                  <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', openSections['category'] ?? true ? '' : 'rotate-[-90deg]')} />
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="space-y-2 pt-1 pb-3">
+                    {categories.map((category) => (
+                      <div key={category.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`category-${category.id}`}
+                          checked={filters.category === category.id}
+                          onCheckedChange={() => toggleCategory(category.id)}
+                        />
+                        <Label htmlFor={`category-${category.id}`} className="text-sm font-normal cursor-pointer flex-1">
+                          {category.name}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
+              <Separator />
+            </>
+          )}
+
+          {/* Subcategory Section (only show if a category is selected) */}
+          {filters.category && selectedCategorySubcategories.length > 0 && (
+            <>
+              <Collapsible open={openSections['subcategory'] ?? true} onOpenChange={() => toggleSection('subcategory')}>
+                <CollapsibleTrigger className="flex items-center justify-between w-full py-2 group">
+                  <span className="font-medium text-sm">Subcategory</span>
+                  <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', openSections['subcategory'] ?? true ? '' : 'rotate-[-90deg]')} />
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="space-y-2 pt-1 pb-3">
+                    {selectedCategorySubcategories.map((subcategory) => (
+                      <div key={subcategory.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`subcategory-${subcategory.id}`}
+                          checked={filters.subcategory === subcategory.id}
+                          onCheckedChange={() => toggleSubcategory(subcategory.id)}
+                        />
+                        <Label htmlFor={`subcategory-${subcategory.id}`} className="text-sm font-normal cursor-pointer flex-1">
+                          {subcategory.name}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
+              <Separator />
+            </>
+          )}
+
           {/* Brands Section */}
           {brands.length > 0 && (
             <>
@@ -264,7 +360,7 @@ export function FilterPanel({
             </>
           )}
 
-          {/* Variants Section - Added */}
+          {/* Variants Section */}
           {activeVariantSections.length > 0 && (
             <>
               <Collapsible open={openSections['variants'] ?? true} onOpenChange={() => toggleSection('variants')}>

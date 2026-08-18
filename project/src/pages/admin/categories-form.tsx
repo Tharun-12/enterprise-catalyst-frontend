@@ -1,5 +1,5 @@
 // src/pages/admin/categories-form.tsx
-import { useState, useEffect, ChangeEvent, FormEvent, KeyboardEvent } from 'react';
+import { useState, useEffect, ChangeEvent, FormEvent, KeyboardEvent, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, X, Plus, Upload } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -55,6 +55,7 @@ export function CategoryForm() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [deleteExistingImage, setDeleteExistingImage] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState<CategoryData>({
     category_name: '',
@@ -264,8 +265,14 @@ export function CategoryForm() {
     navigate('/admin/categories');
   };
 
+  const handleUploadClick = (): void => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="w-full p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Button 
@@ -287,136 +294,138 @@ export function CategoryForm() {
         </div>
       </div>
 
-      <Card className="p-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Category Name */}
-          <div className="space-y-2">
-            <Label htmlFor="category_name" className="text-sm font-medium">
-              Category Name <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="category_name"
-              name="category_name"
-              value={formData.category_name}
-              onChange={handleChange}
-              placeholder="e.g., Artificial Intelligence"
-              className="w-full"
-              required
-              disabled={isLoading}
-            />
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description" className="text-sm font-medium">
-              Description
-            </Label>
-            <Textarea
-              id="description"
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Enter category description..."
-              className="w-full min-h-[100px]"
-              disabled={isLoading}
-            />
-          </div>
-
-          {/* Subcategories */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">
-              Subcategories
-            </Label>
-            <div className="flex gap-2">
+      <Card className="p-6 w-full">
+        <form onSubmit={handleSubmit} className="space-y-6 w-full">
+          {/* Row 1: Category Name and Subcategories */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+            <div className="space-y-2">
+              <Label htmlFor="category_name" className="text-sm font-medium">
+                Category Name <span className="text-red-500">*</span>
+              </Label>
               <Input
-                value={subcategoryInput}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setSubcategoryInput(e.target.value)}
-                onKeyDown={handleKeyPress}
-                placeholder="Add subcategory (e.g., Phones, Laptops, Cables)"
-                className="flex-1"
+                id="category_name"
+                name="category_name"
+                value={formData.category_name}
+                onChange={handleChange}
+                placeholder="e.g., Artificial Intelligence"
+                className="w-full"
+                required
                 disabled={isLoading}
               />
-              <Button 
-                type="button"
-                variant="outline" 
-                onClick={handleAddSubcategory}
-                disabled={isLoading || !subcategoryInput.trim()}
-              >
-                <Plus className="h-4 w-4 mr-1" /> Add
-              </Button>
             </div>
-            
-            {formData.subcategories.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {formData.subcategories.map((sub, index) => {
-                  const displayName = sub.subcategory_name;
-                  return (
-                    <div 
-                      key={sub.id || index}
-                      className="flex items-center gap-1 bg-blue-50 text-blue-700 rounded-full px-3 py-1"
-                    >
-                      <span className="text-sm">{displayName}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveSubcategory(index)}
-                        className="text-blue-500 hover:text-red-500 transition-colors"
-                        disabled={isLoading}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  );
-                })}
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
+                Subcategories
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  value={subcategoryInput}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setSubcategoryInput(e.target.value)}
+                  onKeyDown={handleKeyPress}
+                  placeholder="Add subcategory (e.g., Phones, Laptops, Cables)"
+                  className="flex-1"
+                  disabled={isLoading}
+                />
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  onClick={handleAddSubcategory}
+                  disabled={isLoading || !subcategoryInput.trim()}
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Add
+                </Button>
               </div>
-            )}
-            <p className="text-xs text-muted-foreground">
-              Press Enter or click Add button to add subcategories
-            </p>
+              
+              {formData.subcategories.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {formData.subcategories.map((sub, index) => {
+                    const displayName = sub.subcategory_name;
+                    return (
+                      <div 
+                        key={sub.id || index}
+                        className="flex items-center gap-1 bg-blue-50 text-blue-700 rounded-full px-3 py-1"
+                      >
+                        <span className="text-sm">{displayName}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSubcategory(index)}
+                          className="text-blue-500 hover:text-red-500 transition-colors"
+                          disabled={isLoading}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Press Enter or click Add button to add subcategories
+              </p>
+            </div>
           </div>
 
-          {/* Category Image */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Category Image</Label>
-            
-            {imagePreview ? (
-              <div className="relative inline-block">
-                <img 
-                  src={imagePreview} 
-                  alt="Category preview" 
-                  className="w-32 h-32 object-cover rounded-lg border"
-                />
-                <button
-                  type="button"
-                  onClick={handleRemoveImage}
-                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
-                  disabled={isLoading}
+          {/* Row 2: Description and Category Image */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+            <div className="space-y-2">
+              <Label htmlFor="description" className="text-sm font-medium">
+                Description
+              </Label>
+              <Textarea
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                placeholder="Enter category description..."
+                className="w-full min-h-[120px]"
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Category Image</Label>
+              
+              {imagePreview ? (
+                <div className="relative inline-block">
+                  <img 
+                    src={imagePreview} 
+                    alt="Category preview" 
+                    className="w-32 h-32 object-cover rounded-lg border"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                    disabled={isLoading}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <div 
+                  className="flex flex-col items-center justify-center w-full h-[120px] border-2 border-dashed rounded-lg cursor-pointer hover:border-gray-400 transition-colors bg-gray-50"
+                  onClick={handleUploadClick}
                 >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-4">
-                <label 
-                  className="flex items-center justify-center w-32 h-32 border-2 border-dashed rounded-lg cursor-pointer hover:border-gray-400 transition-colors"
-                >
-                  <div className="text-center">
+                  <div className="text-center pointer-events-none">
                     <Upload className="h-8 w-8 mx-auto text-gray-400" />
-                    <span className="text-xs text-gray-500">Upload Image</span>
+                    <span className="text-sm text-gray-500">Upload Image</span>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      <p>Recommended: JPG, PNG, GIF, WebP</p>
+                      <p>Max size: 5MB</p>
+                    </div>
                   </div>
                   <input
+                    ref={fileInputRef}
                     type="file"
                     accept="image/*"
                     onChange={handleImageChange}
                     className="hidden"
                     disabled={isLoading}
                   />
-                </label>
-                <div className="text-sm text-muted-foreground">
-                  <p>Recommended: JPG, PNG, GIF, WebP</p>
-                  <p>Max size: 5MB</p>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {/* Action Buttons */}

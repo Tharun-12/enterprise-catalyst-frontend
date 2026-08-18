@@ -21,6 +21,14 @@ interface ApiCategory {
   category_name: string;
   created_at: string;
   updated_at: string;
+  subcategories?: ApiSubcategory[];
+}
+
+interface ApiSubcategory {
+  id: number;
+  subcategory_name: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface ApiBrand {
@@ -50,7 +58,8 @@ interface ApiVariant {
   image_url: string;
   variant_name?: string;
   part_code?: string;
-  category?: string;
+  category?: string; // This is the category ID from the variant
+  sub_category?: string; // This is the subcategory ID from the variant
   brand?: string;
   description?: string;
   spec_type?: string;
@@ -351,6 +360,26 @@ export function ProductsPage() {
     }));
   }, [categories]);
 
+  // Build subcategories mapping for FilterPanel
+  const subcategoriesMapping = useMemo(() => {
+    const mapping: Record<string, Category[]> = {};
+    categories.forEach(c => {
+      if (c.subcategories && c.subcategories.length > 0) {
+        mapping[String(c.id)] = c.subcategories.map(sub => ({
+          id: String(sub.id),
+          name: sub.subcategory_name,
+          slug: createSlug(sub.subcategory_name),
+          icon: '',
+          description: '',
+          color: '#000000',
+          productCount: 0,
+          featured: false,
+        }));
+      }
+    });
+    return mapping;
+  }, [categories]);
+
   const transformedProducts = useMemo(() => {
     return products.map(p => transformProduct(p, categories, brands));
   }, [products, categories, brands]);
@@ -361,6 +390,7 @@ export function ProductsPage() {
 
   const [filters, setFilters] = useState<FilterState>({
     category: categorySlug,
+    subcategory: null,
     brands: [],
     specs: {},
     search: searchQuery,
@@ -373,6 +403,7 @@ export function ProductsPage() {
     setFilters((prev) => ({
       ...prev,
       category: categorySlug,
+      subcategory: null,
       search: searchQuery,
       specs: {},
       brands: [],
@@ -391,9 +422,26 @@ export function ProductsPage() {
   const filteredProducts = useMemo(() => {
     let result = transformedProducts.filter((p) => p.status === 'active');
 
+    // Filter by category - Check if ANY variant has the selected category
     if (filters.category) {
-      const cat = categories.find((c) => createSlug(c.category_name) === filters.category);
-      if (cat) result = result.filter((p) => p.categoryId === String(cat.id));
+      result = result.filter((p) => {
+        const productApi = products.find(api => String(api.id) === p.id);
+        if (!productApi) return false;
+        
+        // Check if any variant has the selected category
+        return productApi.variants?.some(v => v.category === filters.category) || false;
+      });
+    }
+
+    // Filter by subcategory - Check if ANY variant has the selected subcategory
+    if (filters.subcategory) {
+      result = result.filter((p) => {
+        const productApi = products.find(api => String(api.id) === p.id);
+        if (!productApi) return false;
+        
+        // Check if any variant has the selected subcategory
+        return productApi.variants?.some(v => v.sub_category === filters.subcategory) || false;
+      });
     }
 
     if (filters.brands.length > 0) {
@@ -533,15 +581,6 @@ export function ProductsPage() {
     return pageNumbers;
   };
 
-  // const handleCategoryChange = (slug: string | null) => {
-  //   if (slug) {
-  //     setSearchParams({ category: slug });
-  //   } else {
-  //     setSearchParams({});
-  //   }
-  //   setCurrentPage(1);
-  // };
-
   if (error) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -587,6 +626,7 @@ export function ProductsPage() {
             resultCount={filteredProducts.length}
             brands={transformedBrands}
             categories={transformedCategories}
+            subcategories={subcategoriesMapping}
             specOptions={specOptions}
             variantOptions={variantOptions}
             priceRange={priceRange}
@@ -595,7 +635,7 @@ export function ProductsPage() {
 
         {/* Main content - Right side */}
         <div className="flex-1 min-w-0">
-          {/* Toolbar - Removed pagination from here */}
+          {/* Toolbar */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
             <div className="flex items-center gap-3 flex-1 w-full sm:w-auto">
               <div className="relative flex-1 sm:max-w-xs w-full">
@@ -626,6 +666,7 @@ export function ProductsPage() {
                     resultCount={filteredProducts.length}
                     brands={transformedBrands}
                     categories={transformedCategories}
+                    subcategories={subcategoriesMapping}
                     specOptions={specOptions}
                     variantOptions={variantOptions}
                     priceRange={priceRange}
@@ -662,6 +703,7 @@ export function ProductsPage() {
                 action={<Button variant="outline" onClick={() => {
                   setFilters({ 
                     category: filters.category, 
+                    subcategory: null,
                     brands: [], 
                     specs: {}, 
                     search: '', 
