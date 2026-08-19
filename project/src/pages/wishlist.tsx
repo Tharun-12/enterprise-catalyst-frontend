@@ -373,7 +373,8 @@
 
 // src/pages/wishlist.tsx
 
-// src/pages/wishlist.tsx - Updated with correct endpoint
+// src/pages/wishlist.tsx - Updated with min/max price display
+
 import { Link, useNavigate } from 'react-router-dom';
 import { Heart, ArrowRight, Trash2, Loader2, FileText, Eye, Star, BadgeCheck, FileSpreadsheet, Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -388,13 +389,14 @@ import { cn } from '@/lib/utils';
 import axios from 'axios';
 import { baseurl } from '@/Baseurl/baseurl';
 
-// Define the API product type
+// Define the API product type - UPDATED
 interface ApiProduct {
   id: number;
   product_name: string;
   product_code: string;
   product_brand: string;
-  price: string;
+  min_price: string;  // Added
+  max_price: string;  // Added
   discount: string;
   product_description: string;
   warranty: string;
@@ -408,9 +410,18 @@ interface ApiProduct {
   variants?: Array<{
     id: number;
     product_id: number;
+    variant_name: string;
+    part_code: string;
+    category: string;
+    brand: string;
+    description: string;
+    spec_type: string;
     color_name: string;
     color_hex: string;
+    size: string;
     price: string;
+    availability: string;
+    datasheet_url: string;
     stock: number;
     image_url: string;
   }>;
@@ -425,6 +436,8 @@ interface DisplayProduct {
   shortDescription: string;
   description: string;
   price: number;
+  minPrice: number;   // Added
+  maxPrice: number;   // Added
   discount: number;
   rating: number;
   reviewCount: number;
@@ -435,8 +448,6 @@ interface DisplayProduct {
   createdAt: string;
   variants: ApiProduct['variants'];
   sku: string;
-  minPrice?: number;
-  maxPrice?: number;
   discountPercentage?: number;
   stock: number;
 }
@@ -501,15 +512,14 @@ export function WishlistPage() {
         
         const totalStock = p.variants?.reduce((sum, v) => sum + v.stock, 0) || 0;
         
-        // Calculate min and max price from variants
-        let minPrice: number | undefined;
-        let maxPrice: number | undefined;
+        // Get min and max price from the product's min_price and max_price fields
+        const minPrice = parseFloat(p.min_price) || 0;
+        const maxPrice = parseFloat(p.max_price) || 0;
+        
+        // Use the first variant price as fallback if min/max are 0
+        let fallbackPrice = 0;
         if (p.variants && p.variants.length > 0) {
-          const prices = p.variants.map(v => parseFloat(v.price)).filter(p => !isNaN(p) && isFinite(p));
-          if (prices.length > 0) {
-            minPrice = Math.min(...prices);
-            maxPrice = Math.max(...prices);
-          }
+          fallbackPrice = parseFloat(p.variants[0].price) || 0;
         }
         
         return {
@@ -520,7 +530,9 @@ export function WishlistPage() {
           categoryName: p.category_name || 'Uncategorized',
           shortDescription: p.product_description?.substring(0, 100) || '',
           description: p.product_description || '',
-          price: parseFloat(p.price) || 0,
+          price: fallbackPrice > 0 ? fallbackPrice : (minPrice > 0 ? minPrice : 0),
+          minPrice: minPrice,
+          maxPrice: maxPrice,
           discount: parseFloat(p.discount) || 0,
           rating: 4.5,
           reviewCount: 0,
@@ -533,8 +545,6 @@ export function WishlistPage() {
           sku: p.product_code,
           discountPercentage: parseFloat(p.discount) || 0,
           stock: totalStock,
-          minPrice: minPrice,
-          maxPrice: maxPrice,
         };
       });
   }, [wishlistProducts]);
@@ -763,7 +773,6 @@ export function WishlistPage() {
           discount: p.discountPercentage || 0,
         }));
 
-      // Use the correct endpoint - /api/quotations/generate-from-wishlist
       const response = await axios.post(`${baseurl}/api/quotations/generate-from-wishlist`, {
         user_id: userId,
         products: selectedProductsData,
@@ -818,7 +827,6 @@ export function WishlistPage() {
     }
   }, [selectedProducts, displayProducts, quantities, userId, fetchWishlist, navigate]);
 
-  // Handle individual product quotation
   const handleIndividualQuotation = async (productId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -914,7 +922,6 @@ export function WishlistPage() {
     }
   };
 
-  // Handle compare toggle for individual product
   const handleCompareToggle = async (productId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -955,24 +962,35 @@ export function WishlistPage() {
     }).format(price);
   };
 
-  // Get display price - show min/max range like ProductCard
+  // Get display price - show min/max range
   const getDisplayPrice = (product: DisplayProduct) => {
-    if (product.minPrice !== undefined && product.maxPrice !== undefined) {
-      const min = product.minPrice;
-      const max = product.maxPrice;
-      
-      if (min === max) {
-        return formatPrice(min);
-      }
-      return `${formatPrice(min)} - ${formatPrice(max)}`;
+    const minPrice = product.minPrice || 0;
+    const maxPrice = product.maxPrice || 0;
+    
+    // If both min and max are 0, try to use the regular price
+    if (minPrice === 0 && maxPrice === 0) {
+      return formatPrice(product.price);
     }
     
-    return formatPrice(product.price);
+    // If min and max are the same, show single price
+    if (minPrice === maxPrice) {
+      return formatPrice(minPrice);
+    }
+    
+    // Show range
+    return `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`;
   };
 
   // Check if product has discount
   const hasDiscount = (product: DisplayProduct) => {
     return (product.discountPercentage || 0) > 0;
+  };
+
+  // Check if price is a range
+  const isPriceRange = (product: DisplayProduct) => {
+    const minPrice = product.minPrice || 0;
+    const maxPrice = product.maxPrice || 0;
+    return minPrice > 0 && maxPrice > 0 && minPrice !== maxPrice;
   };
 
   if (initialLoad) {
@@ -1057,7 +1075,7 @@ export function WishlistPage() {
           const quantity = quantities[product.id] || 1;
           const discount = hasDiscount(product);
           const displayPrice = getDisplayPrice(product);
-          const isPriceRange = product.minPrice !== undefined && product.maxPrice !== undefined && product.minPrice !== product.maxPrice;
+          const priceRange = isPriceRange(product);
 
           return (
             <Card 
@@ -1153,12 +1171,12 @@ export function WishlistPage() {
                   </h3>
                 </Link>
 
-                {/* Price */}
+                {/* Price - Updated to show min/max range */}
                 <div className="mb-2 mt-1">
                   <span className="text-lg font-bold text-primary">
                     {displayPrice}
                   </span>
-                  {isPriceRange && (
+                  {priceRange && (
                     <p className="text-xs text-gray-400 mt-0.5">Price range based on variants</p>
                   )}
                 </div>
