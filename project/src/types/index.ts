@@ -38,14 +38,30 @@ export interface SpecGroup {
   fields: { key: string; label: string; value: string }[];
 }
 
+// src/types/index.ts
 export interface Variant {
   id: number;
   color_name: string;
+  color: string; // Add this for color name
   color_hex: string;
-  price: string;
+  price?: string; // Make optional
+  min_price?: string; // Add this
+  max_price?: string; // Add this
   stock: number;
   image_url: string;
+  // Additional fields
+  variant_name?: string;
+  part_code?: string;
+  category?: string;
+  sub_category?: string;
+  brand?: string;
+  description?: string;
+  spec_type?: string;
+  size?: string;
+  availability?: string;
+  datasheet_url?: string;
 }
+
 
 export interface DownloadResource {
   name: string;
@@ -63,6 +79,7 @@ export interface ProductVariant {
   image_url: string;
 }
 
+// src/types/index.ts - Update Product interface
 export interface Product {
   id: string;
   name: string;

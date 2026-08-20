@@ -1248,6 +1248,9 @@
 
 // use-app.tsx - Fixed version
 
+
+// use-app.tsx - Updated with variant_id support
+
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { WishlistLead, Inquiry, Product } from '@/types';
 import { toast } from 'sonner';
@@ -1261,7 +1264,7 @@ interface AppContextValue {
   inquiries: Inquiry[];
   loadingWishlist: boolean;
   isLoggedIn: boolean;
-  addToWishlist: (productId: string, userId?: number) => Promise<void>;
+  addToWishlist: (productId: string, userId?: number, variantId?: number) => Promise<void>;
   removeFromWishlist: (productId: string, userId?: number) => Promise<void>;
   isInWishlist: (productId: string) => boolean;
   addToCompare: (productId: string, userId?: number) => Promise<void>;
@@ -1371,8 +1374,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setCurrentUserId(null);
         setWishlist([]);
         setWishlistProducts([]);
-        // Don't clear compareList on logout - keep localStorage data
-        // setCompareList([]);
       }
     };
 
@@ -1445,9 +1446,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setIsLoggedIn(false);
     setWishlist([]);
     setWishlistProducts([]);
-    // Don't clear compareList on logout - keep localStorage data
-    // setCompareList([]);
-    // localStorage.removeItem('compareList');
   }, []);
 
   // Refresh user state - call this after login
@@ -1485,7 +1483,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const addToWishlist = useCallback(async (productId: string, userId?: number) => {
+  // Updated addToWishlist to accept variantId
+  const addToWishlist = useCallback(async (productId: string, userId?: number, variantId?: number) => {
     const uid = userId || currentUserId;
 
     if (!uid || !isLoggedIn) {
@@ -1523,6 +1522,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({
           user_id: uid,
           product_id: parseInt(productId),
+          variant_id: variantId || null,
         }),
       });
 

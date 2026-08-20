@@ -17,6 +17,13 @@ const API_URL = `${baseurl}/api`;
 interface Category {
   id: number;
   category_name: string;
+  subcategories?: Subcategory[];
+}
+
+interface Subcategory {
+  id: number;
+  subcategory_name: string;
+  category_id: number;
 }
 
 interface Brand {
@@ -24,6 +31,8 @@ interface Brand {
   brand_name: string;
   category_id?: number;
   category_name?: string;
+  sub_category_id?: number;
+  sub_category_name?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -55,6 +64,7 @@ interface ErrorResponse {
 export function AdminBrands() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [deleteTarget, setDeleteTarget] = useState<Brand | null>(null);
@@ -71,6 +81,7 @@ export function AdminBrands() {
   const [formData, setFormData] = useState({
     brand_name: '',
     category_id: '',
+    sub_category_id: '',
   });
 
   // Fetch brands and categories from API
@@ -106,6 +117,23 @@ export function AdminBrands() {
     }
   };
 
+  // Handle category change - fetch subcategories for selected category
+  const handleCategoryChange = (categoryId: string): void => {
+    setFormData((prev) => ({
+      ...prev,
+      category_id: categoryId,
+      sub_category_id: '', // Reset subcategory when category changes
+    }));
+
+    // Find selected category and its subcategories
+    const selectedCategory = categories.find(cat => String(cat.id) === categoryId);
+    if (selectedCategory && selectedCategory.subcategories) {
+      setSubcategories(selectedCategory.subcategories);
+    } else {
+      setSubcategories([]);
+    }
+  };
+
   // Filter brands based on search
   const filteredBrands = brands.filter((brand: Brand) =>
     brand.brand_name.toLowerCase().includes(search.toLowerCase())
@@ -125,7 +153,9 @@ export function AdminBrands() {
     setFormData({
       brand_name: '',
       category_id: '',
+      sub_category_id: '',
     });
+    setSubcategories([]);
     setIsModalOpen(true);
   };
 
@@ -135,7 +165,21 @@ export function AdminBrands() {
     setFormData({
       brand_name: brand.brand_name || '',
       category_id: brand.category_id ? String(brand.category_id) : '',
+      sub_category_id: brand.sub_category_id ? String(brand.sub_category_id) : '',
     });
+
+    // Load subcategories for the selected category
+    if (brand.category_id) {
+      const selectedCategory = categories.find(cat => cat.id === brand.category_id);
+      if (selectedCategory && selectedCategory.subcategories) {
+        setSubcategories(selectedCategory.subcategories);
+      } else {
+        setSubcategories([]);
+      }
+    } else {
+      setSubcategories([]);
+    }
+
     setIsModalOpen(true);
   };
 
@@ -149,11 +193,15 @@ export function AdminBrands() {
   };
 
   // Handle select change
-  const handleSelectChange = (value: string): void => {
-    setFormData((prev) => ({
-      ...prev,
-      category_id: value
-    }));
+  const handleSelectChange = (value: string, field: string): void => {
+    if (field === 'category_id') {
+      handleCategoryChange(value);
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [field]: value
+      }));
+    }
   };
 
   // Handle form submission
@@ -161,13 +209,18 @@ export function AdminBrands() {
     e.preventDefault();
     
     // Validate required fields
-    if (!formData.brand_name.trim()) {
-      toast.error('Brand name is required');
+    if (!formData.category_id || formData.category_id === 'none') {
+      toast.error('Please select a category');
       return;
     }
 
-    if (!formData.category_id || formData.category_id === 'none') {
-      toast.error('Please select a category');
+    if (!formData.sub_category_id || formData.sub_category_id === 'none') {
+      toast.error('Please select a subcategory');
+      return;
+    }
+
+    if (!formData.brand_name.trim()) {
+      toast.error('Brand name is required');
       return;
     }
 
@@ -177,6 +230,7 @@ export function AdminBrands() {
       const submitData = {
         brand_name: formData.brand_name.trim(),
         category_id: parseInt(formData.category_id),
+        sub_category_id: parseInt(formData.sub_category_id),
       };
 
       if (editingBrand) {
@@ -196,7 +250,8 @@ export function AdminBrands() {
       // Close modal and refresh data
       setIsModalOpen(false);
       await fetchBrands();
-      setFormData({ brand_name: '', category_id: '' });
+      setFormData({ brand_name: '', category_id: '', sub_category_id: '' });
+      setSubcategories([]);
       setEditingBrand(null);
 
     } catch (error) {
@@ -220,7 +275,8 @@ export function AdminBrands() {
   // Close modal
   const handleCloseModal = (): void => {
     setIsModalOpen(false);
-    setFormData({ brand_name: '', category_id: '' });
+    setFormData({ brand_name: '', category_id: '', sub_category_id: '' });
+    setSubcategories([]);
     setEditingBrand(null);
   };
 
@@ -269,7 +325,7 @@ export function AdminBrands() {
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold">Brand Management</h2>
-          <p className="text-sm text-muted-foreground">Manage brands and their categories</p>
+          <p className="text-sm text-muted-foreground">Manage brands, categories, and subcategories</p>
         </div>
         <Button onClick={handleAddBrand}>
           <Plus className="w-4 h-4 mr-1.5" /> Add Brand
@@ -304,13 +360,14 @@ export function AdminBrands() {
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">#</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Brand Name</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Category</th>
+                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sub Category</th>
                 <th className="p-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody>
               {paginatedBrands.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-muted-foreground">
+                  <td colSpan={5} className="p-8 text-center text-muted-foreground">
                     {search ? 'No brands match your search.' : 'No brands found. Click "Add Brand" to create one.'}
                   </td>
                 </tr>
@@ -325,6 +382,9 @@ export function AdminBrands() {
                     </td>
                     <td className="p-3 text-sm text-muted-foreground">
                       {brand.category_name || '—'}
+                    </td>
+                    <td className="p-3 text-sm text-muted-foreground">
+                      {brand.sub_category_name || '—'}
                     </td>
                     <td className="p-3">
                       <div className="flex items-center justify-end gap-1">
@@ -408,37 +468,20 @@ export function AdminBrands() {
               {editingBrand ? 'Edit Brand' : 'Add New Brand'}
             </DialogTitle>
             <DialogDescription className="text-gray-600">
-              {editingBrand ? 'Update brand information' : 'Create a new brand'}
+              {editingBrand ? 'Update brand information' : 'Create a new brand with category and subcategory'}
             </DialogDescription>
           </DialogHeader>
           
           <form onSubmit={handleFormSubmit} className="space-y-6 py-4">
             <div className="space-y-4">
-              {/* Brand Name */}
-              <div className="space-y-2">
-                <Label htmlFor="brand_name" className="text-sm font-medium">
-                  Brand Name <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="brand_name"
-                  name="brand_name"
-                  value={formData.brand_name}
-                  onChange={handleFormChange}
-                  placeholder="e.g., Hikvision"
-                  className="w-full"
-                  required
-                  disabled={isSubmitting}
-                />
-              </div>
-
-              {/* Category */}
+              {/* Category - First */}
               <div className="space-y-2">
                 <Label htmlFor="category_id" className="text-sm font-medium">
                   Category <span className="text-red-500">*</span>
                 </Label>
                 <Select
                   value={formData.category_id || ''}
-                  onValueChange={handleSelectChange}
+                  onValueChange={(value) => handleSelectChange(value, 'category_id')}
                   disabled={isSubmitting}
                   required
                 >
@@ -453,6 +496,58 @@ export function AdminBrands() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Sub Category - Second */}
+              <div className="space-y-2">
+                <Label htmlFor="sub_category_id" className="text-sm font-medium">
+                  Sub Category <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={formData.sub_category_id || ''}
+                  onValueChange={(value) => handleSelectChange(value, 'sub_category_id')}
+                  disabled={isSubmitting || !formData.category_id || subcategories.length === 0}
+                  required
+                >
+                  <SelectTrigger id="sub_category_id" className="w-full">
+                    <SelectValue placeholder={
+                      !formData.category_id 
+                        ? 'Select a category first' 
+                        : subcategories.length === 0 
+                          ? 'No subcategories available' 
+                          : 'Select a subcategory'
+                    } />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {subcategories.map((subcategory) => (
+                      <SelectItem key={subcategory.id} value={String(subcategory.id)}>
+                        {subcategory.subcategory_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formData.category_id && subcategories.length === 0 && (
+                  <p className="text-xs text-amber-600">
+                    No subcategories found for this category. Please add subcategories first.
+                  </p>
+                )}
+              </div>
+
+              {/* Brand Name - Third */}
+              <div className="space-y-2">
+                <Label htmlFor="brand_name" className="text-sm font-medium">
+                  Brand Name <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="brand_name"
+                  name="brand_name"
+                  value={formData.brand_name}
+                  onChange={handleFormChange}
+                  placeholder="e.g., Hikvision"
+                  className="w-full"
+                  required
+                  disabled={isSubmitting}
+                />
               </div>
             </div>
 

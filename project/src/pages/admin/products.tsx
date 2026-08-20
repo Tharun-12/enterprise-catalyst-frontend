@@ -20,12 +20,13 @@ interface Product {
   product_brand: string;
   product_description: string;
   price: string;
-  min_price: string;  // Added
-  max_price: string;  // Added
+  min_price: string;
+  max_price: string;
   warranty: string;
   created_at: string;
   updated_at: string;
   category_name: string;
+  subcategory_name: string; // Added subcategory_name
   product_details_pdf: string;
   dimensions: string;
   specifications: string;
@@ -42,10 +43,10 @@ interface Product {
   }>;
 }
 
-// FIXED: Updated Category interface to match API response
+// Updated Category interface to match API response
 interface Category {
   id: number;
-  category_name: string;  // Changed from 'name' to 'category_name'
+  category_name: string;
   created_at: string;
   updated_at: string;
 }
@@ -106,7 +107,7 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
       const response = await fetch(`${baseurl}/api/categories/`);
       const data: CategoryResponse = await response.json();
       if (data.success) {
-        console.log('Fetched categories:', data.data); // Debug log
+        console.log('Fetched categories:', data.data);
         setCategories(data.data);
       } else {
         console.error('Failed to fetch categories:', data);
@@ -250,7 +251,7 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
   // Handle page size change
   const handlePageSizeChange = (value: string): void => {
     setPageSize(Number(value));
-    setPage(1); // Reset to first page when changing page size
+    setPage(1);
   };
 
   if (loading && products.length === 0) {
@@ -341,8 +342,8 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">#</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Product</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Category</th>
+                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Sub Category</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Brand</th>
-                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Price Range</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Created</th>
                 <th className="p-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
               </tr>
@@ -379,24 +380,14 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
                       </div>
                     </td>
                     <td className="p-3 hidden md:table-cell">
-                      <Badge variant="outline" className="text-xs">{product.category_name}</Badge>
+                      <Badge variant="outline" className="text-xs">{product.category_name || 'N/A'}</Badge>
                     </td>
-                    <td className="p-3 hidden lg:table-cell text-sm">{product.product_brand}</td>
-                    <td className="p-3">
-                      <div className="flex flex-col">
-                        {/* Compact price range display */}
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm">₹{parseFloat(product.min_price || product.price).toLocaleString('en-IN')}</span>
-                          <span className="text-muted-foreground text-xs">-</span>
-                          <span className="font-medium text-sm">₹{parseFloat(product.max_price || product.price).toLocaleString('en-IN')}</span>
-                        </div>
-                        {/* {parseFloat(product.discount) > 0 && (
-                          <span className="text-xs text-green-600 font-medium">
-                            {product.discount}% OFF
-                          </span>
-                        )} */}
-                      </div>
+                    <td className="p-3 hidden md:table-cell">
+                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                        {product.subcategory_name || 'N/A'}
+                      </Badge>
                     </td>
+                    <td className="p-3 hidden lg:table-cell text-sm">{product.product_brand || 'N/A'}</td>
                     <td className="p-3 hidden lg:table-cell text-sm text-muted-foreground">
                       {new Date(product.created_at).toLocaleDateString('en-IN')}
                     </td>

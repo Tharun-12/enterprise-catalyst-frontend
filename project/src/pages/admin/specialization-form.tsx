@@ -1,289 +1,668 @@
 // src/components/admin/SpecificationsForm.tsx
-import { useState, useEffect, ChangeEvent, FormEvent } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Save, X, Plus, Trash2 } from 'lucide-react';
+
+import {
+  useState,
+  useEffect,
+  ChangeEvent,
+  FormEvent,
+} from 'react';
+
+import {
+  useNavigate,
+  useParams,
+} from 'react-router-dom';
+
+import {
+  ArrowLeft,
+  Save,
+  X,
+  Plus,
+  Trash2,
+} from 'lucide-react';
+
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
 import { toast } from 'sonner';
 import axios, { AxiosError } from 'axios';
+
 import { baseurl } from '@/Baseurl/baseurl';
 
 const API_URL = `${baseurl}/api`;
 
-// Define types
+/* =========================================================
+   TYPES
+========================================================= */
+
+interface SubCategory {
+  id: number;
+  subcategory_name: string;
+  created_at?: string;
+}
+
 interface Category {
   id: number;
   category_name: string;
+  description?: string;
+  category_image?: string;
+  created_at?: string;
+  updated_at?: string;
+  subcategories: SubCategory[];
 }
 
-interface Brand {
-  id: number;
-  brand_name: string;
-  category_id: number;
-}
-
-interface ColorBrandMapping {
-  [color: string]: string[];
+interface ProductSpecification {
+  id: string;
+  spec_name: string;
+  value: string;
 }
 
 interface SpecificationData {
   category_id: string;
+  sub_category_id: string;
   spec_name: string;
-  color_brand_mapping: ColorBrandMapping;
+  product_specifications: ProductSpecification[];
+}
+
+interface SpecificationApiData {
+  id?: number | string;
+
+  category_id?: number | string;
+  category_name?: string;
+
+  sub_category_id?: number | string | null;
+  subcategory_name?: string;
+
+  spec_name?: string;
+
+  product_specifications?: ProductSpecification[];
+
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface SpecificationResponse {
   success: boolean;
-  data: SpecificationData & { category_name?: string };
+  data: SpecificationApiData;
+  message?: string;
 }
 
 interface CategoriesResponse {
   success: boolean;
   data: Category[];
-}
-
-interface BrandsResponse {
-  success: boolean;
-  data: Brand[];
+  message?: string;
 }
 
 interface ErrorResponse {
   message?: string;
 }
 
+/* =========================================================
+   COMPONENT
+========================================================= */
+
 export function SpecificationsForm() {
   const navigate = useNavigate();
+
   const { id } = useParams<{ id: string }>();
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isEditing, setIsEditing] = useState<boolean>(false);
+
+  /* =======================================================
+     STATE
+  ======================================================= */
+
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [isEditing, setIsEditing] = useState(false);
+
   const [categories, setCategories] = useState<Category[]>([]);
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [filteredBrands, setFilteredBrands] = useState<Brand[]>([]);
-  const [isLoadingCategories, setIsLoadingCategories] = useState<boolean>(false);
-  const [_isLoadingBrands, setIsLoadingBrands] = useState<boolean>(false);
-  const [formData, setFormData] = useState<SpecificationData>({
-    category_id: '',
-    spec_name: '',
-    color_brand_mapping: {},
-  });
 
-  // Temporary inputs for adding new items
-  const [newColor, setNewColor] = useState<string>('');
-  const [selectedColorForBrand, setSelectedColorForBrand] = useState<string>('');
-  const [customBrandInput, setCustomBrandInput] = useState<string>('');
-  const [selectedBrandForColor, setSelectedBrandForColor] = useState<string>('');
+  const [isLoadingCategories, setIsLoadingCategories] =
+    useState(false);
 
-  // Load categories and brands
+  const [formData, setFormData] =
+    useState<SpecificationData>({
+      category_id: '',
+      sub_category_id: '',
+      spec_name: '',
+      product_specifications: [],
+    });
+
+  const [newSpecName, setNewSpecName] =
+    useState('');
+
+  const [newSpecValue, setNewSpecValue] =
+    useState('');
+
+  /* =======================================================
+     SELECTED CATEGORY
+  ======================================================= */
+
+  const selectedCategory = categories.find(
+    (category) =>
+      String(category.id) === formData.category_id
+  );
+
+  /* =======================================================
+     FILTERED SUBCATEGORIES
+  ======================================================= */
+
+  const filteredSubCategories: SubCategory[] =
+    selectedCategory?.subcategories || [];
+
+  /* =======================================================
+     DEBUG
+  ======================================================= */
+
   useEffect(() => {
-    fetchCategories();
-    fetchBrands();
-  }, []);
+    console.log('========== SPECIFICATION FORM DEBUG ==========');
 
-  // Load specification data if editing
+    console.log(
+      'Form Category ID:',
+      formData.category_id
+    );
+
+    console.log(
+      'Form Sub Category ID:',
+      formData.sub_category_id
+    );
+
+    console.log(
+      'Selected Category:',
+      selectedCategory
+    );
+
+    console.log(
+      'Filtered Sub Categories:',
+      filteredSubCategories
+    );
+
+    console.log(
+      'Sub Category Exists:',
+      filteredSubCategories.some(
+        (sub) =>
+          String(sub.id) ===
+          formData.sub_category_id
+      )
+    );
+
+    console.log(
+      '=============================================='
+    );
+  }, [
+    formData.category_id,
+    formData.sub_category_id,
+    categories,
+  ]);
+
+  /* =======================================================
+     LOAD DATA
+     
+     IMPORTANT:
+     1. Load categories.
+     2. Then load specification.
+     3. Convert BOTH IDs to strings.
+     4. Set form data.
+  ======================================================= */
+
   useEffect(() => {
-    if (id) {
-      fetchSpecification(id);
-    } else {
-      setIsEditing(false);
-      setFormData({
-        category_id: '',
-        spec_name: '',
-        color_brand_mapping: {},
-      });
-    }
-  }, [id]);
+    let cancelled = false;
 
-  // Filter brands when category changes
-  useEffect(() => {
-    if (formData.category_id) {
-      const filtered = brands.filter(
-        brand => brand.category_id === parseInt(formData.category_id)
-      );
-      setFilteredBrands(filtered);
-    } else {
-      setFilteredBrands([]);
-    }
-  }, [formData.category_id, brands]);
+    const loadData = async () => {
+      try {
+        setIsLoadingCategories(true);
 
-  const fetchCategories = async (): Promise<void> => {
-    try {
-      setIsLoadingCategories(true);
-      const response = await axios.get<CategoriesResponse>(`${API_URL}/categories`);
-      if (response.data.success) {
-        setCategories(response.data.data);
-      }
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-      toast.error('Failed to load categories');
-    } finally {
-      setIsLoadingCategories(false);
-    }
-  };
+        if (id) {
+          setIsLoading(true);
+        }
 
-  const fetchBrands = async (): Promise<void> => {
-    try {
-      setIsLoadingBrands(true);
-      const response = await axios.get<BrandsResponse>(`${API_URL}/brands`);
-      if (response.data.success) {
-        setBrands(response.data.data);
-      }
-    } catch (error) {
-      console.error('Error fetching brands:', error);
-      toast.error('Failed to load brands');
-    } finally {
-      setIsLoadingBrands(false);
-    }
-  };
+        /* -----------------------------------------------
+           STEP 1: GET CATEGORIES
+        ------------------------------------------------ */
 
-  const fetchSpecification = async (specId: string): Promise<void> => {
-    try {
-      setIsLoading(true);
-      const response = await axios.get<SpecificationResponse>(`${API_URL}/specifications/${specId}`);
-      
-      if (response.data.success) {
-        const spec = response.data.data;
+        const categoriesResponse =
+          await axios.get<CategoriesResponse>(
+            `${API_URL}/categories/`
+          );
+
+        if (cancelled) return;
+
+        if (!categoriesResponse.data.success) {
+          throw new Error(
+            categoriesResponse.data.message ||
+              'Failed to load categories'
+          );
+        }
+
+        const categoryData =
+          categoriesResponse.data.data || [];
+
+        console.log(
+          'CATEGORIES API:',
+          categoryData
+        );
+
+        setCategories(categoryData);
+
+        /* -----------------------------------------------
+           STEP 2: ADD MODE
+        ------------------------------------------------ */
+
+        if (!id) {
+          setIsEditing(false);
+
+          setFormData({
+            category_id: '',
+            sub_category_id: '',
+            spec_name: '',
+            product_specifications: [],
+          });
+
+          return;
+        }
+
+        /* -----------------------------------------------
+           STEP 3: EDIT MODE - GET SPECIFICATION
+        ------------------------------------------------ */
+
+        const specificationResponse =
+          await axios.get<SpecificationResponse>(
+            `${API_URL}/specifications/${id}`
+          );
+
+        if (cancelled) return;
+
+        console.log(
+          'SPECIFICATION API:',
+          specificationResponse.data
+        );
+
+        if (
+          !specificationResponse.data.success ||
+          !specificationResponse.data.data
+        ) {
+          toast.error('Specification not found');
+
+          navigate('/admin/specifications');
+
+          return;
+        }
+
+        const spec =
+          specificationResponse.data.data;
+
+        /* -----------------------------------------------
+           IMPORTANT:
+           API:
+             category_id = 21
+             sub_category_id = 6
+
+           Convert:
+             "21"
+             "6"
+
+           Radix Select values MUST be strings.
+        ------------------------------------------------ */
+
+        const categoryId =
+          spec.category_id !== undefined &&
+          spec.category_id !== null
+            ? String(spec.category_id)
+            : '';
+
+        const subCategoryId =
+          spec.sub_category_id !== undefined &&
+          spec.sub_category_id !== null
+            ? String(spec.sub_category_id)
+            : '';
+
+        console.log(
+          'API Category ID:',
+          spec.category_id
+        );
+
+        console.log(
+          'API Sub Category ID:',
+          spec.sub_category_id
+        );
+
+        console.log(
+          'Converted Category ID:',
+          categoryId
+        );
+
+        console.log(
+          'Converted Sub Category ID:',
+          subCategoryId
+        );
+
+        /* -----------------------------------------------
+           VERIFY CATEGORY
+        ------------------------------------------------ */
+
+        const matchingCategory =
+          categoryData.find(
+            (category) =>
+              String(category.id) === categoryId
+          );
+
+        console.log(
+          'MATCHING CATEGORY:',
+          matchingCategory
+        );
+
+        /* -----------------------------------------------
+           VERIFY SUBCATEGORY
+        ------------------------------------------------ */
+
+        const matchingSubCategory =
+          matchingCategory?.subcategories?.find(
+            (sub) =>
+              String(sub.id) === subCategoryId
+          );
+
+        console.log(
+          'MATCHING SUB CATEGORY:',
+          matchingSubCategory
+        );
+
+        if (!matchingCategory) {
+          console.error(
+            `Category ${categoryId} was not found in categories API`
+          );
+        }
+
+        if (
+          subCategoryId &&
+          !matchingSubCategory
+        ) {
+          console.error(
+            `Sub Category ${subCategoryId} was not found inside Category ${categoryId}`
+          );
+        }
+
+        /* -----------------------------------------------
+           STEP 4: SET COMPLETE FORM DATA
+        ------------------------------------------------ */
+
         setIsEditing(true);
+
         setFormData({
-          category_id: spec.category_id || '',
-          spec_name: spec.spec_name || '',
-          color_brand_mapping: spec.color_brand_mapping || {},
+          category_id: categoryId,
+
+          sub_category_id:
+            matchingSubCategory
+              ? subCategoryId
+              : '',
+
+          spec_name:
+            spec.spec_name || '',
+
+          product_specifications:
+            Array.isArray(
+              spec.product_specifications
+            )
+              ? spec.product_specifications
+              : [],
         });
-      } else {
-        toast.error('Specification not found');
-        navigate('/admin/specifications');
-      }
-    } catch (error) {
-      console.error('Error fetching specification:', error);
-      toast.error('Failed to load specification data');
-      navigate('/admin/specifications');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement>): void => {
+      } catch (error) {
+        if (cancelled) return;
+
+        console.error(
+          'Error loading specification form:',
+          error
+        );
+
+        if (axios.isAxiosError(error)) {
+          const axiosError =
+            error as AxiosError<ErrorResponse>;
+
+          console.error(
+            'API ERROR:',
+            axiosError.response?.data
+          );
+        }
+
+        toast.error(
+          id
+            ? 'Failed to load specification data'
+            : 'Failed to load categories'
+        );
+
+        if (id) {
+          navigate('/admin/specifications');
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+          setIsLoadingCategories(false);
+        }
+      }
+    };
+
+    loadData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, navigate]);
+
+  /* =======================================================
+     INPUT CHANGE
+  ======================================================= */
+
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement>
+  ): void => {
     const { name, value } = e.target;
-    setFormData((prev: SpecificationData) => ({
+
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
-  const handleSelectChange = (value: string): void => {
-    setFormData((prev: SpecificationData) => ({
+  /* =======================================================
+     CATEGORY CHANGE
+  ======================================================= */
+
+  const handleCategoryChange = (
+    value: string
+  ): void => {
+    console.log(
+      'Category changed:',
+      value
+    );
+
+    setFormData((prev) => ({
       ...prev,
-      category_id: value
+
+      category_id: value,
+
+      // Reset subcategory when category changes
+      sub_category_id: '',
     }));
   };
 
-  // Color management
-  const handleAddColor = (): void => {
-    if (!newColor.trim()) {
-      toast.error('Please enter a color');
+  /* =======================================================
+     SUBCATEGORY CHANGE
+  ======================================================= */
+
+  const handleSubCategoryChange = (
+    value: string
+  ): void => {
+    console.log(
+      'Sub Category changed:',
+      value
+    );
+
+    setFormData((prev) => ({
+      ...prev,
+
+      sub_category_id: value,
+    }));
+  };
+
+  /* =======================================================
+     ADD PRODUCT SPECIFICATION
+  ======================================================= */
+
+  const handleAddSpecification = (): void => {
+    const name =
+      newSpecName.trim();
+
+    const value =
+      newSpecValue.trim();
+
+    if (!name || !value) {
+      toast.error(
+        'Please enter both specification name and value'
+      );
+
       return;
     }
-    if (formData.color_brand_mapping[newColor.trim()] !== undefined) {
-      toast.error('Color already exists');
+
+    const duplicate =
+      formData.product_specifications.some(
+        (spec) =>
+          spec.spec_name.toLowerCase() ===
+          name.toLowerCase()
+      );
+
+    if (duplicate) {
+      toast.error(
+        'Specification already exists'
+      );
+
       return;
     }
-    setFormData((prev: SpecificationData) => ({
+
+    const newSpec: ProductSpecification = {
+      id: Date.now().toString(),
+      spec_name: name,
+      value,
+    };
+
+    setFormData((prev) => ({
       ...prev,
-      color_brand_mapping: {
-        ...prev.color_brand_mapping,
-        [newColor.trim()]: []
-      }
+
+      product_specifications: [
+        ...prev.product_specifications,
+        newSpec,
+      ],
     }));
-    setNewColor('');
+
+    setNewSpecName('');
+    setNewSpecValue('');
   };
 
-  const handleRemoveColor = (color: string): void => {
-    const newMapping = { ...formData.color_brand_mapping };
-    delete newMapping[color];
-    setFormData((prev: SpecificationData) => ({
-      ...prev,
-      color_brand_mapping: newMapping
-    }));
-  };
+  /* =======================================================
+     REMOVE PRODUCT SPECIFICATION
+  ======================================================= */
 
-  // Brand management for specific color
-  const handleAddBrandToColor = (): void => {
-    if (!selectedColorForBrand) {
-      toast.error('Please select a color first');
-      return;
-    }
-    
-    let brandToAdd = selectedBrandForColor;
-    
-    // If no brand selected from dropdown, try custom brand input
-    if (!brandToAdd && customBrandInput.trim()) {
-      brandToAdd = customBrandInput.trim();
-    }
-    
-    if (!brandToAdd) {
-      toast.error('Please select or enter a brand name');
-      return;
-    }
-    
-    const currentBrands = formData.color_brand_mapping[selectedColorForBrand] || [];
-    if (currentBrands.includes(brandToAdd)) {
-      toast.error('Brand already exists for this color');
-      return;
-    }
-    
-    setFormData((prev: SpecificationData) => ({
+  const handleRemoveSpecification = (
+    specificationId: string
+  ): void => {
+    setFormData((prev) => ({
       ...prev,
-      color_brand_mapping: {
-        ...prev.color_brand_mapping,
-        [selectedColorForBrand]: [...currentBrands, brandToAdd]
-      }
-    }));
-    setSelectedBrandForColor('');
-    setCustomBrandInput('');
-  };
 
-  const handleRemoveBrandFromColor = (color: string, brand: string): void => {
-    const currentBrands = formData.color_brand_mapping[color] || [];
-    setFormData((prev: SpecificationData) => ({
-      ...prev,
-      color_brand_mapping: {
-        ...prev.color_brand_mapping,
-        [color]: currentBrands.filter(b => b !== brand)
-      }
+      product_specifications:
+        prev.product_specifications.filter(
+          (spec) =>
+            spec.id !== specificationId
+        ),
     }));
   };
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
+  /* =======================================================
+     UPDATE PRODUCT SPECIFICATION
+  ======================================================= */
+
+  const handleUpdateSpecification = (
+    specificationId: string,
+    field: 'spec_name' | 'value',
+    value: string
+  ): void => {
+    setFormData((prev) => ({
+      ...prev,
+
+      product_specifications:
+        prev.product_specifications.map(
+          (spec) =>
+            spec.id === specificationId
+              ? {
+                  ...spec,
+                  [field]: value,
+                }
+              : spec
+        ),
+    }));
+  };
+
+  /* =======================================================
+     SUBMIT
+  ======================================================= */
+
+  const handleSubmit = async (
+    e: FormEvent<HTMLFormElement>
+  ): Promise<void> => {
     e.preventDefault();
-    
-    // Validate required fields
+
     if (!formData.category_id) {
-      toast.error('Please select a category');
-      return;
-    }
-    if (!formData.spec_name.trim()) {
-      toast.error('Specification name is required');
-      return;
-    }
-    
-    const colors = Object.keys(formData.color_brand_mapping);
-    if (colors.length === 0) {
-      toast.error('Please add at least one color');
+      toast.error(
+        'Please select a category'
+      );
+
       return;
     }
 
-    // Check if any color has brands
-    let hasBrands = false;
-    for (const color of colors) {
-      if (formData.color_brand_mapping[color].length > 0) {
-        hasBrands = true;
-        break;
-      }
+    if (!formData.sub_category_id) {
+      toast.error(
+        'Please select a subcategory'
+      );
+
+      return;
     }
-    if (!hasBrands) {
-      toast.error('Please add at least one brand for a color');
+
+    if (!formData.spec_name.trim()) {
+      toast.error(
+        'Specification name is required'
+      );
+
+      return;
+    }
+
+    if (
+      formData.product_specifications.length === 0
+    ) {
+      toast.error(
+        'Please add at least one product specification'
+      );
+
+      return;
+    }
+
+    const hasEmptySpecs =
+      formData.product_specifications.some(
+        (spec) =>
+          !spec.spec_name.trim() ||
+          !spec.value.trim()
+      );
+
+    if (hasEmptySpecs) {
+      toast.error(
+        'Please fill in all product specification fields'
+      );
+
       return;
     }
 
@@ -291,288 +670,511 @@ export function SpecificationsForm() {
 
     try {
       const submitData = {
-        category_id: parseInt(formData.category_id),
-        spec_name: formData.spec_name.trim(),
-        color_brand_mapping: formData.color_brand_mapping
+        category_id:
+          Number(formData.category_id),
+
+        sub_category_id:
+          Number(formData.sub_category_id),
+
+        spec_name:
+          formData.spec_name.trim(),
+
+        product_specifications:
+          formData.product_specifications,
       };
 
+      console.log(
+        'SUBMIT DATA:',
+        submitData
+      );
+
       if (isEditing) {
-        const response = await axios.put<SpecificationResponse>(`${API_URL}/specifications/${id}`, submitData);
+        const response =
+          await axios.put<SpecificationResponse>(
+            `${API_URL}/specifications/${id}`,
+            submitData
+          );
+
         if (response.data.success) {
-          toast.success('Specification updated successfully!');
+          toast.success(
+            'Specification updated successfully!'
+          );
         }
       } else {
-        const response = await axios.post<SpecificationResponse>(`${API_URL}/specifications`, submitData);
+        const response =
+          await axios.post<SpecificationResponse>(
+            `${API_URL}/specifications`,
+            submitData
+          );
+
         if (response.data.success) {
-          toast.success('Specification created successfully!');
+          toast.success(
+            'Specification created successfully!'
+          );
         }
       }
-      
+
       setTimeout(() => {
         navigate('/admin/specifications');
       }, 500);
 
     } catch (error) {
-      console.error('Error:', error);
+      console.error(
+        'Error saving specification:',
+        error
+      );
+
       if (axios.isAxiosError(error)) {
-        const axiosError = error as AxiosError<ErrorResponse>;
-        if (axiosError.response?.data?.message) {
-          toast.error(axiosError.response.data.message);
-        } else {
-          toast.error(isEditing ? 'Failed to update specification' : 'Failed to create specification');
-        }
+        const axiosError =
+          error as AxiosError<ErrorResponse>;
+
+        toast.error(
+          axiosError.response?.data?.message ||
+            (
+              isEditing
+                ? 'Failed to update specification'
+                : 'Failed to create specification'
+            )
+        );
       } else {
-        toast.error(isEditing ? 'Failed to update specification' : 'Failed to create specification');
+        toast.error(
+          isEditing
+            ? 'Failed to update specification'
+            : 'Failed to create specification'
+        );
       }
     } finally {
       setIsLoading(false);
     }
   };
 
+  /* =======================================================
+     CANCEL
+  ======================================================= */
+
   const handleCancel = (): void => {
     navigate('/admin/specifications');
   };
 
+  /* =======================================================
+     RENDER
+  ======================================================= */
+
   return (
     <div className="w-full max-w-6xl mx-auto px-4 py-6">
-      {/* Header */}
+
+      {/* =================================================
+          HEADER
+      ================================================= */}
+
       <div className="flex items-center gap-4 mb-6">
-        <Button 
-          variant="ghost" 
-          size="icon" 
+
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
           onClick={handleCancel}
           className="h-10 w-10 shrink-0 rounded-full hover:bg-gray-100"
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
+
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {isEditing ? 'Edit Specification' : 'Add New Specification'}
+            {isEditing
+              ? 'Edit Specification'
+              : 'Add New Specification'}
           </h1>
+
           <p className="text-sm text-gray-500">
-            {isEditing ? 'Update specification information' : 'Create a new product specification'}
+            {isEditing
+              ? 'Update specification information'
+              : 'Create a new product specification'}
           </p>
         </div>
+
       </div>
 
-      {/* Form */}
+      {/* =================================================
+          FORM
+      ================================================= */}
+
       <Card className="w-full border-0 shadow-sm">
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Basic Information */}
+
+        <form
+          onSubmit={handleSubmit}
+          className="p-6 space-y-6"
+        >
+
+          {/* =================================================
+              BASIC INFORMATION
+          ================================================= */}
+
           <div className="space-y-4">
-            <h3 className="text-base font-semibold text-gray-800 border-b pb-2">Basic Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="category_id" className="text-sm font-medium text-gray-700">
-                  Category <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={formData.category_id}
-                  onValueChange={handleSelectChange}
-                  disabled={isLoading || isLoadingCategories}
-                >
-                  <SelectTrigger id="category_id" className="w-full h-10 bg-white border-gray-200">
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={String(category.id)}>
-                        {category.category_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+
+            <h3 className="text-base font-semibold text-gray-800 border-b pb-2">
+              Basic Information
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+              {/* =================================================
+                  CATEGORY
+              ================================================= */}
 
               <div className="space-y-2">
-                <Label htmlFor="spec_name" className="text-sm font-medium text-gray-700">
-                  Specification Name <span className="text-red-500">*</span>
+
+                <Label
+                  htmlFor="category_id"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  Category{' '}
+                  <span className="text-red-500">
+                    *
+                  </span>
                 </Label>
+
+                <Select
+                  value={formData.category_id}
+                  onValueChange={
+                    handleCategoryChange
+                  }
+                  disabled={
+                    isLoading ||
+                    isLoadingCategories
+                  }
+                >
+
+                  <SelectTrigger
+                    id="category_id"
+                    className="w-full h-10 bg-white border-gray-200"
+                  >
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+
+                  <SelectContent>
+
+                    {categories.map(
+                      (category) => (
+                        <SelectItem
+                          key={category.id}
+                          value={String(
+                            category.id
+                          )}
+                        >
+                          {category.category_name}
+                        </SelectItem>
+                      )
+                    )}
+
+                  </SelectContent>
+
+                </Select>
+
+              </div>
+
+              {/* =================================================
+                  SUB CATEGORY
+              ================================================= */}
+
+              <div className="space-y-2">
+
+                <Label
+                  htmlFor="sub_category_id"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  Sub Category{' '}
+                  <span className="text-red-500">
+                    *
+                  </span>
+                </Label>
+
+                <Select
+                  /*
+                    IMPORTANT:
+
+                    key forces Radix Select to
+                    recreate itself when category
+                    or subcategory list changes.
+
+                    This prevents the Radix Select
+                    from keeping an old internal
+                    placeholder state.
+                  */
+                  key={`${formData.category_id}-${formData.sub_category_id}-${filteredSubCategories.length}`}
+                  value={
+                    formData.sub_category_id
+                  }
+                  onValueChange={
+                    handleSubCategoryChange
+                  }
+                  disabled={
+                    isLoading ||
+                    isLoadingCategories ||
+                    !formData.category_id ||
+                    filteredSubCategories.length === 0
+                  }
+                >
+
+                  <SelectTrigger
+                    id="sub_category_id"
+                    className="w-full h-10 bg-white border-gray-200"
+                  >
+
+                    <SelectValue
+                      placeholder={
+                        !formData.category_id
+                          ? 'Select a category first'
+                          : filteredSubCategories.length ===
+                              0
+                            ? 'No subcategories available'
+                            : 'Select a subcategory'
+                      }
+                    />
+
+                  </SelectTrigger>
+
+                  <SelectContent>
+
+                    {filteredSubCategories.map(
+                      (subCategory) => (
+                        <SelectItem
+                          key={
+                            subCategory.id
+                          }
+                          value={String(
+                            subCategory.id
+                          )}
+                        >
+                          {
+                            subCategory.subcategory_name
+                          }
+                        </SelectItem>
+                      )
+                    )}
+
+                  </SelectContent>
+
+                </Select>
+
+                {/* DEBUG INFORMATION */}
+                {/* {isEditing && (
+                  <div className="text-xs text-gray-400">
+                    Category ID:{' '}
+                    {formData.category_id || 'none'}
+                    {' | '}
+                    Sub Category ID:{' '}
+                    {
+                      formData.sub_category_id ||
+                      'none'
+                    }
+                  </div>
+                )} */}
+
+              </div>
+
+              {/* =================================================
+                  SPECIFICATION NAME
+              ================================================= */}
+
+              <div className="space-y-2">
+
+                <Label
+                  htmlFor="spec_name"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  Specification Name{' '}
+                  <span className="text-red-500">
+                    *
+                  </span>
+                </Label>
+
                 <Input
                   id="spec_name"
                   name="spec_name"
                   value={formData.spec_name}
                   onChange={handleChange}
-                  placeholder="e.g., CAT6"
+                  placeholder="e.g., CAT6 Data Cabling"
                   className="w-full h-10 bg-white border-gray-200"
                   required
                   disabled={isLoading}
                 />
+
               </div>
+
             </div>
+
           </div>
 
-          {/* Colors & Brands */}
-          <div className="space-y-4">
-            <h3 className="text-base font-semibold text-gray-800 border-b pb-2">Colors & Brands</h3>
-            
-            {/* Add Color */}
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <Input
-                  value={newColor}
-                  onChange={(e) => setNewColor(e.target.value)}
-                  placeholder="Enter color name..."
-                  className="w-full h-10 bg-white border-gray-200"
-                  disabled={isLoading}
-                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddColor())}
-                />
-              </div>
-              <Button 
-                type="button" 
-                onClick={handleAddColor}
-                disabled={isLoading || !newColor.trim()}
-                variant="outline"
-                className="h-10 px-4 border-gray-200 hover:bg-gray-50"
-              >
-                <Plus className="h-4 w-4 mr-1" /> Add Color
-              </Button>
-            </div>
+          {/* =================================================
+              PRODUCT SPECIFICATIONS
+          ================================================= */}
 
-            {/* Color Cards with Brands */}
-            <div className="space-y-4">
-              {Object.keys(formData.color_brand_mapping).length === 0 ? (
+          <div className="space-y-4">
+
+            <h3 className="text-base font-semibold text-gray-800 border-b pb-2">
+              Product Specifications
+            </h3>
+
+            {/* =================================================
+                EXISTING SPECIFICATIONS
+            ================================================= */}
+
+            <div className="space-y-2">
+
+              {formData.product_specifications
+                .length === 0 ? (
+
                 <div className="text-sm text-gray-400 bg-gray-50 rounded-lg p-4 border border-gray-200 text-center">
-                  No colors added yet. Add a color above to get started.
+                  No specifications added yet.
+                  Add a specification below.
                 </div>
+
               ) : (
-                Object.keys(formData.color_brand_mapping).map((color) => (
-                  <div
-                    key={color}
-                    className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <span 
-                          className="w-5 h-5 rounded-full border border-gray-300 shadow-sm"
-                          style={{ backgroundColor: color.toLowerCase() }}
-                        ></span>
-                        <span className="font-semibold text-gray-800">{color}</span>
-                        <span className="text-sm text-gray-500">
-                          ({formData.color_brand_mapping[color]?.length || 0} brands)
-                        </span>
+
+                formData.product_specifications.map(
+                  (spec) => (
+
+                    <div
+                      key={spec.id}
+                      className="flex items-center gap-3 bg-white border border-gray-200 rounded-lg p-3 hover:shadow-sm transition-shadow"
+                    >
+
+                      <div className="flex-1">
+
+                        <Input
+                          value={
+                            spec.spec_name
+                          }
+                          onChange={(e) =>
+                            handleUpdateSpecification(
+                              spec.id,
+                              'spec_name',
+                              e.target.value
+                            )
+                          }
+                          className="h-9 bg-white border-gray-200 text-sm"
+                          placeholder="Specification name"
+                          disabled={isLoading}
+                        />
+
                       </div>
+
+                      <div className="flex-1">
+
+                        <Input
+                          value={spec.value}
+                          onChange={(e) =>
+                            handleUpdateSpecification(
+                              spec.id,
+                              'value',
+                              e.target.value
+                            )
+                          }
+                          className="h-9 bg-white border-gray-200 text-sm"
+                          placeholder="Value"
+                          disabled={isLoading}
+                        />
+
+                      </div>
+
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleRemoveColor(color)}
-                        className="text-gray-400 hover:text-red-500"
+                        onClick={() =>
+                          handleRemoveSpecification(
+                            spec.id
+                          )
+                        }
+                        className="text-gray-400 hover:text-red-500 shrink-0"
                         disabled={isLoading}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
+
                     </div>
 
-                    {/* Brands for this color */}
-                    <div className="flex flex-wrap gap-2 mb-3 min-h-[2.5rem] items-center">
-                      {formData.color_brand_mapping[color]?.length > 0 ? (
-                        formData.color_brand_mapping[color].map((brand) => (
-                          <span
-                            key={brand}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-sm font-medium border border-blue-200"
-                          >
-                            {brand}
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveBrandFromColor(color, brand)}
-                              className="text-blue-400 hover:text-red-500 transition-colors"
-                              disabled={isLoading}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-sm text-gray-400 italic">No brands added for this color</span>
-                      )}
-                    </div>
+                  )
+                )
 
-                    {/* Add brand to this color */}
-                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                      <p className="text-xs font-medium text-gray-500 mb-2">Add brands to {color}:</p>
-                      
-                      <div className="grid grid-cols-2 gap-2">
-                        {/* Select Brand Dropdown */}
-                        <div className="flex gap-2">
-                          <div className="flex-1">
-                            <Select
-                              value={selectedColorForBrand === color ? selectedBrandForColor : ''}
-                              onValueChange={(value) => {
-                                setSelectedColorForBrand(color);
-                                setSelectedBrandForColor(value);
-                                setCustomBrandInput('');
-                              }}
-                              disabled={isLoading || !formData.category_id}
-                            >
-                              <SelectTrigger className="w-full h-9 bg-white border-gray-200 text-sm">
-                                <SelectValue placeholder="Select existing..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {filteredBrands.map((brand) => (
-                                  <SelectItem key={brand.id} value={brand.brand_name}>
-                                    {brand.brand_name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <Button
-                            type="button"
-                            onClick={() => {
-                              setSelectedColorForBrand(color);
-                              handleAddBrandToColor();
-                            }}
-                            disabled={isLoading || !selectedBrandForColor}
-                            variant="default"
-                            size="sm"
-                            className="h-9 px-3 bg-blue-600 hover:bg-blue-700 text-white whitespace-nowrap"
-                          >
-                            <Plus className="h-3.5 w-3.5 mr-1" /> Add
-                          </Button>
-                        </div>
-
-                        {/* Custom Brand Input */}
-                        <div className="flex gap-2">
-                          <div className="flex-1">
-                            <Input
-                              value={selectedColorForBrand === color ? customBrandInput : ''}
-                              onChange={(e) => {
-                                setSelectedColorForBrand(color);
-                                setCustomBrandInput(e.target.value);
-                                setSelectedBrandForColor('');
-                              }}
-                              onFocus={() => setSelectedColorForBrand(color)}
-                              placeholder="Enter custom..."
-                              className="w-full h-9 bg-white border-gray-200 text-sm"
-                              disabled={isLoading}
-                              onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddBrandToColor())}
-                            />
-                          </div>
-                          <Button
-                            type="button"
-                            onClick={() => {
-                              setSelectedColorForBrand(color);
-                              handleAddBrandToColor();
-                            }}
-                            disabled={isLoading || !customBrandInput.trim()}
-                            variant="outline"
-                            size="sm"
-                            className="h-9 px-3 border-gray-300 hover:bg-gray-100 whitespace-nowrap"
-                          >
-                            <Plus className="h-3.5 w-3.5 mr-1" /> Add
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))
               )}
+
             </div>
+
+            {/* =================================================
+                ADD SPECIFICATION
+            ================================================= */}
+
+            <div className="flex gap-3 bg-gray-50 rounded-lg p-3 border border-gray-200">
+
+              <div className="flex-1">
+
+                <Input
+                  value={newSpecName}
+                  onChange={(e) =>
+                    setNewSpecName(
+                      e.target.value
+                    )
+                  }
+                  placeholder="Specification name..."
+                  className="w-full h-9 bg-white border-gray-200 text-sm"
+                  disabled={isLoading}
+                />
+
+              </div>
+
+              <div className="flex-1">
+
+                <Input
+                  value={newSpecValue}
+                  onChange={(e) =>
+                    setNewSpecValue(
+                      e.target.value
+                    )
+                  }
+                  placeholder="Value..."
+                  className="w-full h-9 bg-white border-gray-200 text-sm"
+                  disabled={isLoading}
+                  onKeyDown={(e) => {
+                    if (
+                      e.key === 'Enter'
+                    ) {
+                      e.preventDefault();
+
+                      handleAddSpecification();
+                    }
+                  }}
+                />
+
+              </div>
+
+              <Button
+                type="button"
+                onClick={
+                  handleAddSpecification
+                }
+                disabled={
+                  isLoading ||
+                  !newSpecName.trim() ||
+                  !newSpecValue.trim()
+                }
+                className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white whitespace-nowrap"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add
+              </Button>
+
+            </div>
+
           </div>
 
-          {/* Action Buttons */}
+          {/* =================================================
+              ACTION BUTTONS
+          ================================================= */}
+
           <div className="flex gap-3 pt-4 border-t border-gray-200">
+
             <Button
               type="button"
               variant="outline"
@@ -583,20 +1185,29 @@ export function SpecificationsForm() {
               <X className="h-4 w-4 mr-2" />
               Cancel
             </Button>
-            <Button 
-              type="submit" 
+
+            <Button
+              type="submit"
               className="flex-1 h-11 bg-blue-600 hover:bg-blue-700 text-white"
               disabled={isLoading}
             >
               <Save className="h-4 w-4 mr-2" />
-              {isLoading 
-                ? (isEditing ? 'Updating...' : 'Creating...') 
-                : (isEditing ? 'Update Specification' : 'Create Specification')
-              }
+
+              {isLoading
+                ? isEditing
+                  ? 'Updating...'
+                  : 'Creating...'
+                : isEditing
+                  ? 'Update Specification'
+                  : 'Create Specification'}
             </Button>
+
           </div>
+
         </form>
+
       </Card>
+
     </div>
   );
 }

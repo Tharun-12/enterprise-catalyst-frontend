@@ -649,7 +649,7 @@
 
 // product-card.tsx
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, Eye, Star, BadgeCheck, FileSpreadsheet, Minus, Plus } from 'lucide-react';
+import { Heart, Eye, Star, BadgeCheck, FileSpreadsheet } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -657,11 +657,37 @@ import { useApp } from '@/hooks/use-app';
 import type { Product } from '@/types';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { baseurl } from '@/Baseurl/baseurl';
 
 interface ProductCardProps {
   product: Product;
+}
+
+// Define the variant type locally to avoid any
+interface VariantWithDetails {
+  id: number;
+  color_name?: string;
+  color?: string;
+  color_hex?: string;
+  price?: string | number;
+  min_price?: string | number;
+  max_price?: string | number;
+  stock: number;
+  image_url?: string;
+  variant_name?: string;
+  part_code?: string;
+  spec_type?: string;
+  size?: string;
+  availability?: string;
+  datasheet_url?: string;
+  description?: string;
+  [key: string]: any;
+}
+
+interface VariantColor {
+  color: string;
+  variantId: number;
 }
 
 export function ProductCard({ product }: ProductCardProps) {
@@ -682,7 +708,10 @@ export function ProductCard({ product }: ProductCardProps) {
   const [localWishlistState, setLocalWishlistState] = useState<boolean | null>(null);
   const [isCompareLoading, setIsCompareLoading] = useState(false);
   const [isQuotationLoading, setIsQuotationLoading] = useState(false);
-  const [quantity, setQuantity] = useState(1);
+  const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
+
+  // Quantity is always 1 - no state needed
+  const quantity = 1;
 
   const inWishlist = localWishlistState !== null ? localWishlistState : isInWishlist(product.id);
   const inCompare = isInCompare(product.id);
@@ -718,87 +747,76 @@ export function ProductCard({ product }: ProductCardProps) {
     return null;
   };
 
-  const handleQuantityChange = (newQuantity: number) => {
-    const maxStock = product.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 10;
-    if (newQuantity >= 1 && newQuantity <= maxStock) {
-      setQuantity(newQuantity);
-    } else if (newQuantity > maxStock) {
-      toast.warning(`Only ${maxStock} items available in stock`, {
-        duration: 2000,
-        position: 'top-right',
-        style: {
-          background: '#F59E0B',
-          color: 'white',
-          border: 'none',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '500',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          marginTop: '70px',
-        },
-      });
-    }
-  };
+  // Get variants with full data
+  const variants = (product.variants || []) as VariantWithDetails[];
+  const selectedVariant = variants.find(v => v.id === selectedVariantId) || variants[0] || null;
 
-  const handleWishlist = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (isLoading || loadingWishlist) return;
-    if (!isLoggedIn) {
-      toast.error('Please login to sync wishlist', {
-        duration: 3000,
-        position: 'top-right',
-        style: {
-          background: '#EF4444',
-          color: 'white',
-          border: 'none',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '500',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          marginTop: '70px',
-        },
-        action: {
-          label: 'Login',
-          onClick: () => window.location.href = '/login'
-        }
-      });
-      setTimeout(() => window.location.href = '/login', 1500);
-      return;
-    }
-    setIsLoading(true);
-    try {
-      if (inWishlist) {
-        await removeFromWishlist(product.id);
-        setLocalWishlistState(false);
-      } else {
-        await addToWishlist(product.id);
-        setLocalWishlistState(true);
+ // product-card.tsx - Updated handleWishlist to pass variant ID
+
+// Find the handleWishlist function and update it:
+
+const handleWishlist = async (e: React.MouseEvent) => {
+  e.preventDefault();
+  e.stopPropagation();
+  if (isLoading || loadingWishlist) return;
+  if (!isLoggedIn) {
+    toast.error('Please login to sync wishlist', {
+      duration: 3000,
+      position: 'top-right',
+      style: {
+        background: '#EF4444',
+        color: 'white',
+        border: 'none',
+        padding: '12px 24px',
+        borderRadius: '8px',
+        fontSize: '14px',
+        fontWeight: '500',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        marginTop: '70px',
+      },
+      action: {
+        label: 'Login',
+        onClick: () => window.location.href = '/login'
       }
-    } catch (error) {
-      console.error('Error toggling wishlist:', error);
-      setLocalWishlistState(null);
-      toast.error('Failed to update wishlist', {
-        duration: 2000,
-        position: 'top-right',
-        style: {
-          background: '#EF4444',
-          color: 'white',
-          border: 'none',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '500',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          marginTop: '70px',
-        },
-      });
-    } finally {
-      setIsLoading(false);
+    });
+    setTimeout(() => window.location.href = '/login', 1500);
+    return;
+  }
+  setIsLoading(true);
+  try {
+    // Get the selected variant ID
+    const variantId = selectedVariant?.id;
+    if (inWishlist) {
+      await removeFromWishlist(product.id);
+      setLocalWishlistState(false);
+    } else {
+      // Pass the selected variant ID when adding
+      await addToWishlist(product.id, undefined, variantId);
+      setLocalWishlistState(true);
     }
-  };
+  } catch (error) {
+    console.error('Error toggling wishlist:', error);
+    setLocalWishlistState(null);
+    toast.error('Failed to update wishlist', {
+      duration: 2000,
+      position: 'top-right',
+      style: {
+        background: '#EF4444',
+        color: 'white',
+        border: 'none',
+        padding: '12px 24px',
+        borderRadius: '8px',
+        fontSize: '14px',
+        fontWeight: '500',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        marginTop: '70px',
+      },
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   const toggleCompare = async (): Promise<boolean> => {
     if (isCompareLoading) return false;
@@ -900,22 +918,34 @@ export function ProductCard({ product }: ProductCardProps) {
 
     try {
       const user = getUserDetails();
+      
       let actualPrice = product.price;
       let minPrice = product.minPrice;
       let maxPrice = product.maxPrice;
       
-      if (product.maxPrice !== undefined && product.maxPrice !== null && product.maxPrice > 0) {
-        actualPrice = product.maxPrice;
-      } else if (product.minPrice !== undefined && product.minPrice !== null && product.minPrice > 0) {
-        actualPrice = product.minPrice;
+      if (selectedVariant) {
+        const selectedMin = Number(selectedVariant.min_price);
+        const selectedMax = Number(selectedVariant.max_price);
+        const selectedPrice = Number(selectedVariant.price);
+        
+        if (Number.isFinite(selectedMax) && selectedMax > 0) {
+          actualPrice = selectedMax;
+        } else if (Number.isFinite(selectedMin) && selectedMin > 0) {
+          actualPrice = selectedMin;
+        } else if (Number.isFinite(selectedPrice) && selectedPrice > 0) {
+          actualPrice = selectedPrice;
+        }
+        
+        minPrice = Number.isFinite(selectedMin) ? selectedMin : minPrice;
+        maxPrice = Number.isFinite(selectedMax) ? selectedMax : maxPrice;
       }
 
       let variantImage = null;
       let variantDetails = null;
-      if (product.variants && product.variants.length > 0) {
-        const firstVariant = product.variants[0] as any;
-        if (firstVariant.image_url) variantImage = firstVariant.image_url;
-        variantDetails = JSON.stringify(product.variants.map((v: any) => ({
+      
+      if (selectedVariant) {
+        if (selectedVariant.image_url) variantImage = selectedVariant.image_url;
+        variantDetails = JSON.stringify(variants.map((v: VariantWithDetails) => ({
           id: v.id,
           variant_name: v.variant_name || v.color_name || 'Default',
           part_code: v.part_code || '',
@@ -939,7 +969,7 @@ export function ProductCard({ product }: ProductCardProps) {
         min_price: minPrice,
         max_price: maxPrice,
         discount: actualDiscount,
-        quantity: quantity,
+        quantity: quantity, // Always 1
         remarks: `Quotation requested for ${product.name} (Qty: ${quantity})`,
         customer_name: user?.name || '',
         customer_mobile: user?.mobile || '',
@@ -1011,7 +1041,7 @@ export function ProductCard({ product }: ProductCardProps) {
     }
   };
 
-  const formatPrice = (price: number) => {
+  const formatPrice = (price: number): string => {
     if (isNaN(price) || !isFinite(price)) return '₹0';
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -1021,42 +1051,113 @@ export function ProductCard({ product }: ProductCardProps) {
     }).format(price);
   };
 
-  // ---- FIXED: always use minPrice and maxPrice if they exist and are valid numbers ----
+  // Get color for dot
+  const getColorHex = (colorName: string): string => {
+    const colorMap: Record<string, string> = {
+      'black': '#000000',
+      'white': '#FFFFFF',
+      'blue': '#2563EB',
+      'red': '#DC2626',
+      'green': '#16A34A',
+      'yellow': '#EAB308',
+      'purple': '#9333EA',
+      'pink': '#EC4899',
+      'orange': '#EA580C',
+      'gray': '#6B7280',
+      'brown': '#92400E',
+      'gold': '#D4AF37',
+      'silver': '#C0C0C0'
+    };
+    return colorMap[colorName.toLowerCase()] || '#CCCCCC';
+  };
+
+  // Get unique colors from variants - Only colors, no prices
+  const variantColors = useMemo((): VariantColor[] => {
+    if (!variants || variants.length === 0) return [];
+
+    const colorMap = new Map<string, VariantColor>();
+    
+    variants.forEach((variant: VariantWithDetails) => {
+      const color = variant.color || variant.color_name || 'Default';
+      
+      if (!colorMap.has(color)) {
+        colorMap.set(color, {
+          color: color,
+          variantId: variant.id
+        });
+      }
+    });
+
+    return Array.from(colorMap.values());
+  }, [variants]);
+
+  // Get display price from selected variant or product
   const getDisplayPrice = (): string => {
-    // 1. Use product-level min/max if available
-    if (product.minPrice != null && product.maxPrice != null) {
+    if (selectedVariant) {
+      const minPrice = Number(selectedVariant.min_price);
+      const maxPrice = Number(selectedVariant.max_price);
+      const price = Number(selectedVariant.price);
+      
+      if (Number.isFinite(minPrice) && Number.isFinite(maxPrice) && minPrice > 0 && maxPrice > 0) {
+        if (minPrice === maxPrice) {
+          return formatPrice(minPrice);
+        }
+        return `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`;
+      }
+      
+      if (Number.isFinite(price) && price > 0) {
+        return formatPrice(price);
+      }
+    }
+    
+    if (product.minPrice !== undefined && product.maxPrice !== undefined) {
       const min = Number(product.minPrice);
       const max = Number(product.maxPrice);
-      if (!isNaN(min) && !isNaN(max)) {
-        if (min === max) return formatPrice(min);
+      if (Number.isFinite(min) && Number.isFinite(max) && min > 0 && max > 0) {
+        if (min === max) {
+          return formatPrice(min);
+        }
         return `${formatPrice(min)} - ${formatPrice(max)}`;
       }
     }
-    // 2. Fallback to variant prices
-    if (product.variants && product.variants.length > 0) {
-      const prices = product.variants
-        .map(v => parseFloat(v.price))
-        .filter(p => !isNaN(p) && isFinite(p));
-      if (prices.length > 0) {
-        const min = Math.min(...prices);
-        const max = Math.max(...prices);
-        if (min === max) return formatPrice(min);
-        return `${formatPrice(min)} - ${formatPrice(max)}`;
-      }
-    }
-    // 3. Final fallback to product.price
-    if (product.price && !isNaN(product.price) && isFinite(product.price)) {
+    
+    if (product.price && Number.isFinite(product.price) && product.price > 0) {
       return formatPrice(product.price);
     }
+    
     return 'Price on request';
   };
 
-  const hasDiscount = (product.discountPercentage ?? 0) > 0;
-  const discountedPrice = hasDiscount && product.price ? product.price * (1 - (product.discountPercentage ?? 0) / 100) : null;
-  const stock = product.stock ?? 0;
-  const maxStock = product.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 10;
+  // Get min/max for discount
+  const getMinMaxForDiscount = (): { min: number; max: number } => {
+    if (selectedVariant) {
+      const min = Number(selectedVariant.min_price);
+      const max = Number(selectedVariant.max_price);
+      const price = Number(selectedVariant.price);
+      
+      if (Number.isFinite(min) && min > 0) {
+        return { min, max: Number.isFinite(max) && max > 0 ? max : min };
+      }
+      if (Number.isFinite(price) && price > 0) {
+        return { min: price, max: price };
+      }
+    }
+    
+    if (product.minPrice && product.maxPrice) {
+      return { min: Number(product.minPrice), max: Number(product.maxPrice) };
+    }
+    
+    return { min: product.price, max: product.price };
+  };
 
-  const showPriceRange = product.minPrice != null && product.maxPrice != null && product.minPrice !== product.maxPrice;
+  const hasDiscount = (product.discountPercentage ?? 0) > 0;
+  const stock = product.stock ?? 0;
+  const hasMultipleVariants = variantColors.length > 1;
+
+  // Handle variant selection
+  const handleVariantSelect = (variantId: number) => {
+    setSelectedVariantId(variantId);
+  };
 
   return (
     <Card className="group relative overflow-hidden border border-gray-200 dark:border-gray-800 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 flex flex-col bg-white dark:bg-gray-900 rounded-2xl">
@@ -1105,7 +1206,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
       <Link to={`/products/${product.slug}`} className="block relative aspect-square overflow-hidden bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-t-2xl">
         <img
-          src={product.gallery[0]}
+          src={selectedVariant?.image_url ? `${baseurl}${selectedVariant.image_url}` : product.gallery[0]}
           alt={product.name}
           loading="lazy"
           className="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500"
@@ -1135,14 +1236,40 @@ export function ProductCard({ product }: ProductCardProps) {
           </h3>
         </Link>
 
-        {/* Price Section - FIXED to always show range if min/max exist */}
+        {/* Color Dots - Only dots, no prices */}
+        {variantColors.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 mb-2">
+            {variantColors.map((vc: VariantColor) => (
+              <button
+                key={vc.variantId}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleVariantSelect(vc.variantId);
+                }}
+                className={cn(
+                  'w-5 h-5 rounded-full border-2 transition-all duration-200',
+                  selectedVariant?.id === vc.variantId 
+                    ? 'ring-2 ring-primary ring-offset-1 border-primary' 
+                    : 'hover:scale-110 hover:shadow-md'
+                )}
+                style={{ 
+                  backgroundColor: getColorHex(vc.color),
+                  borderColor: vc.color.toLowerCase() === 'white' ? '#E5E7EB' : 'rgba(0,0,0,0.1)'
+                }}
+                title={vc.color}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Price Section */}
         <div className="mb-2 mt-1">
-          {hasDiscount && discountedPrice ? (
+          {hasDiscount ? (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-lg font-bold text-primary">
-                {formatPrice(discountedPrice)}
-              </span>
-              <span className="text-sm text-gray-400 line-through">
+              {/* <span className="text-lg font-bold text-primary">
+                {formatPrice(getMinMaxForDiscount().min * (1 - (product.discountPercentage ?? 0) / 100))}
+              </span> */}
+              <span className="text-sm text-gray-400">
                 {getDisplayPrice()}
               </span>
             </div>
@@ -1151,8 +1278,8 @@ export function ProductCard({ product }: ProductCardProps) {
               {getDisplayPrice()}
             </span>
           )}
-          {showPriceRange && (
-            <p className="text-xs text-gray-400 mt-0.5">Price range based on variants</p>
+          {hasMultipleVariants && (
+            <p className="text-xs text-gray-400 mt-0.5">Click color dot to see variant price</p>
           )}
         </div>
 
@@ -1180,40 +1307,12 @@ export function ProductCard({ product }: ProductCardProps) {
           )}
         </div>
 
-        {/* Quantity Selector */}
-        <div className="flex items-center gap-2 mb-3">
+        {/* Quantity - Fixed to 1, just showing it's for 1 item */}
+        {/* <div className="flex items-center gap-2 mb-3">
           <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Qty:</span>
-          <div className="flex items-center gap-1">
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              className="h-7 w-7 rounded-full border-gray-300 dark:border-gray-600 hover:bg-primary hover:text-white hover:border-primary transition-colors"
-              onClick={() => handleQuantityChange(quantity - 1)}
-              disabled={quantity <= 1}
-            >
-              <Minus className="w-3 h-3" />
-            </Button>
-            <span className="w-8 text-center text-sm font-medium text-gray-900 dark:text-white">
-              {quantity}
-            </span>
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              className="h-7 w-7 rounded-full border-gray-300 dark:border-gray-600 hover:bg-primary hover:text-white hover:border-primary transition-colors"
-              onClick={() => handleQuantityChange(quantity + 1)}
-              disabled={quantity >= maxStock}
-            >
-              <Plus className="w-3 h-3" />
-            </Button>
-          </div>
-          {maxStock > 0 && (
-            <span className="text-[10px] text-gray-400 ml-1">
-              Max: {maxStock}
-            </span>
-          )}
-        </div>
+          <span className="text-sm font-semibold text-gray-900 dark:text-white">1</span>
+          <span className="text-[10px] text-gray-400 ml-1">(Fixed quantity for quotation)</span>
+        </div> */}
 
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">

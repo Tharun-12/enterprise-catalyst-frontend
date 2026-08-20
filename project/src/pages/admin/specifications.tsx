@@ -1,7 +1,7 @@
 // src/components/admin/AdminSpecifications.tsx
 import { useState, useEffect, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit, Trash2, Loader2, Search, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, Search, ChevronLeft, ChevronRight, Eye, Layers, Tag, FolderTree } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,18 +13,21 @@ import { baseurl } from '@/Baseurl/baseurl';
 
 const API_URL = `${baseurl}/api`;
 
-// Define types
-interface Category {
-  id: number;
-  category_name: string;
+// Define types based on actual API response
+interface ProductSpecification {
+  id: string;
+  spec_name: string;
+  value: string;
 }
 
 interface Specification {
   id: string;
   category_id: number;
   category_name?: string;
+  sub_category_id: number;
+  subcategory_name?: string;
   spec_name: string;
-  color_brand_mapping: { [key: string]: string[] };
+  product_specifications: ProductSpecification[];
   created_at?: string;
   updated_at?: string;
 }
@@ -37,6 +40,11 @@ interface SpecificationsResponse {
 interface CategoriesResponse {
   success: boolean;
   data: Category[];
+}
+
+interface Category {
+  id: number;
+  category_name: string;
 }
 
 interface DeleteResponse {
@@ -62,12 +70,11 @@ export function AdminSpecifications() {
   useEffect(() => {
     fetchSpecifications();
     fetchCategories();
-  }, [page, pageSize]);
+  }, []);
 
   const fetchSpecifications = async (): Promise<void> => {
     try {
       setIsLoading(true);
-      // Use /specifications endpoint
       const response = await axios.get<SpecificationsResponse>(`${API_URL}/specifications`);
       if (response.data.success) {
         setSpecifications(response.data.data);
@@ -95,7 +102,8 @@ export function AdminSpecifications() {
   // Filter specifications based on search
   const filteredSpecs = specifications.filter((spec: Specification) =>
     spec.spec_name.toLowerCase().includes(search.toLowerCase()) ||
-    (spec.category_name && spec.category_name.toLowerCase().includes(search.toLowerCase()))
+    (spec.category_name && spec.category_name.toLowerCase().includes(search.toLowerCase())) ||
+    (spec.subcategory_name && spec.subcategory_name.toLowerCase().includes(search.toLowerCase()))
   );
 
   // Paginate filtered specifications
@@ -118,7 +126,7 @@ export function AdminSpecifications() {
 
   const handleDelete = async (): Promise<void> => {
     if (!deleteTarget) return;
-    
+
     try {
       setIsDeleting(true);
       const response = await axios.delete<DeleteResponse>(`${API_URL}/specifications/${deleteTarget.id}`);
@@ -165,7 +173,7 @@ export function AdminSpecifications() {
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold">Specifications Management</h2>
-          <p className="text-sm text-muted-foreground">Manage product specifications, colors, and brands</p>
+          <p className="text-sm text-muted-foreground">Manage product specifications and their values</p>
         </div>
         <Button onClick={handleAddSpec}>
           <Plus className="w-4 h-4 mr-1.5" /> Add Specification
@@ -176,14 +184,14 @@ export function AdminSpecifications() {
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div className="relative w-full sm:w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search specifications..." 
-            className="pl-9 h-9" 
-            value={search} 
+          <Input
+            placeholder="Search specifications..."
+            className="pl-9 h-9"
+            value={search}
             onChange={(e: ChangeEvent<HTMLInputElement>) => {
               setSearch(e.target.value);
               setPage(1);
-            }} 
+            }}
           />
         </div>
         <div className="text-sm text-muted-foreground">
@@ -199,8 +207,8 @@ export function AdminSpecifications() {
               <tr>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">#</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Category</th>
+                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sub Category</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Spec Name</th>
-                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Colors & Brands</th>
                 <th className="p-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
@@ -218,54 +226,38 @@ export function AdminSpecifications() {
                       {(page - 1) * pageSize + index + 1}
                     </td>
                     <td className="p-3">
-                      <span className="text-sm">{spec.category_name || '—'}</span>
+                      <span className="text-sm font-medium">{spec.category_name || '—'}</span>
                     </td>
                     <td className="p-3">
-                      <span className="font-medium">{spec.spec_name}</span>
+                      <span className="text-sm">{spec.subcategory_name || '—'}</span>
                     </td>
-                    <td className="p-3 hidden lg:table-cell">
-                      <div className="flex flex-wrap gap-1">
-                        {spec.color_brand_mapping && Object.keys(spec.color_brand_mapping).length > 0 ? (
-                          Object.keys(spec.color_brand_mapping).slice(0, 3).map((color, idx) => (
-                            <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-gray-100">
-                              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color.toLowerCase() }}></span>
-                              {color} ({spec.color_brand_mapping[color]?.length || 0})
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-sm text-muted-foreground">—</span>
-                        )}
-                        {spec.color_brand_mapping && Object.keys(spec.color_brand_mapping).length > 3 && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100">
-                            +{Object.keys(spec.color_brand_mapping).length - 3}
-                          </span>
-                        )}
-                      </div>
+                    <td className="p-3">
+                      <span className="font-semibold text-sm">{spec.spec_name}</span>
                     </td>
                     <td className="p-3">
                       <div className="flex items-center justify-end gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
                           onClick={() => handleViewSpec(spec)}
                           aria-label={`View ${spec.spec_name}`}
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
                           onClick={() => handleEditSpec(spec)}
                           aria-label={`Edit ${spec.spec_name}`}
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 text-destructive hover:text-destructive" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
                           onClick={() => setDeleteTarget(spec)}
                           aria-label={`Delete ${spec.spec_name}`}
                         >
@@ -297,25 +289,27 @@ export function AdminSpecifications() {
                     <SelectItem value="5">5</SelectItem>
                     <SelectItem value="10">10</SelectItem>
                     <SelectItem value="15">15</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
                   </SelectContent>
                 </Select>
                 <span className="text-sm text-muted-foreground">entries</span>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                disabled={page === 1} 
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 1}
                 onClick={() => setPage(page - 1)}
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
               <span className="text-sm">Page {page} of {totalPages || 1}</span>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                disabled={page === totalPages || totalPages === 0} 
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === totalPages || totalPages === 0}
                 onClick={() => setPage(page + 1)}
               >
                 <ChevronRight className="w-4 h-4" />
@@ -331,22 +325,22 @@ export function AdminSpecifications() {
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-gray-900">Delete Specification</DialogTitle>
             <DialogDescription className="text-gray-600">
-              Are you sure you want to delete "<span className="font-semibold text-gray-900">{deleteTarget?.spec_name}</span>"? 
+              Are you sure you want to delete "<span className="font-semibold text-gray-900">{deleteTarget?.spec_name}</span>"?
               This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-3 pt-4">
-            <Button 
-              variant="outline" 
-              className="flex-1 border-gray-300 hover:bg-gray-50" 
+            <Button
+              variant="outline"
+              className="flex-1 border-gray-300 hover:bg-gray-50"
               onClick={() => setDeleteTarget(null)}
               disabled={isDeleting}
             >
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
-              className="flex-1 bg-red-600 hover:bg-red-700" 
+            <Button
+              variant="destructive"
+              className="flex-1 bg-red-600 hover:bg-red-700"
               onClick={handleDelete}
               disabled={isDeleting}
             >
@@ -365,62 +359,109 @@ export function AdminSpecifications() {
 
       {/* View Specification Dialog */}
       <Dialog open={!!viewingSpec} onOpenChange={(v: boolean) => !v && setViewingSpec(null)}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold text-gray-900">
-              Specification Details
-            </DialogTitle>
-            <DialogDescription className="text-gray-600">
-              Complete details for {viewingSpec?.spec_name}
-            </DialogDescription>
+        <DialogContent className="sm:max-w-[640px] p-0 gap-0 overflow-hidden max-h-[85vh] flex flex-col">
+          {/* Header */}
+          <DialogHeader className="px-6 py-5 border-b bg-gradient-to-br from-blue-50 to-white shrink-0">
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
+                <Layers className="w-5 h-5 text-white" />
+              </div>
+              <div className="min-w-0">
+                <DialogTitle className="text-lg font-semibold text-gray-900 truncate">
+                  {viewingSpec?.spec_name || 'Specification Details'}
+                </DialogTitle>
+                <DialogDescription className="text-sm text-gray-500">
+                  Complete specification details and values
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm font-medium text-gray-500">Category</p>
-                <p className="text-sm text-gray-900 mt-1">{viewingSpec?.category_name || '—'}</p>
+
+          {/* Scrollable body */}
+          <div className="overflow-y-auto px-6 py-5 space-y-5">
+            {/* Meta info */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 mb-1">
+                  <FolderTree className="w-3.5 h-3.5" />
+                  Category
+                </div>
+                <p className="text-sm font-semibold text-gray-900 truncate">{viewingSpec?.category_name || '—'}</p>
               </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Specification Name</p>
-                <p className="text-sm text-gray-900 mt-1">{viewingSpec?.spec_name || '—'}</p>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 mb-1">
+                  <Tag className="w-3.5 h-3.5" />
+                  Sub Category
+                </div>
+                <p className="text-sm font-semibold text-gray-900 truncate">{viewingSpec?.subcategory_name || '—'}</p>
               </div>
-              <div className="col-span-2">
-                <p className="text-sm font-medium text-gray-500">Colors & Brands</p>
-                <div className="mt-2 space-y-2">
-                  {viewingSpec?.color_brand_mapping && Object.keys(viewingSpec.color_brand_mapping).length > 0 ? (
-                    Object.keys(viewingSpec.color_brand_mapping).map((color) => (
-                      <div key={color} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span 
-                            className="w-4 h-4 rounded-full border border-gray-300"
-                            style={{ backgroundColor: color.toLowerCase() }}
-                          ></span>
-                          <span className="font-medium text-sm">{color}</span>
-                          <span className="text-xs text-gray-500">
-                            ({viewingSpec.color_brand_mapping[color]?.length || 0} brands)
-                          </span>
+            </div>
+
+            {/* Product Specifications - grid based, guaranteed side-by-side */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-semibold text-gray-800">Product Specifications</p>
+                {viewingSpec?.product_specifications && viewingSpec.product_specifications.length > 0 && (
+                  <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
+                    {viewingSpec.product_specifications.length}
+                  </span>
+                )}
+              </div>
+
+              {viewingSpec?.product_specifications && viewingSpec.product_specifications.length > 0 ? (
+                <div className="rounded-lg border border-gray-200 overflow-hidden">
+                  {/* Column headers */}
+                  <div className="grid grid-cols-2 bg-gray-100">
+                    <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      Specification
+                    </div>
+                    <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide border-l border-gray-200">
+                      Value
+                    </div>
+                  </div>
+                  {/* Rows */}
+                  <div className="divide-y divide-gray-200">
+                    {viewingSpec.product_specifications.map((ps, idx) => (
+                      <div
+                        key={ps.id || idx}
+                        className={`grid grid-cols-2 ${idx % 2 === 1 ? 'bg-gray-50/60' : 'bg-white'} hover:bg-blue-50/40 transition-colors`}
+                      >
+                        <div className="px-4 py-2.5 text-sm font-medium text-gray-700 break-words">
+                          {ps.spec_name}
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          {viewingSpec.color_brand_mapping[color]?.length > 0 ? (
-                            viewingSpec.color_brand_mapping[color].map((brand, idx) => (
-                              <span key={idx} className="inline-flex px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium border border-blue-200">
-                                {brand}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-xs text-gray-400 italic">No brands</span>
-                          )}
+                        <div className="px-4 py-2.5 text-sm text-gray-600 break-words border-l border-gray-200">
+                          {ps.value}
                         </div>
                       </div>
-                    ))
-                  ) : (
-                    <span className="text-sm text-gray-500">No colors or brands configured</span>
-                  )}
+                    ))}
+                  </div>
                 </div>
+              ) : (
+                <div className="text-sm text-gray-400 bg-gray-50 rounded-lg p-4 border border-dashed border-gray-200 text-center">
+                  No product specifications configured
+                </div>
+              )}
+            </div>
+
+            {/* Timestamps */}
+            <div className="grid grid-cols-2 gap-4 pt-3 border-t border-gray-100">
+              <div>
+                <p className="text-xs font-medium text-gray-400">Created At</p>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  {viewingSpec?.created_at ? new Date(viewingSpec.created_at).toLocaleString() : '—'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-400">Updated At</p>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  {viewingSpec?.updated_at ? new Date(viewingSpec.updated_at).toLocaleString() : '—'}
+                </p>
               </div>
             </div>
           </div>
-          <div className="flex justify-end pt-4 border-t">
+
+          {/* Footer */}
+          <div className="flex justify-end px-6 py-4 border-t bg-white shrink-0">
             <Button onClick={() => setViewingSpec(null)}>
               Close
             </Button>

@@ -14,12 +14,15 @@ interface Variant {
   variant_name?: string;
   part_code?: string;
   category?: string;
+  sub_category?: string;
   brand?: string;
   description?: string;
   spec_type?: string;
   color?: string;
   size?: string;
   price: string;
+  min_price?: string;
+  max_price?: string;
   availability?: string;
   datasheet_url?: string;
   image_url: string;
@@ -42,9 +45,10 @@ interface Product {
   created_at: string;
   updated_at: string;
   category_name: string;
+  subcategory_name: string; // Added subcategory_name
   product_details_pdf: string;
   dimensions: string;
-  specifications: string;
+  specifications: Record<string, string> | string; // Changed to accept object or string
   weight: string;
   discount: string;
   product_series?: string;
@@ -145,36 +149,48 @@ export function ProductView() {
     return `${value}${suffix}`;
   };
 
-  // Get all specification fields
+  // Get all specification fields from the specifications object
   const getSpecifications = (product: Product): Array<{ label: string; value: string }> => {
     const specs = [];
     
-    if (hasValidValue(product.product_series)) {
-      specs.push({ label: 'Product Series', value: product.product_series! });
+    // Check if specifications is an object
+    if (product.specifications && typeof product.specifications === 'object') {
+      const specObj = product.specifications as Record<string, string>;
+      for (const [key, value] of Object.entries(specObj)) {
+        if (hasValidValue(value)) {
+          specs.push({ label: key, value: value });
+        }
+      }
+    } else if (typeof product.specifications === 'string' && hasValidValue(product.specifications)) {
+      specs.push({ label: 'Additional Specifications', value: product.specifications });
     }
-    if (hasValidValue(product.product_type)) {
-      specs.push({ label: 'Product Type', value: product.product_type! });
-    }
-    if (hasValidValue(product.conductor_type)) {
-      specs.push({ label: 'Conductor Type', value: product.conductor_type! });
-    }
-    if (hasValidValue(product.cable_od)) {
-      specs.push({ label: 'Cable OD', value: product.cable_od! });
-    }
-    if (hasValidValue(product.jacket_material)) {
-      specs.push({ label: 'Jacket Material', value: product.jacket_material! });
-    }
-    if (hasValidValue(product.bandwidth)) {
-      specs.push({ label: 'Bandwidth', value: product.bandwidth! });
-    }
-    if (hasValidValue(product.operating_temperature)) {
-      specs.push({ label: 'Operating Temperature', value: product.operating_temperature! });
-    }
-    if (hasValidValue(product.poe_support)) {
-      specs.push({ label: 'PoE Support', value: product.poe_support! });
-    }
-    if (hasValidValue(product.specifications)) {
-      specs.push({ label: 'Additional Specifications', value: product.specifications! });
+    
+    // Also check individual fields as fallback
+    if (specs.length === 0) {
+      if (hasValidValue(product.product_series)) {
+        specs.push({ label: 'Product Series', value: product.product_series! });
+      }
+      if (hasValidValue(product.product_type)) {
+        specs.push({ label: 'Product Type', value: product.product_type! });
+      }
+      if (hasValidValue(product.conductor_type)) {
+        specs.push({ label: 'Conductor Type', value: product.conductor_type! });
+      }
+      if (hasValidValue(product.cable_od)) {
+        specs.push({ label: 'Cable OD', value: product.cable_od! });
+      }
+      if (hasValidValue(product.jacket_material)) {
+        specs.push({ label: 'Jacket Material', value: product.jacket_material! });
+      }
+      if (hasValidValue(product.bandwidth)) {
+        specs.push({ label: 'Bandwidth', value: product.bandwidth! });
+      }
+      if (hasValidValue(product.operating_temperature)) {
+        specs.push({ label: 'Operating Temperature', value: product.operating_temperature! });
+      }
+      if (hasValidValue(product.poe_support)) {
+        specs.push({ label: 'PoE Support', value: product.poe_support! });
+      }
     }
     
     return specs;
@@ -254,7 +270,13 @@ export function ProductView() {
             </div>
             <div className="flex justify-between items-center py-2 border-b">
               <span className="text-sm text-muted-foreground">Category</span>
-              <Badge variant="outline">{product.category_name}</Badge>
+              <Badge variant="outline">{product.category_name || 'N/A'}</Badge>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b">
+              <span className="text-sm text-muted-foreground">Sub Category</span>
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                {product.subcategory_name || 'N/A'}
+              </Badge>
             </div>
             <div className="flex justify-between items-center py-2 border-b">
               <span className="text-sm text-muted-foreground">Brand</span>
@@ -271,43 +293,12 @@ export function ProductView() {
           </CardContent>
         </Card>
 
-        {/* Pricing & Dimensions */}
+        {/* Pricing & Dimensions - REMOVED PRICE RANGE */}
         <Card>
           <CardHeader>
-            <CardTitle>Pricing & Dimensions</CardTitle>
+            <CardTitle>Product Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {/* Price Range Section */}
-            <div className="space-y-2 py-2 border-b">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Price Range</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-primary">
-                    {formatCurrency(product.min_price || product.price)}
-                  </span>
-                  <span className="text-muted-foreground">-</span>
-                  <span className="font-medium text-primary">
-                    {formatCurrency(product.max_price || product.price)}
-                  </span>
-                </div>
-              </div>
-              {/* Show individual prices if min and max are different */}
-              {product.min_price && product.max_price && 
-               parseFloat(product.min_price) !== parseFloat(product.max_price) && (
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">Minimum Price</span>
-                  <span className="font-medium">{formatCurrency(product.min_price)}</span>
-                </div>
-              )}
-              {product.min_price && product.max_price && 
-               parseFloat(product.min_price) !== parseFloat(product.max_price) && (
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">Maximum Price</span>
-                  <span className="font-medium">{formatCurrency(product.max_price)}</span>
-                </div>
-              )}
-            </div>
-
             {parseFloat(product.discount) > 0 && (
               <div className="flex justify-between items-center py-2 border-b">
                 <span className="text-sm text-muted-foreground">Discount</span>

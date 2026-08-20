@@ -1,4 +1,4 @@
-// product-details.tsx - Fixed with quantity and wishlist
+// product-details.tsx - Fixed with variant pricing and color selection
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
@@ -62,16 +62,18 @@ interface ApiVariant {
   description?: string;
   spec_type?: string;
   color?: string;
+  color_name?: string;
+  color_hex?: string;
   size?: string;
-  price: string;
+  price?: string | null;
+  min_price?: string | null;
+  max_price?: string | null;
   availability?: string;
   datasheet_url?: string;
   image_url: string;
   stock: number;
-  color_name?: string;
-  color_hex?: string;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface ApiProduct {
@@ -85,7 +87,7 @@ interface ApiProduct {
   min_price?: string;
   max_price?: string;
   dimensions?: string;
-  specifications?: string;
+  specifications?: string | Record<string, string>;
   weight?: string;
   discount: string;
   product_description: string;
@@ -118,6 +120,35 @@ interface SpecComparison {
   };
 }
 
+// Helper function to parse numbers safely
+const parseOptionalNumber = (value: string | number | null | undefined): number | undefined => {
+  if (value === null || value === undefined || value === '') {
+    return undefined;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+// Get color hex for dots
+const getColorHex = (colorName: string): string => {
+  const colorMap: Record<string, string> = {
+    'black': '#000000',
+    'white': '#FFFFFF',
+    'blue': '#2563EB',
+    'red': '#DC2626',
+    'green': '#16A34A',
+    'yellow': '#EAB308',
+    'purple': '#9333EA',
+    'pink': '#EC4899',
+    'orange': '#EA580C',
+    'gray': '#6B7280',
+    'brown': '#92400E',
+    'gold': '#D4AF37',
+    'silver': '#C0C0C0'
+  };
+  return colorMap[colorName.toLowerCase()] || '#CCCCCC';
+};
+
 // ---- Transform API product into the app-wide `Product` type ----
 const transformProduct = (
   product: ApiProduct,
@@ -135,81 +166,89 @@ const transformProduct = (
   const defaultImage = 'https://via.placeholder.com/400x400';
   const gallery = galleryImages.length > 0 ? galleryImages : [defaultImage];
 
-  // Use the product price directly from API
-  const priceNum = parseFloat(product.price);
   const discountNum = parseFloat(product.discount || '0');
 
-  // Parse min and max prices from API
-  const minPrice = product.min_price ? parseFloat(product.min_price) : undefined;
-  const maxPrice = product.max_price ? parseFloat(product.max_price) : undefined;
+  const productPrice = parseOptionalNumber(product.price);
+  const apiMinPrice = parseOptionalNumber(product.min_price);
+  const apiMaxPrice = parseOptionalNumber(product.max_price);
 
-  // Build specifications - include ALL product fields
+  // Calculate range from variants
+  const variantMins = product.variants
+    ?.map((variant) => parseOptionalNumber(variant.min_price))
+    .filter((value): value is number => value !== undefined) || [];
+
+  const variantMaxes = product.variants
+    ?.map((variant) => parseOptionalNumber(variant.max_price))
+    .filter((value): value is number => value !== undefined) || [];
+
+  const minPrice = apiMinPrice !== undefined
+    ? apiMinPrice
+    : variantMins.length > 0
+      ? Math.min(...variantMins)
+      : undefined;
+
+  const maxPrice = apiMaxPrice !== undefined
+    ? apiMaxPrice
+    : variantMaxes.length > 0
+      ? Math.max(...variantMaxes)
+      : undefined;
+
+  const priceNum = productPrice ?? minPrice ?? 0;
+
+  // Build specifications
   const specFields: { key: string; label: string; value: string }[] = [];
 
-  // Product fields
-  if (product.product_series && product.product_series.trim() !== '') {
-    specFields.push({ key: 'series', label: 'Series', value: product.product_series });
+  const addSpecField = (key: string, label: string, value: string | undefined | null) => {
+    if (value && value.trim() !== '') {
+      specFields.push({ key, label, value });
+    }
+  };
+
+  addSpecField('series', 'Series', product.product_series);
+  addSpecField('type', 'Type', product.product_type);
+  addSpecField('conductor_type', 'Conductor Type', product.conductor_type);
+  addSpecField('cable_od', 'Cable OD', product.cable_od);
+  addSpecField('jacket_material', 'Jacket Material', product.jacket_material);
+  addSpecField('bandwidth', 'Bandwidth', product.bandwidth);
+  addSpecField('operating_temperature', 'Operating Temperature', product.operating_temperature);
+  addSpecField('poe_support', 'PoE Support', product.poe_support);
+  addSpecField('warranty', 'Warranty', product.warranty);
+
+  if (product.specifications && typeof product.specifications === 'object') {
+    const specObj = product.specifications as Record<string, string>;
+    Object.entries(specObj).forEach(([key, value]) => {
+      if (value && value.trim() !== '') {
+        const exists = specFields.some(f => f.key === key.toLowerCase().replace(/\s+/g, '_'));
+        if (!exists) {
+          specFields.push({
+            key: key.toLowerCase().replace(/\s+/g, '_'),
+            label: key,
+            value: value
+          });
+        }
+      }
+    });
   }
 
-  if (product.product_type && product.product_type.trim() !== '') {
-    specFields.push({ key: 'type', label: 'Type', value: product.product_type });
-  }
-
-  if (product.conductor_type && product.conductor_type.trim() !== '') {
-    specFields.push({ key: 'conductor_type', label: 'Conductor Type', value: product.conductor_type });
-  }
-
-  if (product.cable_od && product.cable_od.trim() !== '') {
-    specFields.push({ key: 'cable_od', label: 'Cable OD', value: product.cable_od });
-  }
-
-  if (product.jacket_material && product.jacket_material.trim() !== '') {
-    specFields.push({ key: 'jacket_material', label: 'Jacket Material', value: product.jacket_material });
-  }
-
-  if (product.bandwidth && product.bandwidth.trim() !== '') {
-    specFields.push({ key: 'bandwidth', label: 'Bandwidth', value: product.bandwidth });
-  }
-
-  if (product.operating_temperature && product.operating_temperature.trim() !== '') {
-    specFields.push({ key: 'operating_temperature', label: 'Operating Temperature', value: product.operating_temperature });
-  }
-
-  if (product.poe_support && product.poe_support.trim() !== '') {
-    specFields.push({ key: 'poe_support', label: 'PoE Support', value: product.poe_support });
-  }
-
-  if (product.warranty && product.warranty.trim() !== '') {
-    specFields.push({ key: 'warranty', label: 'Warranty', value: product.warranty });
-  }
-
-  // Add variant details
   if (product.variants && product.variants.length > 0) {
     const variant = product.variants[0];
-    if (variant.spec_type && variant.spec_type.trim() !== '') {
-      specFields.push({ key: 'spec_type', label: 'Spec Type', value: variant.spec_type });
-    }
-    if (variant.size && variant.size.trim() !== '') {
-      specFields.push({ key: 'size', label: 'Size', value: variant.size });
-    }
-    if (variant.color && variant.color.trim() !== '') {
-      specFields.push({ key: 'color', label: 'Color', value: variant.color });
-    }
-    if (variant.availability && variant.availability.trim() !== '') {
-      specFields.push({ key: 'availability', label: 'Availability', value: variant.availability });
-    }
-    if (variant.part_code && variant.part_code.trim() !== '') {
-      specFields.push({ key: 'part_code', label: 'Part Code', value: variant.part_code });
-    }
+    addSpecField('spec_type', 'Spec Type', variant.spec_type);
+    addSpecField('size', 'Size', variant.size);
+    addSpecField('color', 'Color', variant.color);
+    addSpecField('availability', 'Availability', variant.availability);
+    addSpecField('part_code', 'Part Code', variant.part_code);
   }
 
-  // Transform variants with all properties
-  const transformedVariants = product.variants?.map(v => ({
+  // Transform variants with full data
+  const transformedVariants = product.variants?.map((v) => ({
     id: v.id,
     color_name: v.color_name || v.color || 'Default',
-    color_hex: v.color_hex || '#000000',
-    price: v.price,
-    stock: v.stock,
+    color: v.color || v.color_name || 'Default',
+    color_hex: v.color_hex || '#CCCCCC',
+    min_price: v.min_price ?? undefined,
+    max_price: v.max_price ?? undefined,
+    price: v.price ?? undefined,
+    stock: v.stock || 0,
     image_url: v.image_url,
     variant_name: v.variant_name,
     part_code: v.part_code,
@@ -219,6 +258,16 @@ const transformProduct = (
     datasheet_url: v.datasheet_url,
     description: v.description,
   })) || [];
+
+  let features: string[] = [];
+  if (product.specifications) {
+    if (typeof product.specifications === 'string') {
+      features = product.specifications.split(',').map(s => s.trim()).filter(Boolean);
+    } else if (typeof product.specifications === 'object') {
+      const specObj = product.specifications as Record<string, string>;
+      features = Object.entries(specObj).map(([key, value]) => `${key}: ${value}`);
+    }
+  }
 
   return {
     id: String(product.id),
@@ -232,14 +281,16 @@ const transformProduct = (
     shortDescription: product.product_description?.substring(0, 150) || '',
     description: product.product_description || '',
     gallery,
-    features: product.specifications?.split(',').map(s => s.trim()).filter(Boolean) || [],
-    specifications: {},
+    features: features,
+    specifications: typeof product.specifications === 'object' ? product.specifications : {},
     currency: 'INR',
     relatedProductIds: [],
     specGroups: [
       {
         groupName: 'Specifications',
-        fields: specFields
+        fields: specFields.length > 0 ? specFields : [
+          { key: 'no_specs', label: 'No Specifications', value: 'No specifications available' }
+        ]
       }
     ],
     price: priceNum,
@@ -280,13 +331,43 @@ export function ProductDetailsPage() {
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
   const [submitting, setSubmitting] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
   const { addToWishlist, removeFromWishlist, isInWishlist, isLoggedIn } = useApp();
 
-  // Get max stock from variants
+  // Move product useMemo before any conditional hooks
+  const product = useMemo(() => {
+    if (!productData) return null;
+    return transformProduct(productData, categories, brands);
+  }, [productData, categories, brands]);
+
+  // Get variants - must be called unconditionally
+  const detailVariants = useMemo(() => {
+    return (product?.variants || []) as any[];
+  }, [product]);
+
+  const selectedVariant = useMemo(() => {
+    return detailVariants.find(v => v.id === selectedVariantId) || detailVariants[0] || null;
+  }, [detailVariants, selectedVariantId]);
+
+  // Get max stock from variants - must be called unconditionally
   const maxStock = useMemo(() => {
     if (!productData?.variants) return 10;
     return productData.variants.reduce((sum, v) => sum + v.stock, 0);
   }, [productData]);
+
+  // Get unique colors from variants for selection - must be called unconditionally
+  const variantColors = useMemo(() => {
+    if (!detailVariants || detailVariants.length === 0) return [];
+
+    const colorMap = new Map<string, { color: string; variantId: number }>();
+    detailVariants.forEach((variant: any) => {
+      const color = variant.color || variant.color_name || 'Default';
+      if (!colorMap.has(color)) {
+        colorMap.set(color, { color, variantId: variant.id });
+      }
+    });
+    return Array.from(colorMap.values());
+  }, [detailVariants]);
 
   const handleQuantityChange = (newQuantity: number) => {
     if (newQuantity >= 1 && newQuantity <= maxStock) {
@@ -310,34 +391,42 @@ export function ProductDetailsPage() {
     }
   };
 
+  const handleVariantSelect = (variantId: number) => {
+    setSelectedVariantId(variantId);
+    const variant = detailVariants.find(v => v.id === variantId);
+    if (variant && variant.image_url) {
+      const imageUrl = `${baseurl}${variant.image_url}`;
+      const galleryIndex = product?.gallery.findIndex(img => img === imageUrl);
+      if (galleryIndex !== undefined && galleryIndex >= 0) {
+        setActiveImage(galleryIndex);
+      }
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Fetch categories
         const categoriesRes = await fetch(`${baseurl}/api/categories/`);
         const categoriesData = await categoriesRes.json();
         if (categoriesData.success) {
           setCategories(categoriesData.data);
         }
 
-        // Fetch brands
         const brandsRes = await fetch(`${baseurl}/api/brands/`);
         const brandsData = await brandsRes.json();
         if (brandsData.success) {
           setBrands(brandsData.data);
         }
 
-        // Fetch all products
         const productsRes = await fetch(`${baseurl}/api/products/products-with-variants`);
         const productsData = await productsRes.json();
 
         if (Array.isArray(productsData) && productsData.length > 0) {
           setAllProducts(productsData);
 
-          // Find the product by slug
           const decodedSlug = decodeURIComponent(slug || '');
 
           let foundProduct = productsData.find((p: ApiProduct) => {
@@ -361,8 +450,9 @@ export function ProductDetailsPage() {
 
           if (foundProduct) {
             setProductData(foundProduct);
+            setSelectedVariantId(foundProduct.variants?.[0]?.id ?? null);
+            setActiveImage(0);
 
-            // Fetch spec comparison if product has variants
             if (foundProduct.variants && foundProduct.variants.length > 0) {
               setLoadingSpecs(true);
               try {
@@ -396,12 +486,7 @@ export function ProductDetailsPage() {
     }
   }, [slug]);
 
-  const product = useMemo(() => {
-    if (!productData) return null;
-    return transformProduct(productData, categories, brands);
-  }, [productData, categories, brands]);
-
-  // Related products - ONLY show products with same product_type
+  // Related products
   const relatedProducts = useMemo(() => {
     if (!product || allProducts.length === 0) return [];
 
@@ -564,34 +649,39 @@ export function ProductDetailsPage() {
     try {
       const user = getUserDetails();
 
-      // Use maxPrice if available, otherwise minPrice
+      const selectedMinPrice = Number(selectedVariant?.min_price);
+      const selectedMaxPrice = Number(selectedVariant?.max_price);
+      const selectedVariantPrice = Number(selectedVariant?.price);
+
       let actualPrice = product.price;
-      let minPrice = extendedProduct.minPrice;
-      let maxPrice = extendedProduct.maxPrice;
-      
-      if (extendedProduct.maxPrice !== undefined && extendedProduct.maxPrice > 0) {
-        actualPrice = extendedProduct.maxPrice;
-      } else if (extendedProduct.minPrice !== undefined && extendedProduct.minPrice > 0) {
-        actualPrice = extendedProduct.minPrice;
+      let minPrice = product.minPrice;
+      let maxPrice = product.maxPrice;
+
+      if (Number.isFinite(selectedMaxPrice) && selectedMaxPrice > 0) {
+        actualPrice = selectedMaxPrice;
+      } else if (Number.isFinite(selectedMinPrice) && selectedMinPrice > 0) {
+        actualPrice = selectedMinPrice;
+      } else if (Number.isFinite(selectedVariantPrice) && selectedVariantPrice > 0) {
+        actualPrice = selectedVariantPrice;
       }
 
-      // Get variant image from the first variant
+      minPrice = Number.isFinite(selectedMinPrice) ? selectedMinPrice : minPrice;
+      maxPrice = Number.isFinite(selectedMaxPrice) ? selectedMaxPrice : maxPrice;
+
       let variantImage = null;
       let variantDetails = null;
       
-      if (product.variants && product.variants.length > 0) {
-        const firstVariant = product.variants[0] as any;
-        if (firstVariant.image_url) {
-          variantImage = firstVariant.image_url;
+      if (selectedVariant) {
+        if (selectedVariant.image_url) {
+          variantImage = selectedVariant.image_url;
         }
-        // Store all variant details
-        variantDetails = JSON.stringify(product.variants.map((v: any) => ({
+        variantDetails = JSON.stringify(detailVariants.map((v: any) => ({
           id: v.id,
-          variant_name: v.variant_name,
-          part_code: v.part_code,
-          spec_type: v.spec_type,
-          color: v.color,
-          size: v.size,
+          variant_name: v.variant_name || v.color_name || 'Default',
+          part_code: v.part_code || '',
+          spec_type: v.spec_type || '',
+          color: v.color || v.color_name || '',
+          size: v.size || '',
           price: v.price,
           image_url: v.image_url,
           stock: v.stock
@@ -618,8 +708,6 @@ export function ProductDetailsPage() {
         variant_image: variantImage,
         variant_details: variantDetails
       };
-
-      console.log('Sending quotation payload:', payload);
 
       const response = await fetch(`${baseurl}/api/quotations/single`, {
         method: 'POST',
@@ -721,15 +809,30 @@ export function ProductDetailsPage() {
 
   const inWishlist = isInWishlist(product.id);
 
-  // Get variant spec types
   const variantSpecTypes = product.variants?.map(v => (v as any).spec_type).filter(Boolean) as string[] || [];
   const uniqueSpecTypes = [...new Set(variantSpecTypes)];
 
-  // Cast product to ExtendedProduct
   const extendedProduct = product as ExtendedProduct;
 
   // Get display price with min/max
   const getDisplayPrice = () => {
+    if (selectedVariant) {
+      const minPrice = Number(selectedVariant.min_price);
+      const maxPrice = Number(selectedVariant.max_price);
+      const price = Number(selectedVariant.price);
+      
+      if (Number.isFinite(minPrice) && Number.isFinite(maxPrice) && minPrice > 0 && maxPrice > 0) {
+        if (minPrice === maxPrice) {
+          return `₹${minPrice.toLocaleString()}`;
+        }
+        return `₹${minPrice.toLocaleString()} - ₹${maxPrice.toLocaleString()}`;
+      }
+      
+      if (Number.isFinite(price) && price > 0) {
+        return `₹${price.toLocaleString()}`;
+      }
+    }
+    
     if (extendedProduct.minPrice !== undefined && extendedProduct.maxPrice !== undefined) {
       const min = extendedProduct.minPrice;
       const max = extendedProduct.maxPrice;
@@ -741,13 +844,9 @@ export function ProductDetailsPage() {
     return `₹${product.price.toLocaleString()}`;
   };
 
-  // Check if product has discount
   const hasDiscount = (product.discountPercentage ?? 0) > 0;
 
-  // Get all spec fields for display
   const allSpecFields = product.specGroups[0]?.fields || [];
-
-  // Preview specs (first 4)
   const previewSpecs = allSpecFields.slice(0, 4);
 
   return (
@@ -838,63 +937,58 @@ export function ProductDetailsPage() {
 
           <p className="text-muted-foreground leading-relaxed mb-6">{product.shortDescription}</p>
 
-          {/* Price - Show Min and Max */}
+          {/* Variant Color Selector - Show color dots only */}
+          {variantColors.length > 0 && (
+            <div className="mb-4">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-3">Colors:</span>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {variantColors.map((vc) => (
+                  <button
+                    key={vc.variantId}
+                    onClick={() => handleVariantSelect(vc.variantId)}
+                    className={cn(
+                      'w-8 h-8 rounded-full border-2 transition-all duration-200',
+                      selectedVariant?.id === vc.variantId
+                        ? 'ring-2 ring-primary ring-offset-2 border-primary'
+                        : 'hover:scale-110 hover:shadow-md'
+                    )}
+                    style={{
+                      backgroundColor: getColorHex(vc.color),
+                      borderColor: vc.color.toLowerCase() === 'white' ? '#E5E7EB' : 'rgba(0,0,0,0.1)'
+                    }}
+                    title={vc.color}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Price - Show Min and Max from selected variant */}
           <div className="mb-6">
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-3xl font-bold text-primary">{getDisplayPrice()}</span>
               {hasDiscount && (
-                <>
-                  <Badge variant="destructive" className="text-sm">{product.discountPercentage}% OFF</Badge>
-                </>
+                <Badge variant="destructive" className="text-sm">{product.discountPercentage}% OFF</Badge>
               )}
             </div>
-            {/* Show price range note if min and max are different */}
-            {extendedProduct.minPrice !== undefined && extendedProduct.maxPrice !== undefined &&
-              extendedProduct.minPrice !== extendedProduct.maxPrice && (
-                <p className="text-xs text-muted-foreground mt-1">Price range based on variants</p>
+            {selectedVariant?.min_price != null &&
+              selectedVariant?.max_price != null &&
+              Number(selectedVariant.min_price) !== Number(selectedVariant.max_price) && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Min - Max price for {selectedVariant.color_name || selectedVariant.color || 'selected variant'}
+                </p>
               )}
           </div>
 
-          {/* Quantity Selector */}
+          {/* Quantity Selector - Fixed to 1 */}
           <div className="flex items-center gap-4 mb-6">
             <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Quantity:</span>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                size="icon"
-                variant="outline"
-                className="h-9 w-9 rounded-full border-gray-300 dark:border-gray-600 hover:bg-primary hover:text-white hover:border-primary transition-colors"
-                onClick={() => handleQuantityChange(quantity - 1)}
-                disabled={quantity <= 1}
-              >
-                <Minus className="w-4 h-4" />
-              </Button>
-              <span className="w-12 text-center text-base font-medium text-gray-900 dark:text-white">
-                {quantity}
-              </span>
-              <Button
-                type="button"
-                size="icon"
-                variant="outline"
-                className="h-9 w-9 rounded-full border-gray-300 dark:border-gray-600 hover:bg-primary hover:text-white hover:border-primary transition-colors"
-                onClick={() => handleQuantityChange(quantity + 1)}
-                disabled={quantity >= maxStock}
-              >
-                <Plus className="w-4 h-4" />
-              </Button>
-            </div>
-            {maxStock > 0 && (
-              <span className="text-xs text-gray-400">
-                Max: {maxStock} {maxStock > 1 ? 'items' : 'item'} available
-              </span>
-            )}
-            {maxStock === 0 && (
-              <span className="text-xs text-red-500 font-medium">Out of Stock</span>
-            )}
+            <span className="text-base font-semibold text-gray-900 dark:text-white">1</span>
+            <span className="text-xs text-gray-400">(Fixed quantity for quotation)</span>
           </div>
 
-          {/* Key specs preview - show relevant specs */}
-          {previewSpecs.length > 0 && (
+          {/* Key specs preview */}
+          {previewSpecs.length > 0 && previewSpecs[0]?.key !== 'no_specs' && (
             <div className="grid grid-cols-2 gap-3 mb-6">
               {previewSpecs.map((field) => (
                 <div key={field.key} className="bg-muted/40 rounded-lg p-3">
@@ -984,7 +1078,7 @@ export function ProductDetailsPage() {
         <TabsContent value="specifications" className="mt-6">
           <Card className="p-6">
             <h2 className="text-xl font-bold mb-6">Technical Specifications</h2>
-            {allSpecFields.length > 0 ? (
+            {allSpecFields.length > 0 && allSpecFields[0]?.key !== 'no_specs' ? (
               <div className="grid sm:grid-cols-2 gap-x-8 gap-y-0">
                 {allSpecFields.map((field, idx) => (
                   <div key={field.key} className={cn('flex justify-between py-2.5 border-b border-dashed', idx % 2 === 1 && 'sm:border-l sm:pl-8 sm:border-b-0 sm:border-dashed')}>

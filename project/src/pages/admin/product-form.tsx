@@ -1,4 +1,3 @@
-// src/components/admin/ProductForm.tsx
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
@@ -12,78 +11,72 @@ const API_URL = baseurl;
 interface Category {
     id: number;
     category_name: string;
+    description?: string;
+    category_image?: string;
     subcategories?: SubCategory[];
 }
 
 interface SubCategory {
     id: number;
     subcategory_name: string;
+    created_at?: string;
 }
 
 interface Brand {
     id: number;
     brand_name: string;
     category_id: number;
-    description?: string;
-    product_series?: string;
-    conductor_type?: string;
-    cable_od?: string;
-    jacket_material?: string;
-    bandwidth?: string;
-    operating_temperature?: string;
-    poe_support?: string;
+    sub_category_id: number;
     category_name?: string;
-    created_at?: string;
-    updated_at?: string;
+    sub_category_name?: string;
 }
 
-interface Specialization {
-    id: number;
-    category_id: number;
-    category_name?: string;
+interface Specification {
+    id: string;
     spec_name: string;
-    spec_value: string;
-    color_brand_mapping: { [key: string]: string[] };
+    value: string;
+}
+
+interface ProductSpecifications {
+    [key: string]: string;
 }
 
 interface FormData {
     product_name: string;
     product_code: string;
-    min_price: string;
-    max_price: string;
-    discount: string;
     product_description: string;
     extra_information: string;
     warranty: string;
     product_details_pdf: File | null;
     existing_pdf?: string;
-    conductor_type: string;
-    cable_od: string;
-    jacket_material: string;
-    bandwidth: string;
-    operating_temperature: string;
-    poe_support: string;
+    category_id: string;
+    sub_category_id: string;
+    product_brand: string;
     product_series: string;
+    discount: string;
+    specifications: ProductSpecifications;
 }
 
 interface Variant {
     id?: number;
     variant_name: string;
     part_code: string;
-    category: string;
-    sub_category: string;
-    brand: string;
     description: string;
     spec_type: string;
     color: string;
     size: string;
-    price: string;
+    min_price: string;
+    max_price: string;
     availability: string;
     datasheet_url: string;
     stock: string;
     images: File[];
     existingImages?: string[];
     _isNew?: boolean;
+    // These will be populated from product data
+    category_name?: string;
+    sub_category_name?: string;
+    brand_name?: string;
 }
 
 interface SpecComparison {
@@ -103,21 +96,17 @@ const ProductForm = () => {
     const [formData, setFormData] = useState<FormData>({
         product_name: '',
         product_code: '',
-        min_price: '',
-        max_price: '',
-        discount: '0',
         product_description: '',
         extra_information: '',
         warranty: '',
         product_details_pdf: null,
         existing_pdf: '',
-        conductor_type: '',
-        cable_od: '',
-        jacket_material: '',
-        bandwidth: '',
-        operating_temperature: '',
-        poe_support: '',
-        product_series: ''
+        category_id: '',
+        sub_category_id: '',
+        product_brand: '',
+        product_series: '',
+        discount: '',
+        specifications: {}
     });
 
     // Variants State
@@ -125,14 +114,12 @@ const ProductForm = () => {
     const [currentVariant, setCurrentVariant] = useState<Variant>({
         variant_name: '',
         part_code: '',
-        category: '',
-        sub_category: '',
-        brand: '',
         description: '',
         spec_type: '',
         color: '',
         size: '',
-        price: '',
+        min_price: '',
+        max_price: '',
         availability: '',
         datasheet_url: '',
         stock: '100',
@@ -153,15 +140,18 @@ const ProductForm = () => {
 
     const [categories, setCategories] = useState<Category[]>([]);
     const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
-    const [_brands, setBrands] = useState<Brand[]>([]);
-    const [specializations, setSpecializations] = useState<Specialization[]>([]);
+    const [brands, setBrands] = useState<Brand[]>([]);
+    const [filteredBrands, setFilteredBrands] = useState<Brand[]>([]);
     const [specTypes, setSpecTypes] = useState<string[]>([]);
+    const [selectedSpecifications, setSelectedSpecifications] = useState<Specification[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
+    const [loadingSpecs, setLoadingSpecs] = useState<boolean>(false);
     const [error, setError] = useState<string>('');
     const [success, setSuccess] = useState<string>('');
     const [selectedFileNames, setSelectedFileNames] = useState<string>('');
     const [showSpecComparison, setShowSpecComparison] = useState<boolean>(false);
     const [showVariantForm, setShowVariantForm] = useState<boolean>(false);
+    const [hasSpecifications, setHasSpecifications] = useState<boolean>(false);
 
     const isSubmittingRef = useRef<boolean>(false);
 
@@ -169,23 +159,16 @@ const ProductForm = () => {
     useEffect(() => {
         fetchCategories();
         fetchBrands();
-        fetchSpecializations();
         if (isEditMode) {
             fetchProductData();
             fetchSpecComparisons();
         }
     }, [id]);
 
-    // Extract spec types from specializations for comparison dropdown
+    // Update sub categories when category changes
     useEffect(() => {
-        const types = specializations.map((spec: Specialization) => spec.spec_name);
-        setSpecTypes([...new Set<string>(types)]);
-    }, [specializations]);
-
-    // Update sub categories when category changes in current variant
-    useEffect(() => {
-        if (currentVariant.category) {
-            const selectedCategory = categories.find(c => c.id === parseInt(currentVariant.category));
+        if (formData.category_id) {
+            const selectedCategory = categories.find(c => c.id === parseInt(formData.category_id));
             if (selectedCategory && selectedCategory.subcategories) {
                 setSubCategories(selectedCategory.subcategories);
             } else {
@@ -194,7 +177,23 @@ const ProductForm = () => {
         } else {
             setSubCategories([]);
         }
-    }, [currentVariant.category, categories]);
+    }, [formData.category_id, categories]);
+
+    // Fetch specifications when sub_category changes (and both category and subcategory are selected)
+    useEffect(() => {
+        if (formData.category_id && formData.sub_category_id) {
+            fetchSpecificationsByCategoryAndSubCategory(formData.category_id, formData.sub_category_id);
+        } else {
+            setSelectedSpecifications([]);
+            setSpecTypes([]);
+            setLoadingSpecs(false);
+            setHasSpecifications(false);
+        }
+    }, [formData.sub_category_id, formData.category_id]);
+
+    useEffect(() => {
+        filterBrands();
+    }, [formData.category_id, formData.sub_category_id]);
 
     const fetchCategories = async (): Promise<void> => {
         try {
@@ -218,65 +217,128 @@ const ProductForm = () => {
         }
     };
 
-    const fetchSpecializations = async (): Promise<void> => {
+    const fetchSpecificationsByCategoryAndSubCategory = async (categoryId: string, subCategoryId: string) => {
         try {
-            const response = await axios.get(`${API_URL}/api/specifications/`);
-            if (response.data.success) {
-                setSpecializations(response.data.data);
-                const types = response.data.data.map((spec: Specialization) => spec.spec_name);
-                setSpecTypes([...new Set<string>(types)]);
+            if (!categoryId || !subCategoryId) {
+                setSelectedSpecifications([]);
+                setSpecTypes([]);
+                setLoadingSpecs(false);
+                setHasSpecifications(false);
+                return;
+            }
+            
+            setLoadingSpecs(true);
+            const response = await axios.get(
+                `${API_URL}/api/products/specifications/category/${categoryId}/subcategory/${subCategoryId}`
+            );
+            
+            if (response.data.success && response.data.data && response.data.data.product_specifications) {
+                const specs = response.data.data;
+                const productSpecs = specs.product_specifications;
+                
+                if (productSpecs && productSpecs.length > 0) {
+                    setSelectedSpecifications(productSpecs);
+                    setHasSpecifications(true);
+                    
+                    if (specs.spec_name) {
+                        setSpecTypes([specs.spec_name]);
+                    } else {
+                        setSpecTypes([]);
+                    }
+                    
+                    // Only set default values if we're not in edit mode or if specifications are empty
+                    if (!isEditMode || Object.keys(formData.specifications).length === 0) {
+                        const defaultSpecs: ProductSpecifications = {};
+                        productSpecs.forEach((spec: Specification) => {
+                            defaultSpecs[spec.spec_name] = spec.value || '';
+                        });
+                        setFormData(prev => ({
+                            ...prev,
+                            specifications: defaultSpecs
+                        }));
+                    }
+                } else {
+                    setSelectedSpecifications([]);
+                    setSpecTypes([]);
+                    setHasSpecifications(false);
+                }
+            } else {
+                setSelectedSpecifications([]);
+                setSpecTypes([]);
+                setHasSpecifications(false);
             }
         } catch (error) {
-            console.error('Error fetching specializations:', error);
+            console.error('Error fetching specifications:', error);
+            setSelectedSpecifications([]);
+            setSpecTypes([]);
+            setHasSpecifications(false);
+        } finally {
+            setLoadingSpecs(false);
         }
+    };
+
+    const filterBrands = () => {
+        let filtered = [...brands];
+        if (formData.category_id) {
+            filtered = filtered.filter(b => b.category_id === parseInt(formData.category_id));
+        }
+        if (formData.sub_category_id) {
+            filtered = filtered.filter(b => b.sub_category_id === parseInt(formData.sub_category_id));
+        }
+        setFilteredBrands(filtered);
     };
 
     const fetchProductData = async () => {
         try {
             setLoading(true);
-            const productResponse = await axios.get(`${API_URL}/api/products/products-with-variants/${id}`);
-            const productData = productResponse.data;
+            const response = await axios.get(`${API_URL}/api/products/products-with-variants/${id}`);
+            const productData = response.data;
 
+            const specs = productData.specifications || {};
+            
             setFormData({
                 product_name: productData.product_name || '',
                 product_code: productData.product_code || '',
-                min_price: productData.min_price || '',
-                max_price: productData.max_price || '',
-                discount: productData.discount || '0',
                 product_description: productData.product_description || '',
                 extra_information: productData.extra_information || '',
                 warranty: productData.warranty || '',
                 product_details_pdf: null,
                 existing_pdf: productData.product_details_pdf || '',
-                conductor_type: productData.conductor_type || '',
-                cable_od: productData.cable_od || '',
-                jacket_material: productData.jacket_material || '',
-                bandwidth: productData.bandwidth || '',
-                operating_temperature: productData.operating_temperature || '',
-                poe_support: productData.poe_support || '',
-                product_series: productData.product_series || ''
+                category_id: productData.category_id ? String(productData.category_id) : '',
+                sub_category_id: productData.sub_category_id ? String(productData.sub_category_id) : '',
+                product_brand: productData.product_brand || '',
+                product_series: productData.product_series || '',
+                discount: productData.discount || '',
+                specifications: specs
             });
 
-            // Properly map variants with all fields
+            if (productData.category_id && productData.sub_category_id) {
+                await fetchSpecificationsByCategoryAndSubCategory(
+                    String(productData.category_id), 
+                    String(productData.sub_category_id)
+                );
+            }
+
             if (productData.variants && Array.isArray(productData.variants)) {
                 const formattedVariants = productData.variants.map((v: any) => ({
                     id: v.id,
                     variant_name: v.variant_name || '',
                     part_code: v.part_code || '',
-                    category: v.category ? String(v.category) : '',
-                    sub_category: v.sub_category || '',
-                    brand: v.brand || '',
                     description: v.description || '',
                     spec_type: v.spec_type || '',
                     color: v.color || '',
                     size: v.size || '',
-                    price: String(v.price) || '',
+                    min_price: String(v.min_price) || '',
+                    max_price: String(v.max_price) || '',
                     availability: v.availability || '',
                     datasheet_url: v.datasheet_url || '',
                     stock: String(v.stock) || '100',
                     images: [],
                     existingImages: v.image_url ? [v.image_url] : [],
-                    _isNew: false
+                    _isNew: false,
+                    category_name: productData.category_name,
+                    sub_category_name: productData.subcategory_name,
+                    brand_name: productData.product_brand
                 }));
                 setVariants(formattedVariants);
             }
@@ -292,7 +354,6 @@ const ProductForm = () => {
         try {
             const response = await axios.get(`${API_URL}/api/products/spec-comparison/${id}`);
             const data = response.data;
-            
             const comparisons = [];
             if (data) {
                 if (Array.isArray(data)) {
@@ -319,7 +380,7 @@ const ProductForm = () => {
 
     const handleAddSpecComparison = () => {
         if (!currentSpecComparison.spec_type) {
-            setError('Please select a spec type');
+            setError('Please enter a spec type');
             return;
         }
 
@@ -365,6 +426,19 @@ const ProductForm = () => {
     };
 
     // ============================================
+    // SPECIFICATION HANDLERS
+    // ============================================
+    const handleSpecificationChange = (specName: string, value: string) => {
+        setFormData(prev => ({
+            ...prev,
+            specifications: {
+                ...prev.specifications,
+                [specName]: value
+            }
+        }));
+    };
+
+    // ============================================
     // VARIANT HANDLERS
     // ============================================
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>): void => {
@@ -395,8 +469,8 @@ const ProductForm = () => {
     };
 
     const handleAddOrUpdateVariant = (): void => {
-        if (!currentVariant.variant_name || !currentVariant.part_code || !currentVariant.brand || !currentVariant.price) {
-            setError('Please fill in variant name, part code, brand, and price');
+        if (!currentVariant.variant_name || !currentVariant.part_code || !currentVariant.min_price || !currentVariant.max_price) {
+            setError('Please fill in variant name, part code, min price, and max price');
             return;
         }
 
@@ -411,21 +485,25 @@ const ProductForm = () => {
             setEditingVariantIndex(null);
             setSuccess('Variant updated successfully');
         } else {
-            setVariants(prev => [...prev, { ...currentVariant, _isNew: true }]);
+            setVariants(prev => [...prev, { 
+                ...currentVariant, 
+                _isNew: true,
+                category_name: getCategoryNameById(formData.category_id),
+                sub_category_name: getSubCategoryNameById(formData.sub_category_id),
+                brand_name: formData.product_brand
+            }]);
             setSuccess('Variant added successfully');
         }
 
         setCurrentVariant({
             variant_name: '',
             part_code: '',
-            category: '',
-            sub_category: '',
-            brand: '',
             description: '',
             spec_type: '',
             color: '',
             size: '',
-            price: '',
+            min_price: '',
+            max_price: '',
             availability: '',
             datasheet_url: '',
             stock: '100',
@@ -455,14 +533,12 @@ const ProductForm = () => {
         setCurrentVariant({
             variant_name: '',
             part_code: '',
-            category: '',
-            sub_category: '',
-            brand: '',
             description: '',
             spec_type: '',
             color: '',
             size: '',
-            price: '',
+            min_price: '',
+            max_price: '',
             availability: '',
             datasheet_url: '',
             stock: '100',
@@ -482,14 +558,12 @@ const ProductForm = () => {
             setCurrentVariant({
                 variant_name: '',
                 part_code: '',
-                category: '',
-                sub_category: '',
-                brand: '',
                 description: '',
                 spec_type: '',
                 color: '',
                 size: '',
-                price: '',
+                min_price: '',
+                max_price: '',
                 availability: '',
                 datasheet_url: '',
                 stock: '100',
@@ -499,14 +573,13 @@ const ProductForm = () => {
         }
     };
 
-    // Helper function to get category name by ID
+    // Helper functions to get category/subcategory names from the product data
     const getCategoryNameById = (categoryId: string): string => {
         if (!categoryId) return '-';
         const category = categories.find(c => c.id === parseInt(categoryId));
         return category ? category.category_name : categoryId;
     };
 
-    // Helper function to get sub category name by ID
     const getSubCategoryNameById = (subCategoryId: string): string => {
         if (!subCategoryId) return '-';
         for (const category of categories) {
@@ -516,39 +589,6 @@ const ProductForm = () => {
             }
         }
         return subCategoryId;
-    };
-
-    // Get filtered brands by category, spec type, and color
-    const getFilteredBrandsByCategory = (categoryId: string, specType: string, color: string) => {
-        if (!categoryId || !specType || !color) return [];
-        
-        const spec = specializations.find(
-            s => s.category_id === parseInt(categoryId) && s.spec_name === specType
-        );
-        
-        if (spec && spec.color_brand_mapping && spec.color_brand_mapping[color]) {
-            return spec.color_brand_mapping[color];
-        }
-        
-        return [];
-    };
-
-    // Get filtered specs for variant based on selected category
-    const getFilteredSpecsForVariant = (categoryId: string) => {
-        if (!categoryId) return specializations;
-        return specializations.filter(spec => spec.category_id === parseInt(categoryId));
-    };
-
-    // Get colors from selected spec for variant
-    const getColorsFromSpec = (specName: string, categoryId: string) => {
-        if (!specName || !categoryId) return [];
-        const spec = specializations.find(
-            s => s.spec_name === specName && s.category_id === parseInt(categoryId)
-        );
-        if (spec && spec.color_brand_mapping) {
-            return Object.keys(spec.color_brand_mapping);
-        }
-        return [];
     };
 
     const getImageUrl = (imagePath: string): string => {
@@ -580,29 +620,21 @@ const ProductForm = () => {
         try {
             let productId: number;
 
-            const firstVariant = variants.length > 0 ? variants[0] : null;
-            const categoryId = firstVariant?.category || '';
-            const brand = firstVariant?.brand || '';
-
             if (isEditMode) {
                 const productFormData = new FormData();
                 
                 const formFields = {
                     product_name: formData.product_name,
                     product_code: formData.product_code,
-                    min_price: formData.min_price,
-                    max_price: formData.max_price,
-                    discount: formData.discount,
                     product_description: formData.product_description,
                     extra_information: formData.extra_information,
                     warranty: formData.warranty,
-                    conductor_type: formData.conductor_type,
-                    cable_od: formData.cable_od,
-                    jacket_material: formData.jacket_material,
-                    bandwidth: formData.bandwidth,
-                    operating_temperature: formData.operating_temperature,
-                    poe_support: formData.poe_support,
-                    product_series: formData.product_series
+                    product_series: formData.product_series,
+                    category_id: formData.category_id,
+                    sub_category_id: formData.sub_category_id,
+                    product_brand: formData.product_brand,
+                    discount: formData.discount,
+                    specifications: JSON.stringify(formData.specifications)
                 };
                 
                 Object.entries(formFields).forEach(([key, value]) => {
@@ -610,13 +642,6 @@ const ProductForm = () => {
                         productFormData.append(key, String(value));
                     }
                 });
-                
-                if (categoryId) {
-                    productFormData.append('product_category_id', categoryId);
-                }
-                if (brand) {
-                    productFormData.append('product_brand', brand);
-                }
                 
                 if (formData.product_details_pdf) {
                     productFormData.append("product_details_pdf", formData.product_details_pdf);
@@ -633,6 +658,7 @@ const ProductForm = () => {
                 productId = parseInt(id!);
                 setSuccess("Product updated successfully.");
 
+                // Handle variants
                 const existingVariantsResponse = await axios.get(`${API_URL}/api/products/variants/${productId}`);
                 const existingVariants = existingVariantsResponse.data;
                 const existingIds = existingVariants.map((v: any) => v.id);
@@ -650,17 +676,19 @@ const ProductForm = () => {
                     variantData.append('product_id', String(productId));
                     variantData.append('variant_name', variant.variant_name || '');
                     variantData.append('part_code', variant.part_code || '');
-                    variantData.append('category', variant.category || '');
-                    variantData.append('sub_category', variant.sub_category || '');
-                    variantData.append('brand', variant.brand || '');
                     variantData.append('description', variant.description || '');
                     variantData.append('spec_type', variant.spec_type || '');
                     variantData.append('color', variant.color || '');
                     variantData.append('size', variant.size || '');
-                    variantData.append('price', variant.price || '0');
+                    variantData.append('min_price', variant.min_price || '0');
+                    variantData.append('max_price', variant.max_price || '0');
                     variantData.append('availability', variant.availability || '');
                     variantData.append('datasheet_url', variant.datasheet_url || '');
                     variantData.append('stock', variant.stock || '100');
+                    // Pass category, subcategory, brand from product
+                    variantData.append('category_id', formData.category_id || '');
+                    variantData.append('sub_category_id', formData.sub_category_id || '');
+                    variantData.append('brand_name', formData.product_brand || '');
 
                     if (variant.images && variant.images.length > 0) {
                         variant.images.forEach(img => {
@@ -684,10 +712,9 @@ const ProductForm = () => {
                     }
                 }
 
-                // Delete existing spec comparisons
+                // Handle spec comparisons
                 await axios.delete(`${API_URL}/api/products/spec-comparison/${productId}/all`);
                 
-                // Save new spec comparisons
                 for (const spec of specComparisons) {
                     await axios.post(`${API_URL}/api/products/spec-comparison`, {
                         product_id: productId,
@@ -700,24 +727,21 @@ const ProductForm = () => {
                 }
 
             } else {
+                // Create new product
                 const productFormData = new FormData();
                 
                 const formFields = {
                     product_name: formData.product_name,
                     product_code: formData.product_code,
-                    min_price: formData.min_price,
-                    max_price: formData.max_price,
-                    discount: formData.discount,
                     product_description: formData.product_description,
                     extra_information: formData.extra_information,
                     warranty: formData.warranty,
-                    conductor_type: formData.conductor_type,
-                    cable_od: formData.cable_od,
-                    jacket_material: formData.jacket_material,
-                    bandwidth: formData.bandwidth,
-                    operating_temperature: formData.operating_temperature,
-                    poe_support: formData.poe_support,
-                    product_series: formData.product_series
+                    product_series: formData.product_series,
+                    category_id: formData.category_id,
+                    sub_category_id: formData.sub_category_id,
+                    product_brand: formData.product_brand,
+                    discount: formData.discount,
+                    specifications: JSON.stringify(formData.specifications)
                 };
                 
                 Object.entries(formFields).forEach(([key, value]) => {
@@ -725,13 +749,6 @@ const ProductForm = () => {
                         productFormData.append(key, String(value));
                     }
                 });
-                
-                if (categoryId) {
-                    productFormData.append('product_category_id', categoryId);
-                }
-                if (brand) {
-                    productFormData.append('product_brand', brand);
-                }
 
                 if (formData.product_details_pdf) {
                     productFormData.append("product_details_pdf", formData.product_details_pdf);
@@ -751,17 +768,19 @@ const ProductForm = () => {
                     variantData.append('product_id', String(productId));
                     variantData.append('variant_name', variant.variant_name || '');
                     variantData.append('part_code', variant.part_code || '');
-                    variantData.append('category', variant.category || '');
-                    variantData.append('sub_category', variant.sub_category || '');
-                    variantData.append('brand', variant.brand || '');
                     variantData.append('description', variant.description || '');
                     variantData.append('spec_type', variant.spec_type || '');
                     variantData.append('color', variant.color || '');
                     variantData.append('size', variant.size || '');
-                    variantData.append('price', variant.price || '0');
+                    variantData.append('min_price', variant.min_price || '0');
+                    variantData.append('max_price', variant.max_price || '0');
                     variantData.append('availability', variant.availability || '');
                     variantData.append('datasheet_url', variant.datasheet_url || '');
                     variantData.append('stock', variant.stock || '100');
+                    // Pass category, subcategory, brand from product
+                    variantData.append('category_id', formData.category_id || '');
+                    variantData.append('sub_category_id', formData.sub_category_id || '');
+                    variantData.append('brand_name', formData.product_brand || '');
 
                     if (variant.images && variant.images.length > 0) {
                         variant.images.forEach(img => {
@@ -856,6 +875,86 @@ const ProductForm = () => {
                         </div>
 
                         <div className="form-group">
+                            <label htmlFor="category_id">Category *</label>
+                            <select
+                                id="category_id"
+                                name="category_id"
+                                value={formData.category_id}
+                                onChange={handleInputChange}
+                                required
+                            >
+                                <option value="">Select Category</option>
+                                {categories.map(category => (
+                                    <option key={category.id} value={String(category.id)}>
+                                        {category.category_name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="sub_category_id">Sub Category *</label>
+                            <select
+                                id="sub_category_id"
+                                name="sub_category_id"
+                                value={formData.sub_category_id}
+                                onChange={handleInputChange}
+                                required
+                                disabled={!formData.category_id}
+                            >
+                                <option value="">Select Sub Category</option>
+                                {subCategories.map(sub => (
+                                    <option key={sub.id} value={String(sub.id)}>
+                                        {sub.subcategory_name}
+                                    </option>
+                                ))}
+                            </select>
+                            {!formData.category_id && (
+                                <small className="text-muted">Please select a category first</small>
+                            )}
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="product_brand">Brand *</label>
+                            <select
+                                id="product_brand"
+                                name="product_brand"
+                                value={formData.product_brand}
+                                onChange={handleInputChange}
+                                required
+                                disabled={!formData.category_id || !formData.sub_category_id}
+                            >
+                                <option value="">Select Brand</option>
+                                {filteredBrands.map(brand => (
+                                    <option key={brand.id} value={brand.brand_name}>
+                                        {brand.brand_name}
+                                    </option>
+                                ))}
+                            </select>
+                            {(!formData.category_id || !formData.sub_category_id) && (
+                                <small className="text-muted">Please select category and subcategory first</small>
+                            )}
+                            {filteredBrands.length === 0 && formData.category_id && formData.sub_category_id && (
+                                <small className="text-muted">No brands available for this selection</small>
+                            )}
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="discount">Discount (%)</label>
+                            <input
+                                type="number"
+                                id="discount"
+                                name="discount"
+                                value={formData.discount}
+                                onChange={handleInputChange}
+                                step="0.01"
+                                min="0"
+                                max="100"
+                                placeholder="e.g., 10"
+                            />
+                        </div>
+
+                        <div className="form-group">
                             <label htmlFor="product_description">Description *</label>
                             <input
                                 type="text"
@@ -877,49 +976,6 @@ const ProductForm = () => {
                                 value={formData.warranty}
                                 onChange={handleInputChange}
                                 placeholder="e.g., 1 to 3 Weeks, In Stock"
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label htmlFor="min_price">Min Price (INR) *</label>
-                            <input
-                                type="number"
-                                id="min_price"
-                                name="min_price"
-                                value={formData.min_price}
-                                onChange={handleInputChange}
-                                required
-                                step="0.01"
-                                placeholder="0.00"
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label htmlFor="max_price">Max Price (INR) *</label>
-                            <input
-                                type="number"
-                                id="max_price"
-                                name="max_price"
-                                value={formData.max_price}
-                                onChange={handleInputChange}
-                                required
-                                step="0.01"
-                                placeholder="0.00"
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label htmlFor="discount">Discount (%)</label>
-                            <input
-                                type="number"
-                                id="discount"
-                                name="discount"
-                                value={formData.discount}
-                                onChange={handleInputChange}
-                                step="0.01"
-                                min="0"
-                                max="100"
-                                placeholder="0"
                             />
                         </div>
 
@@ -953,7 +1009,6 @@ const ProductForm = () => {
                             )}
                         </div>
 
-                        {/* Extra Information - Moved below Data Sheet */}
                         <div className="form-group full-width">
                             <label htmlFor="extra_information">Extra Information</label>
                             <textarea
@@ -970,12 +1025,12 @@ const ProductForm = () => {
                 </div>
 
                 {/* ============================================
-                    PRODUCT SPECIFICATIONS SECTION - TEXT INPUTS
+                    PRODUCT SPECIFICATIONS SECTION - DYNAMIC
                     ============================================ */}
                 <div className="form-section">
                     <h3>Product Specifications</h3>
                     <div className="form-grid">
-                        <div className="form-group">
+                        {/* <div className="form-group">
                             <label htmlFor="product_series">Product Series</label>
                             <input
                                 type="text"
@@ -985,79 +1040,43 @@ const ProductForm = () => {
                                 onChange={handleInputChange}
                                 placeholder="e.g., GigaSPEED X10D, NETCONNECT"
                             />
-                        </div>
+                        </div> */}
 
-                        <div className="form-group">
-                            <label htmlFor="conductor_type">Conductor Type</label>
-                            <input
-                                type="text"
-                                id="conductor_type"
-                                name="conductor_type"
-                                value={formData.conductor_type}
-                                onChange={handleInputChange}
-                                placeholder="e.g., 24 AWG Solid"
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label htmlFor="cable_od">Cable OD</label>
-                            <input
-                                type="text"
-                                id="cable_od"
-                                name="cable_od"
-                                value={formData.cable_od}
-                                onChange={handleInputChange}
-                                placeholder="e.g., 7.24 mm"
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label htmlFor="jacket_material">Jacket Material</label>
-                            <input
-                                type="text"
-                                id="jacket_material"
-                                name="jacket_material"
-                                value={formData.jacket_material}
-                                onChange={handleInputChange}
-                                placeholder="e.g., PVC, LSZH"
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label htmlFor="bandwidth">Bandwidth</label>
-                            <input
-                                type="text"
-                                id="bandwidth"
-                                name="bandwidth"
-                                value={formData.bandwidth}
-                                onChange={handleInputChange}
-                                placeholder="e.g., 500 MHz"
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label htmlFor="operating_temperature">Operating Temperature</label>
-                            <input
-                                type="text"
-                                id="operating_temperature"
-                                name="operating_temperature"
-                                value={formData.operating_temperature}
-                                onChange={handleInputChange}
-                                placeholder="e.g., -10°C to +60°C"
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label htmlFor="poe_support">PoE Support</label>
-                            <input
-                                type="text"
-                                id="poe_support"
-                                name="poe_support"
-                                value={formData.poe_support}
-                                onChange={handleInputChange}
-                                placeholder="e.g., IEEE 802.3bt Type 4 (90W)"
-                            />
-                        </div>
+                        {(!formData.category_id || !formData.sub_category_id) ? (
+                            <div className="form-group full-width">
+                                <p className="text-muted" style={{ margin: '10px 0', color: '#666' }}>
+                                    Select a category and sub category to see available specifications.
+                                </p>
+                            </div>
+                        ) : loadingSpecs ? (
+                            <div className="form-group full-width">
+                                <p className="text-muted" style={{ margin: '10px 0', color: '#666' }}>
+                                    Loading specifications...
+                                </p>
+                            </div>
+                        ) : hasSpecifications && selectedSpecifications.length > 0 ? (
+                            selectedSpecifications.map((spec) => {
+                                const specValue = formData.specifications[spec.spec_name];
+                                return (
+                                    <div className="form-group" key={spec.id}>
+                                        <label htmlFor={`spec_${spec.id}`}>{spec.spec_name}</label>
+                                        <input
+                                            type="text"
+                                            id={`spec_${spec.id}`}
+                                            value={specValue !== undefined ? specValue : (spec.value || '')}
+                                            onChange={(e) => handleSpecificationChange(spec.spec_name, e.target.value)}
+                                            placeholder={`Enter ${spec.spec_name}`}
+                                        />
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div className="form-group full-width">
+                                <p className="text-muted" style={{ margin: '10px 0', color: '#666' }}>
+                                    No specifications available for this selection
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -1081,18 +1100,24 @@ const ProductForm = () => {
                                 <div className="form-grid comparison-grid">
                                     <div className="form-group">
                                         <label>Spec Type *</label>
-                                        <select
-                                            name="spec_type"
-                                            value={currentSpecComparison.spec_type}
-                                            onChange={handleSpecComparisonChange}
-                                        >
-                                            <option value="">Select Spec Type</option>
-                                            {specTypes.map((type) => (
-                                                <option key={type} value={type}>
-                                                    {type}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <div className="spec-type-wrapper">
+                                            <input
+                                                type="text"
+                                                name="spec_type"
+                                                value={currentSpecComparison.spec_type}
+                                                onChange={handleSpecComparisonChange}
+                                                placeholder="Enter spec type (e.g., CAT 6)"
+                                                list="spec-type-options"
+                                                className="spec-type-input"
+                                            />
+                                            {specTypes.length > 0 && (
+                                                <datalist id="spec-type-options">
+                                                    {specTypes.map((type) => (
+                                                        <option key={type} value={type} />
+                                                    ))}
+                                                </datalist>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="form-group">
@@ -1241,107 +1266,33 @@ const ProductForm = () => {
                                 </div>
 
                                 <div className="form-group">
-                                    <label>Category *</label>
-                                    <select
-                                        name="category"
-                                        value={currentVariant.category}
-                                        onChange={handleVariantChange}
-                                        required
-                                    >
-                                        <option value="">Select Category</option>
-                                        {categories.map(category => (
-                                            <option key={category.id} value={String(category.id)}>
-                                                {category.category_name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div className="form-group">
-                                    <label>Sub Category</label>
-                                    <select
-                                        name="sub_category"
-                                        value={currentVariant.sub_category}
-                                        onChange={handleVariantChange}
-                                    >
-                                        <option value="">Select Sub Category</option>
-                                        {subCategories.map(sub => (
-                                            <option key={sub.id} value={String(sub.id)}>
-                                                {sub.subcategory_name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    {currentVariant.category && subCategories.length === 0 && (
-                                        <small className="text-gray-500">No sub categories available for this category</small>
-                                    )}
-                                </div>
-
-                                <div className="form-group">
-                                    <label>Spec Type *</label>
-                                    <select
+                                    <label>Spec Type</label>
+                                    <input
+                                        type="text"
                                         name="spec_type"
                                         value={currentVariant.spec_type}
                                         onChange={handleVariantChange}
-                                        required
-                                    >
-                                        <option value="">Select Spec Type</option>
-                                        {getFilteredSpecsForVariant(currentVariant.category).map(spec => (
-                                            <option key={spec.id} value={spec.spec_name}>
-                                                {spec.spec_name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    {getFilteredSpecsForVariant(currentVariant.category).length === 0 && currentVariant.category && (
-                                        <small className="text-gray-500">No specifications available for this category</small>
+                                        placeholder="e.g., CAT 6, CAT 6A"
+                                        list="spec-type-options-variant"
+                                    />
+                                    {specTypes.length > 0 && (
+                                        <datalist id="spec-type-options-variant">
+                                            {specTypes.map((type) => (
+                                                <option key={type} value={type} />
+                                            ))}
+                                        </datalist>
                                     )}
                                 </div>
 
                                 <div className="form-group">
-                                    <label>Color *</label>
-                                    <select
+                                    <label>Color</label>
+                                    <input
+                                        type="text"
                                         name="color"
                                         value={currentVariant.color}
                                         onChange={handleVariantChange}
-                                        required
-                                    >
-                                        <option value="">Select Color</option>
-                                        {getColorsFromSpec(currentVariant.spec_type, currentVariant.category).map((color) => (
-                                            <option key={color} value={color}>
-                                                {color}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    {getColorsFromSpec(currentVariant.spec_type, currentVariant.category).length === 0 && currentVariant.spec_type && (
-                                        <small className="text-gray-500">No colors available for this spec type</small>
-                                    )}
-                                </div>
-
-                                <div className="form-group">
-                                    <label>Brand *</label>
-                                    <select
-                                        name="brand"
-                                        value={currentVariant.brand}
-                                        onChange={handleVariantChange}
-                                        required
-                                    >
-                                        <option value="">Select Brand</option>
-                                        {getFilteredBrandsByCategory(
-                                            currentVariant.category, 
-                                            currentVariant.spec_type, 
-                                            currentVariant.color
-                                        ).map((brandName) => (
-                                            <option key={brandName} value={brandName}>
-                                                {brandName}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    {getFilteredBrandsByCategory(
-                                        currentVariant.category, 
-                                        currentVariant.spec_type, 
-                                        currentVariant.color
-                                    ).length === 0 && currentVariant.category && currentVariant.spec_type && currentVariant.color && (
-                                        <small className="text-gray-500">No brands available for this color</small>
-                                    )}
+                                        placeholder="e.g., Black, Blue, White"
+                                    />
                                 </div>
 
                                 <div className="form-group">
@@ -1356,11 +1307,24 @@ const ProductForm = () => {
                                 </div>
 
                                 <div className="form-group">
-                                    <label>Price (INR) *</label>
+                                    <label>Min Price (INR) *</label>
                                     <input
                                         type="number"
-                                        name="price"
-                                        value={currentVariant.price}
+                                        name="min_price"
+                                        value={currentVariant.min_price}
+                                        onChange={handleVariantChange}
+                                        step="0.01"
+                                        placeholder="0.00"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="form-group">
+                                    <label>Max Price (INR) *</label>
+                                    <input
+                                        type="number"
+                                        name="max_price"
+                                        value={currentVariant.max_price}
                                         onChange={handleVariantChange}
                                         step="0.01"
                                         placeholder="0.00"
@@ -1484,15 +1448,14 @@ const ProductForm = () => {
                                         <div className="variant-info">
                                             <strong>{variant.variant_name}</strong>
                                             <span>Part: {variant.part_code}</span>
-                                            <span>Category: {getCategoryNameById(variant.category)}</span>
-                                            {variant.sub_category && (
-                                                <span>Sub Category: {getSubCategoryNameById(variant.sub_category)}</span>
-                                            )}
+                                            <span>Category: {variant.category_name || getCategoryNameById(formData.category_id)}</span>
+                                            <span>Sub Category: {variant.sub_category_name || getSubCategoryNameById(formData.sub_category_id)}</span>
+                                            <span>Brand: {variant.brand_name || formData.product_brand || '-'}</span>
                                             {variant.spec_type && <span className="spec-badge">{variant.spec_type}</span>}
                                             {variant.color && <span>Color: {variant.color}</span>}
-                                            {variant.brand && <span>Brand: {variant.brand}</span>}
                                             {variant.size && <span>Size: {variant.size}</span>}
-                                            <span>Price: ₹{parseFloat(variant.price).toLocaleString('en-IN')}</span>
+                                            <span>Min Price: ₹{parseFloat(variant.min_price).toLocaleString('en-IN')}</span>
+                                            <span>Max Price: ₹{parseFloat(variant.max_price).toLocaleString('en-IN')}</span>
                                             <span>Stock: {variant.stock}</span>
                                             {variant.availability && <span className="availability-badge">{variant.availability}</span>}
                                             {variant.existingImages && variant.existingImages.length > 0 && (

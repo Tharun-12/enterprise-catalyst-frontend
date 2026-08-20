@@ -375,6 +375,9 @@
 
 // src/pages/wishlist.tsx - Updated with min/max price display
 
+// src/pages/wishlist.tsx - Fixed with proper min/max price calculation from variants
+
+// src/pages/wishlist.tsx - Fixed with min/max price from variants
 import { Link, useNavigate } from 'react-router-dom';
 import { Heart, ArrowRight, Trash2, Loader2, FileText, Eye, Star, BadgeCheck, FileSpreadsheet, Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -389,14 +392,36 @@ import { cn } from '@/lib/utils';
 import axios from 'axios';
 import { baseurl } from '@/Baseurl/baseurl';
 
-// Define the API product type - UPDATED
+// Define the API product type
+interface ApiVariant {
+  id: number;
+  product_id: number;
+  variant_name: string;
+  part_code: string;
+  category: string | null;
+  sub_category: string | null;
+  brand: string;
+  description: string;
+  spec_type: string;
+  color: string;
+  size: string;
+  min_price: string;
+  max_price: string;
+  availability: string;
+  datasheet_url: string;
+  stock: number;
+  image_url: string;
+  created_at: string;
+  updated_at: string;
+}
+
 interface ApiProduct {
   id: number;
   product_name: string;
   product_code: string;
   product_brand: string;
-  min_price: string;  // Added
-  max_price: string;  // Added
+  min_price: string | null;
+  max_price: string | null;
   discount: string;
   product_description: string;
   warranty: string;
@@ -406,25 +431,8 @@ interface ApiProduct {
   updated_at: string;
   product_category_id: number;
   product_details_pdf?: string;
-  category_name?: string;
-  variants?: Array<{
-    id: number;
-    product_id: number;
-    variant_name: string;
-    part_code: string;
-    category: string;
-    brand: string;
-    description: string;
-    spec_type: string;
-    color_name: string;
-    color_hex: string;
-    size: string;
-    price: string;
-    availability: string;
-    datasheet_url: string;
-    stock: number;
-    image_url: string;
-  }>;
+  category_name?: string | null;
+  variants?: ApiVariant[];
 }
 
 interface DisplayProduct {
@@ -436,8 +444,8 @@ interface DisplayProduct {
   shortDescription: string;
   description: string;
   price: number;
-  minPrice: number;   // Added
-  maxPrice: number;   // Added
+  minPrice: number;
+  maxPrice: number;
   discount: number;
   rating: number;
   reviewCount: number;
@@ -446,7 +454,7 @@ interface DisplayProduct {
   isPopular: boolean;
   isNew: boolean;
   createdAt: string;
-  variants: ApiProduct['variants'];
+  variants: ApiVariant[];
   sku: string;
   discountPercentage?: number;
   stock: number;
@@ -491,63 +499,80 @@ export function WishlistPage() {
     }
   }, []);
 
-  const displayProducts = useMemo((): DisplayProduct[] => {
-    if (!wishlistProducts || wishlistProducts.length === 0) {
-      return [];
-    }
+ // src/pages/wishlist.tsx - Updated to use selected variant
 
-    const products = wishlistProducts as any[];
-    
-    return products
-      .filter(isApiProduct)
-      .map((p: ApiProduct) => {
-        let image = 'https://via.placeholder.com/400x400';
-        if (p.variants && p.variants.length > 0 && p.variants[0].image_url) {
-          image = `${baseurl}${p.variants[0].image_url}`;
-        }
-        
-        const galleryImages = p.variants?.map(v => 
-          v.image_url ? `${baseurl}${v.image_url}` : null
-        ).filter((url): url is string => Boolean(url)) || [];
-        
-        const totalStock = p.variants?.reduce((sum, v) => sum + v.stock, 0) || 0;
-        
-        // Get min and max price from the product's min_price and max_price fields
-        const minPrice = parseFloat(p.min_price) || 0;
-        const maxPrice = parseFloat(p.max_price) || 0;
-        
-        // Use the first variant price as fallback if min/max are 0
-        let fallbackPrice = 0;
-        if (p.variants && p.variants.length > 0) {
-          fallbackPrice = parseFloat(p.variants[0].price) || 0;
-        }
-        
-        return {
-          id: String(p.id),
-          name: p.product_name,
-          slug: p.product_name.toLowerCase().replace(/\s+/g, '-'),
-          brandName: p.product_brand || 'Unknown',
-          categoryName: p.category_name || 'Uncategorized',
-          shortDescription: p.product_description?.substring(0, 100) || '',
-          description: p.product_description || '',
-          price: fallbackPrice > 0 ? fallbackPrice : (minPrice > 0 ? minPrice : 0),
-          minPrice: minPrice,
-          maxPrice: maxPrice,
-          discount: parseFloat(p.discount) || 0,
-          rating: 4.5,
-          reviewCount: 0,
-          gallery: galleryImages.length > 0 ? galleryImages : [image],
-          image: image,
-          isPopular: false,
-          isNew: false,
-          createdAt: p.created_at,
-          variants: p.variants || [],
-          sku: p.product_code,
-          discountPercentage: parseFloat(p.discount) || 0,
-          stock: totalStock,
-        };
-      });
-  }, [wishlistProducts]);
+// Update the displayProducts useMemo to use the selected variant:
+
+const displayProducts = useMemo((): DisplayProduct[] => {
+  if (!wishlistProducts || wishlistProducts.length === 0) {
+    return [];
+  }
+
+  const products = wishlistProducts as any[];
+  
+  return products
+    .filter(isApiProduct)
+    .map((p: ApiProduct) => {
+      // Find the selected variant (marked by backend)
+      const selectedVariant = p.variants?.find((v: any) => v.is_selected) || p.variants?.[0];
+      
+      let image = 'https://via.placeholder.com/400x400';
+      if (selectedVariant?.image_url) {
+        image = `${baseurl}${selectedVariant.image_url}`;
+      }
+      
+      const galleryImages = p.variants?.map(v => 
+        v.image_url ? `${baseurl}${v.image_url}` : null
+      ).filter((url): url is string => Boolean(url)) || [];
+      
+      const totalStock = p.variants?.reduce((sum, v) => sum + v.stock, 0) || 0;
+      
+      // Use the selected variant's prices
+      let minPrice = 0;
+      let maxPrice = 0;
+      
+      if (selectedVariant) {
+        minPrice = parseFloat(selectedVariant.min_price) || 0;
+        maxPrice = parseFloat(selectedVariant.max_price) || 0;
+      }
+      
+      // If no selected variant prices, try product-level prices
+      if (minPrice === 0 && p.min_price) {
+        minPrice = parseFloat(p.min_price) || 0;
+      }
+      if (maxPrice === 0 && p.max_price) {
+        maxPrice = parseFloat(p.max_price) || 0;
+      }
+      
+      // Use selected variant's min as fallback price
+      let fallbackPrice = minPrice > 0 ? minPrice : 0;
+      
+      return {
+        id: String(p.id),
+        name: p.product_name,
+        slug: p.product_name.toLowerCase().replace(/\s+/g, '-'),
+        brandName: p.product_brand || 'Unknown',
+        categoryName: p.category_name || 'Uncategorized',
+        shortDescription: p.product_description?.substring(0, 100) || '',
+        description: p.product_description || '',
+        price: fallbackPrice > 0 ? fallbackPrice : 0,
+        minPrice: minPrice,
+        maxPrice: maxPrice,
+        discount: parseFloat(p.discount) || 0,
+        rating: 4.5,
+        reviewCount: 0,
+        gallery: galleryImages.length > 0 ? galleryImages : [image],
+        image: image,
+        isPopular: false,
+        isNew: false,
+        createdAt: p.created_at,
+        variants: p.variants || [],
+        sku: p.product_code,
+        discountPercentage: parseFloat(p.discount) || 0,
+        stock: totalStock,
+      };
+    });
+}, [wishlistProducts]);
 
   // Initialize quantities for products
   useEffect(() => {
@@ -758,7 +783,6 @@ export function WishlistPage() {
     setIsGeneratingQuotation(true);
 
     try {
-      // Get selected products with their quantities
       const selectedProductsData = displayProducts
         .filter(p => selectedProducts.has(p.id))
         .map(p => ({
@@ -962,7 +986,7 @@ export function WishlistPage() {
     }).format(price);
   };
 
-  // Get display price - show min/max range
+  // Get display price - show min/max range from variants
   const getDisplayPrice = (product: DisplayProduct) => {
     const minPrice = product.minPrice || 0;
     const maxPrice = product.maxPrice || 0;
@@ -1171,7 +1195,7 @@ export function WishlistPage() {
                   </h3>
                 </Link>
 
-                {/* Price - Updated to show min/max range */}
+                {/* Price - Updated to show min/max range from variants */}
                 <div className="mb-2 mt-1">
                   <span className="text-lg font-bold text-primary">
                     {displayPrice}
@@ -1250,7 +1274,7 @@ export function WishlistPage() {
 
                 {/* Actions */}
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
+                  {/* <div className="flex items-center gap-2">
                     <Button 
                       asChild 
                       size="sm" 
@@ -1281,7 +1305,7 @@ export function WishlistPage() {
                         </>
                       )}
                     </Button>
-                  </div>
+                  </div> */}
 
                   {/* Add to Compare */}
                   <button
