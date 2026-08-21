@@ -82,24 +82,24 @@
 //     const fetchProducts = async () => {
 //       try {
 //         setLoading(true);
-        
+
 //         // Fetch all products with variants
 //         const response = await axios.get(`${baseurl}/api/products/products-with-variants`);
 //         const allProducts = response.data;
 //         setAllProductsData(allProducts);
-        
+
 //         // If no products in compare list, return
 //         if (compareList.length === 0) {
 //           setProducts([]);
 //           setRelatedProducts([]);
 //           return;
 //         }
-        
+
 //         // Get products that are in the compare list
 //         const compareProducts = allProducts.filter((p: ApiProduct) => 
 //           compareList.includes(String(p.id))
 //         );
-        
+
 //         // Fetch spec comparison for each product in compare list
 //         const productsWithSpecs = await Promise.all(
 //           compareProducts.map(async (product: ApiProduct) => {
@@ -116,13 +116,13 @@
 //             }
 //           })
 //         );
-        
+
 //         setProducts(productsWithSpecs);
 
 //         // Get related products based on the first product's type (for "Related Products" section)
 //         if (compareProducts.length > 0) {
 //           const firstProductType = compareProducts[0].product_type;
-          
+
 //           // Related products: same type, NOT in compare list
 //           const related = allProducts
 //             .filter((p: ApiProduct) => 
@@ -130,10 +130,10 @@
 //               !compareList.includes(String(p.id))
 //             )
 //             .slice(0, 4);
-          
+
 //           setRelatedProducts(related);
 //         }
-        
+
 //       } catch (error) {
 //         console.error('Error fetching products:', error);
 //         toast.error('Failed to load products for comparison');
@@ -209,7 +209,7 @@
 //     if (directValue && directValue !== 'null' && directValue !== '') {
 //       return directValue;
 //     }
-    
+
 //     // If not, check spec_comparison
 //     if (product.spec_comparison && product.spec_comparison.length > 0) {
 //       const spec = product.spec_comparison[0];
@@ -218,7 +218,7 @@
 //         return specValue;
 //       }
 //     }
-    
+
 //     return '—';
 //   };
 
@@ -404,7 +404,7 @@
 
 //   const generalInfoItems = getGeneralInfoItems();
 //   const specItems = getSpecificationItems();
-  
+
 //   // Get product type for related products section
 //   const productType = products[0]?.product_type || '';
 
@@ -560,7 +560,7 @@
 //               const values = products.map(p => item.value(p));
 //               const isDifferent = isValueDifferent(values);
 //               const bestValue = findBestValue(values);
-              
+
 //               return (
 //                 <div 
 //                   key={item.label}
@@ -627,7 +627,7 @@
 //               const values = products.map(p => item.value(p));
 //               const isDifferent = isValueDifferent(values);
 //               const bestValue = findBestValue(values);
-              
+
 //               return (
 //                 <div
 //                   key={item.label}
@@ -738,7 +738,10 @@
 
 // ComparePage.tsx - Updated with hidden Product Type dropdown after first product
 
-// ComparePage.tsx - Updated with hidden Product Type dropdown after first product
+
+// ComparePage.tsx - Fixed with working wishlist and quotation
+
+// ComparePage.tsx - Fixed with proper product ID handling
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { X, GitCompare, Plus, ArrowRight, AlertCircle, Loader2, Heart } from 'lucide-react';
@@ -770,18 +773,22 @@ interface Variant {
   variant_name: string;
   part_code: string;
   category: string;
+  sub_category: string;
   brand: string;
   description: string;
   spec_type: string;
   color: string;
   size: string;
   price: string;
+  min_price?: string;
+  max_price?: string;
   availability: string;
   datasheet_url: string;
   stock: number;
   image_url: string;
   created_at: string;
   updated_at: string;
+  is_selected?: boolean;
 }
 
 interface SpecComparison {
@@ -798,6 +805,7 @@ interface SpecComparison {
 
 interface ApiProduct {
   id: number;
+  product_id: number;  // ✅ Added this - compare API uses product_id
   product_name: string;
   product_code: string;
   product_category_id: number;
@@ -816,6 +824,7 @@ interface ApiProduct {
   category_name: string;
   variants: Variant[];
   spec_comparison?: SpecComparison[];
+  selected_variant_id?: number | null;
 }
 
 interface Brand {
@@ -841,7 +850,8 @@ export function ComparePage() {
     addToWishlist, 
     removeFromWishlist, 
     isInWishlist,
-    addToCompare 
+    addToCompare,
+    isLoggedIn
   } = useApp();
   
   const [products, setProducts] = useState<ApiProductWithSpec[]>([]);
@@ -850,18 +860,13 @@ export function ComparePage() {
   const [relatedProducts, setRelatedProducts] = useState<ApiProduct[]>([]);
   const [allProductsData, setAllProductsData] = useState<ApiProduct[]>([]);
   
-  // Dropdown states for adding products (Flipkart style)
   const [brands, setBrands] = useState<Brand[]>([]);
-  // FIXED: Removed unused productTypes state variable
-  // const [productTypes, setProductTypes] = useState<string[]>([]); // REMOVED - was never used
   
-  // State for each slot's dropdown selections
   interface SlotDropdowns {
     brand: string;
     productName: string;
   }
   
-  // Create dropdown states for up to 4 slots (removed productType)
   const [slotDropdowns, setSlotDropdowns] = useState<SlotDropdowns[]>([
     { brand: 'all', productName: 'all' },
     { brand: 'all', productName: 'all' },
@@ -869,19 +874,14 @@ export function ComparePage() {
     { brand: 'all', productName: 'all' },
   ]);
   
-  // Filtered products for each slot based on brand selection
   const [filteredProductsForSlots, setFilteredProductsForSlots] = useState<ApiProduct[][]>([]);
-  
-  // Compare product type tracking
   const [compareProductType, setCompareProductType] = useState<string | null>(null);
   
-  // Wishlist and Quotation states
   const [wishlistLoading, setWishlistLoading] = useState<string | null>(null);
   const [quotationLoading, setQuotationLoading] = useState<string | null>(null);
   const [wishlistModalOpen, setWishlistModalOpen] = useState(false);
   const [selectedProductForWishlist, setSelectedProductForWishlist] = useState<ApiProduct | null>(null);
 
-  // Get user ID
   const getUserId = (): number | null => {
     const session = localStorage.getItem('userSession');
     if (session) {
@@ -919,27 +919,20 @@ export function ComparePage() {
       try {
         setLoading(true);
         
-        // Fetch brands
         const brandsRes = await axios.get(`${baseurl}/api/brands/`);
         if (brandsRes.data.success) {
           setBrands(brandsRes.data.data);
         }
 
-        // Fetch all products with variants
         const response = await axios.get(`${baseurl}/api/products/products-with-variants`);
         const allProducts = response.data;
         setAllProductsData(allProducts);
         
-        // Get unique product types - removed unused setter
-        // const types: string[] = [...new Set(allProducts.map((p: ApiProduct) => p.product_type).filter(Boolean))];
-        // setProductTypes(types); // REMOVED - was never used
-        
-        // Initialize filtered products for slots
         const initialFiltered = Array(4).fill(null).map(() => allProducts);
         setFilteredProductsForSlots(initialFiltered);
         
-        // Update display products based on compareList
-        await updateDisplayProducts(allProducts);
+        // Fetch compare list from the compare API
+        await fetchCompareList();
         
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -952,28 +945,49 @@ export function ComparePage() {
     fetchData();
   }, []);
 
-  // Update display products whenever compareList changes
+  // Fetch compare list from the compare API
+  const fetchCompareList = async () => {
+    try {
+      const userId = getUserId();
+      if (!userId) {
+        console.log('No user ID found, cannot fetch compare list');
+        return;
+      }
+
+      const response = await axios.get(`${baseurl}/api/compare/${userId}`);
+      if (response.data.success && response.data.data.length > 0) {
+        const compareData = response.data.data;
+        
+        // Update display products with compare data
+        await updateDisplayProducts(compareData);
+      } else {
+        setProducts([]);
+        setRelatedProducts([]);
+        setCompareProductType(null);
+      }
+    } catch (error) {
+      console.error('Error fetching compare list:', error);
+    }
+  };
+
   useEffect(() => {
-    if (allProductsData.length > 0) {
-      updateDisplayProducts(allProductsData);
+    if (allProductsData.length > 0 && compareList.length > 0) {
+      fetchCompareList();
+    } else if (compareList.length === 0) {
+      setProducts([]);
+      setRelatedProducts([]);
+      setCompareProductType(null);
     }
   }, [compareList]);
 
-  const updateDisplayProducts = async (allProducts: ApiProduct[]) => {
-    // If no products in compare list, show empty
-    if (compareList.length === 0) {
+  const updateDisplayProducts = async (compareProducts: ApiProduct[]) => {
+    if (!compareProducts || compareProducts.length === 0) {
       setProducts([]);
       setRelatedProducts([]);
       setCompareProductType(null);
       return;
     }
     
-    // Get products that are in the compare list
-    const compareProducts = allProducts.filter((p: ApiProduct) => 
-      compareList.includes(String(p.id))
-    );
-    
-    // Set the product type from the first product in compare list
     if (compareProducts.length > 0) {
       setCompareProductType(compareProducts[0].product_type);
     }
@@ -982,17 +996,24 @@ export function ComparePage() {
     const productsWithSpecs = await Promise.all(
       compareProducts.map(async (product: ApiProduct): Promise<ApiProductWithSpec> => {
         try {
+          // ✅ FIXED: Use product_id from compare API response
+          const productId = product.product_id || product.id;
+          if (!productId) {
+            console.error('Product ID is undefined for product:', product);
+            return { ...product, spec_comparison: [] };
+          }
+          
           const specRes = await axios.get<Record<string, SpecComparison>>(
-            `${baseurl}/api/products/spec-comparison/${product.id}`
+            `${baseurl}/api/products/spec-comparison/${productId}`
           );
           if (specRes.data && Object.keys(specRes.data).length > 0) {
-            // FIXED: Use type assertion to tell TypeScript this is SpecComparison[]
             const specArray: SpecComparison[] = Object.values(specRes.data) as SpecComparison[];
             return { ...product, spec_comparison: specArray };
           }
           return { ...product, spec_comparison: [] };
         } catch (error) {
-          console.error(`Error fetching spec for product ${product.id}:`, error);
+          const productId = product.product_id || product.id;
+          console.error(`Error fetching spec for product ${productId}:`, error);
           return { ...product, spec_comparison: [] };
         }
       })
@@ -1000,14 +1021,13 @@ export function ComparePage() {
     
     setProducts(productsWithSpecs);
 
-    // Get related products based on the first product's type
     if (compareProducts.length > 0) {
       const firstProductType = compareProducts[0].product_type;
       
-      const related = allProducts
+      const related = allProductsData
         .filter((p: ApiProduct) => 
           p.product_type === firstProductType && 
-          !compareList.includes(String(p.id))
+          !compareList.includes(String(p.product_id || p.id))
         )
         .slice(0, 4);
       
@@ -1015,7 +1035,6 @@ export function ComparePage() {
     }
   };
 
-  // Update dropdown options for a specific slot
   const updateSlotFilteredProducts = (slotIndex: number, brand: string) => {
     let filtered = allProductsData;
     
@@ -1023,7 +1042,6 @@ export function ComparePage() {
       filtered = filtered.filter(p => p.product_brand === brand);
     }
     
-    // Always filter by compareProductType if it exists
     if (compareProductType) {
       filtered = filtered.filter(p => p.product_type === compareProductType);
     }
@@ -1033,7 +1051,6 @@ export function ComparePage() {
     setFilteredProductsForSlots(newFiltered);
   };
 
-  // Handle brand change for a specific slot
   const handleSlotBrandChange = (slotIndex: number, brandName: string) => {
     const newSlots = [...slotDropdowns];
     newSlots[slotIndex] = {
@@ -1045,7 +1062,6 @@ export function ComparePage() {
     updateSlotFilteredProducts(slotIndex, brandName);
   };
 
-  // Handle product name selection for a specific slot
   const handleSlotProductNameChange = async (slotIndex: number, productName: string) => {
     const newSlots = [...slotDropdowns];
     newSlots[slotIndex] = {
@@ -1058,7 +1074,6 @@ export function ComparePage() {
       return;
     }
     
-    // Find the selected product
     const selectedProduct = allProductsData.find(
       (p: ApiProduct) => p.product_name === productName
     );
@@ -1068,10 +1083,9 @@ export function ComparePage() {
       return;
     }
 
-    // Check if product already exists in compare list
-    if (compareList.includes(String(selectedProduct.id))) {
+    const productId = String(selectedProduct.id);
+    if (compareList.includes(productId)) {
       toast.info('Product already in compare list');
-      // Reset the dropdown
       const resetSlots = [...slotDropdowns];
       resetSlots[slotIndex] = {
         ...resetSlots[slotIndex],
@@ -1081,16 +1095,13 @@ export function ComparePage() {
       return;
     }
 
-    // Check product type compatibility
     if (compareList.length > 0) {
-      // Get the first product's type from current compare list
       const firstProduct = allProductsData.find(
         (p: ApiProduct) => String(p.id) === compareList[0]
       );
       
       if (firstProduct && firstProduct.product_type !== selectedProduct.product_type) {
         toast.error(`Cannot compare different product types. Existing: ${firstProduct.product_type}, New: ${selectedProduct.product_type}`);
-        // Reset the dropdown
         const resetSlots = [...slotDropdowns];
         resetSlots[slotIndex] = {
           ...resetSlots[slotIndex],
@@ -1101,10 +1112,8 @@ export function ComparePage() {
       }
     }
     
-    // Check max limit
     if (compareList.length >= 4) {
       toast.error('You can compare up to 4 products at a time');
-      // Reset the dropdown
       const resetSlots = [...slotDropdowns];
       resetSlots[slotIndex] = {
         ...resetSlots[slotIndex],
@@ -1115,10 +1124,8 @@ export function ComparePage() {
     }
     
     try {
-      // Get user ID for API call
       const userId = getUserId();
-      await addToCompare(String(selectedProduct.id), userId || undefined);
-      // toast.success('Product added to compare list');
+      await addToCompare(productId, userId || undefined);
     } catch (error: any) {
       console.error('Error adding to compare:', error);
       if (error?.response?.data?.message?.includes('Cannot compare different product types')) {
@@ -1126,7 +1133,6 @@ export function ComparePage() {
       } else {
         toast.error('Failed to add product to compare');
       }
-      // Reset the dropdown
       const resetSlots = [...slotDropdowns];
       resetSlots[slotIndex] = {
         ...resetSlots[slotIndex],
@@ -1136,53 +1142,81 @@ export function ComparePage() {
     }
   };
 
-  // Helper function to get product image with full URL
   const getProductImage = (product: ApiProduct): string => {
+    let selectedVariant = product.variants?.find(v => v.is_selected);
+    if (!selectedVariant && product.variants && product.variants.length > 0) {
+      selectedVariant = product.variants[0];
+    }
+    if (selectedVariant && selectedVariant.image_url) {
+      return `${baseurl}${selectedVariant.image_url}`;
+    }
     if (product.variants && product.variants.length > 0 && product.variants[0].image_url) {
       return `${baseurl}${product.variants[0].image_url}`;
     }
     return 'https://via.placeholder.com/400x400?text=No+Image';
   };
 
-  // Helper function to get product slug
   const getProductSlug = (productName: string): string => {
     return productName.toLowerCase().replace(/\s+/g, '-');
   };
 
-  // Helper function to get product price
-  const getProductPrice = (product: ApiProduct): number => {
-    const price = parseFloat(product.max_price || product.min_price || product.price || '0');
-    return isNaN(price) ? 0 : price;
+  // Get min and max price - PRIORITIZE SELECTED VARIANT
+  const getMinMaxPrice = (product: ApiProduct): { minPrice: number; maxPrice: number } => {
+    let minPrice = 0;
+    let maxPrice = 0;
+    
+    // STEP 1: Check if there's a selected variant (highest priority)
+    const selectedVariant = product.variants?.find(v => v.is_selected === true);
+    
+    if (selectedVariant) {
+      const selectedMin = parseFloat(selectedVariant.min_price || '0');
+      const selectedMax = parseFloat(selectedVariant.max_price || '0');
+      
+      if (selectedMin > 0) minPrice = selectedMin;
+      if (selectedMax > 0) maxPrice = selectedMax;
+      
+      if (minPrice > 0 && maxPrice > 0) {
+        return { minPrice, maxPrice };
+      }
+    }
+    
+    // STEP 2: Check product-level min/max
+    if (minPrice === 0 && product.min_price) {
+      minPrice = parseFloat(product.min_price) || 0;
+    }
+    if (maxPrice === 0 && product.max_price) {
+      maxPrice = parseFloat(product.max_price) || 0;
+    }
+    
+    // STEP 3: Get from all variants (lowest priority)
+    if (minPrice === 0 || maxPrice === 0) {
+      if (product.variants && product.variants.length > 0) {
+        const variantMinPrices = product.variants
+          .map(v => parseFloat(v.min_price || '0'))
+          .filter(p => !isNaN(p) && p > 0);
+        
+        const variantMaxPrices = product.variants
+          .map(v => parseFloat(v.max_price || '0'))
+          .filter(p => !isNaN(p) && p > 0);
+        
+        if (variantMinPrices.length > 0 && minPrice === 0) {
+          minPrice = Math.min(...variantMinPrices);
+        }
+        if (variantMaxPrices.length > 0 && maxPrice === 0) {
+          maxPrice = Math.max(...variantMaxPrices);
+        }
+      }
+    }
+    
+    return { minPrice, maxPrice };
   };
 
-  // Helper function to get display price string with min/max
+  // Get display price - show only min and max without discount
   const getDisplayPrice = (product: ApiProduct): string => {
-    const minPrice = parseFloat(product.min_price || '0');
-    const maxPrice = parseFloat(product.max_price || '0');
-    const discount = parseFloat(product.discount || '0');
+    const { minPrice, maxPrice } = getMinMaxPrice(product);
     
     if (minPrice === 0 && maxPrice === 0) {
       return 'Price on request';
-    }
-    
-    // Calculate discounted prices
-    const minDiscounted = minPrice * (1 - discount / 100);
-    const maxDiscounted = maxPrice * (1 - discount / 100);
-    
-    if (minPrice === maxPrice) {
-      return formatPrice(minDiscounted);
-    }
-    
-    return `${formatPrice(minDiscounted)} - ${formatPrice(maxDiscounted)}`;
-  };
-
-  // Helper function to get original price display
-  const getDisplayOriginalPrice = (product: ApiProduct): string => {
-    const minPrice = parseFloat(product.min_price || '0');
-    const maxPrice = parseFloat(product.max_price || '0');
-    
-    if (minPrice === 0 && maxPrice === 0) {
-      return '';
     }
     
     if (minPrice === maxPrice) {
@@ -1192,18 +1226,15 @@ export function ComparePage() {
     return `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`;
   };
 
-  // Helper function to get stock status
   const getStockStatus = (product: ApiProduct): string => {
     const totalStock = product.variants?.reduce((sum, v) => sum + v.stock, 0) || 0;
     return totalStock > 0 ? 'In Stock' : 'Out of Stock';
   };
 
-  // Check if a value is different across products
   const isValueDifferent = (values: any[]): boolean => {
     return new Set(values).size > 1;
   };
 
-  // Find best value for numeric specs
   const findBestValue = (values: string[]): string | null => {
     const numeric = values.map(v => {
       const match = v.match(/[\d.]+/);
@@ -1217,7 +1248,6 @@ export function ComparePage() {
     return null;
   };
 
-  // Format price in Indian Rupees
   const formatPrice = (price: string | number): string => {
     const numPrice = typeof price === 'string' ? parseFloat(price) : price;
     if (isNaN(numPrice) || numPrice === 0) return '₹0';
@@ -1229,7 +1259,6 @@ export function ComparePage() {
     }).format(numPrice);
   };
 
-  // Get spec value from product
   const getSpecValue = (product: ApiProductWithSpec, specKey: string): string => {
     const directValue = (product as any)[specKey];
     if (directValue && directValue !== 'null' && directValue !== '') {
@@ -1247,7 +1276,6 @@ export function ComparePage() {
     return '—';
   };
 
-  // Get general info items
   const getGeneralInfoItems = () => {
     const items = [
       { 
@@ -1281,7 +1309,6 @@ export function ComparePage() {
     return items;
   };
 
-  // Get specification items
   const getSpecificationItems = () => {
     const specKeys = [
       { label: 'Product Series', key: 'product_series' },
@@ -1306,7 +1333,6 @@ export function ComparePage() {
     return items;
   };
 
-  // Transform API product to the Product type expected by ProductCard
   const transformForProductCard = (product: ApiProduct): Product => {
     const gallery = product.variants?.map(v => 
       v.image_url ? `${baseurl}${v.image_url}` : null
@@ -1339,26 +1365,30 @@ export function ComparePage() {
     const totalStock = product.variants?.reduce((sum, v) => sum + v.stock, 0) || 0;
     const status: ProductStatus = 'active';
 
+    const { minPrice, maxPrice } = getMinMaxPrice(product);
+    const price = minPrice > 0 ? minPrice : 0;
+
     const variants = product.variants?.map(v => ({
       id: v.id,
-      color_name: v.color || '',
+      color_name: v.color || 'Default',
+      color: v.color || 'Default',
       color_hex: v.color || '#cccccc',
-      price: v.price,
-      stock: v.stock,
+      price: v.price || '0',
+      min_price: v.min_price || '0',
+      max_price: v.max_price || '0',
+      stock: v.stock || 0,
       image_url: v.image_url || '',
-      variant_name: v.variant_name,
-      part_code: v.part_code,
-      spec_type: v.spec_type,
-      size: v.size,
-      availability: v.availability,
-      datasheet_url: v.datasheet_url,
-      description: v.description,
+      variant_name: v.variant_name || '',
+      part_code: v.part_code || '',
+      spec_type: v.spec_type || '',
+      size: v.size || '',
+      availability: v.availability || '',
+      datasheet_url: v.datasheet_url || '',
+      description: v.description || '',
     })) || [];
 
-    const price = getProductPrice(product);
-
     return {
-      id: String(product.id),
+      id: String(product.product_id || product.id),
       name: product.product_name,
       slug: getProductSlug(product.product_name),
       sku: product.product_code,
@@ -1378,8 +1408,8 @@ export function ComparePage() {
       ],
       gallery,
       price: price,
-      minPrice: parseFloat(product.min_price || '0'),
-      maxPrice: parseFloat(product.max_price || '0'),
+      minPrice: minPrice,
+      maxPrice: maxPrice,
       currency: 'INR',
       status: status,
       isPopular: false,
@@ -1400,13 +1430,59 @@ export function ComparePage() {
     };
   };
 
-  // Handle wishlist toggle
+  // ✅ FIXED: Wishlist toggle with proper user ID
   const handleWishlistToggle = async (product: ApiProduct, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
+    // Use product_id from compare API or fallback to id
+    const productId = String(product.product_id || product.id);
+    
+    // Check if user is logged in
+    if (!isLoggedIn) {
+      toast.error('Please login to add to wishlist', {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+        action: {
+          label: 'Login',
+          onClick: () => window.location.href = '/login'
+        }
+      });
+      setTimeout(() => window.location.href = '/login', 1500);
+      return;
+    }
+    
+    // Get user ID from session
     const userId = getUserId();
-    const productId = String(product.id);
+    if (!userId) {
+      toast.error('User ID not found. Please login again.', {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+      });
+      return;
+    }
     
     setWishlistLoading(productId);
     
@@ -1414,16 +1490,14 @@ export function ComparePage() {
       const isWishlisted = isInWishlist(productId);
       
       if (isWishlisted) {
-        await removeFromWishlist(productId, userId || undefined);
+        await removeFromWishlist(productId, userId);
         toast.success('Removed from wishlist');
       } else {
-        await addToWishlist(productId, userId || undefined);
-        if (!userId) {
-          setSelectedProductForWishlist(product);
-          setWishlistModalOpen(true);
-        } else {
-          toast.success('Added to wishlist');
-        }
+        // Find the selected variant
+        const selectedVariant = product.variants?.find(v => v.is_selected);
+        const variantId = selectedVariant?.id;
+        await addToWishlist(productId, userId, variantId);
+        toast.success('Added to wishlist');
       }
     } catch (error) {
       console.error('Wishlist error:', error);
@@ -1433,46 +1507,83 @@ export function ComparePage() {
     }
   };
 
-  // Handle single quotation request - Navigate to quotation page
+  // ✅ FIXED: Quotation request with proper user ID and data
   const handleSingleQuotation = async (product: ApiProduct, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    const userId = getUserId();
-    if (!userId) {
-      toast.error('Please login to request a quotation');
+    // Check if user is logged in
+    if (!isLoggedIn) {
+      toast.error('Please login to request a quotation', {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+        action: {
+          label: 'Login',
+          onClick: () => window.location.href = '/login'
+        }
+      });
+      setTimeout(() => window.location.href = '/login', 1500);
       return;
     }
 
-    const productId = String(product.id);
+    const userId = getUserId();
+    if (!userId) {
+      toast.error('User ID not found. Please login again.', {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+      });
+      return;
+    }
+
+    const productId = String(product.product_id || product.id);
     setQuotationLoading(productId);
 
     try {
       const user = getUserDetails();
       
-      let actualPrice = getProductPrice(product);
-      if (product.max_price && parseFloat(product.max_price) > 0) {
-        actualPrice = parseFloat(product.max_price);
-      } else if (product.min_price && parseFloat(product.min_price) > 0) {
-        actualPrice = parseFloat(product.min_price);
-      }
-      
-      const discountPercent = parseFloat(product.discount || '0');
+      const { minPrice, maxPrice } = getMinMaxPrice(product);
+      const price = minPrice > 0 ? minPrice : 0;
       
       const payload = {
         user_id: userId,
-        product_id: product.id,
+        product_id: parseInt(productId),
         product_name: product.product_name,
         product_code: product.product_code,
         product_brand: product.product_brand,
-        price: actualPrice,
-        discount: discountPercent,
+        price: price,
+        min_price: minPrice || price,
+        max_price: maxPrice || price,
+        discount: 0,
         quantity: 1,
         remarks: `Quotation requested for ${product.product_name}`,
         customer_name: user?.name || '',
         customer_mobile: user?.mobile || '',
         customer_email: user?.email || ''
       };
+
+      console.log('Quotation payload:', payload);
 
       const response = await axios.post(`${baseurl}/api/quotations/single`, payload);
 
@@ -1505,29 +1616,24 @@ export function ComparePage() {
   const specItems = getSpecificationItems();
   const productType = products[0]?.product_type || '';
 
-  // Products to display - only show products that are in compareList
   const displayProducts = products;
 
-  // Render dropdown for adding product slot
   const renderAddProductSlot = (slotIndex: number) => {
     const slot = slotDropdowns[slotIndex];
     const filteredProducts = filteredProductsForSlots[slotIndex] || [];
     
-    // Check if this slot is already used (has a product selected)
     const isSlotUsed = compareList.length > slotIndex;
     
     if (isSlotUsed) {
-      return null; // Slot is already filled with a product
+      return null;
     }
     
-    // Check if this is the next available slot
     const isNextAvailable = compareList.length === slotIndex;
     
     if (!isNextAvailable) {
-      return null; // Skip slots that are not the next available
+      return null;
     }
     
-    // Filter products to only show those with the correct product type
     const availableProducts = filteredProducts.filter(p => !compareList.includes(String(p.id)));
     
     return (
@@ -1538,7 +1644,6 @@ export function ComparePage() {
             <p className="text-sm font-medium text-muted-foreground">Add a product</p>
           </div>
           
-          {/* Brand Dropdown */}
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Choose Brand</label>
             <Select 
@@ -1559,7 +1664,6 @@ export function ComparePage() {
             </Select>
           </div>
           
-          {/* Product Name Dropdown */}
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Choose a Product</label>
             <Select 
@@ -1580,7 +1684,6 @@ export function ComparePage() {
             </Select>
           </div>
           
-          {/* Show product type info if compareProductType exists */}
           {compareProductType && (
             <div className="text-center text-xs text-muted-foreground pt-2 border-t">
               Showing products of type: <span className="font-medium text-primary">{compareProductType}</span>
@@ -1613,8 +1716,6 @@ export function ComparePage() {
           <div className="flex items-center gap-2 flex-wrap">
             <Button variant="outline" size="sm" onClick={async () => { 
               await clearCompare(); 
-              // toast.success('Comparison cleared');
-              // Reset dropdowns
               const resetSlots = slotDropdowns.map(() => ({
                 brand: 'all',
                 productName: 'all'
@@ -1627,7 +1728,6 @@ export function ComparePage() {
         )}
       </div>
 
-      {/* Show only when products are in compare list */}
       {compareList.length === 0 ? (
         <EmptyState
           icon={<GitCompare className="w-8 h-8" />}
@@ -1650,19 +1750,19 @@ export function ComparePage() {
             </div>
           )}
 
-          {/* Product Cards Grid - Show compared products + add slot */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mb-8">
             {displayProducts.map((product) => {
-              const isWishlisted = isInWishlist(String(product.id));
-              const isWishlistLoading = wishlistLoading === String(product.id);
-              const isQuotationLoading = quotationLoading === String(product.id);
+              const productId = String(product.product_id || product.id);
+              const isWishlisted = isInWishlist(productId);
+              const isWishlistLoading = wishlistLoading === productId;
+              const isQuotationLoading = quotationLoading === productId;
+              const { minPrice, maxPrice } = getMinMaxPrice(product);
               
               return (
                 <Card 
-                  key={product.id} 
+                  key={productId} 
                   className="group relative overflow-hidden border-primary/50 ring-1 ring-primary/20 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col"
                 >
-                  {/* Wishlist Heart Icon - Top Right */}
                   <Button
                     size="icon"
                     variant="ghost"
@@ -1684,12 +1784,10 @@ export function ComparePage() {
                     )}
                   </Button>
 
-                  {/* Compare status indicator */}
                   <div className="absolute top-2 left-2 z-10">
                     <Badge className="bg-primary text-white text-[9px]">Comparing</Badge>
                   </div>
 
-                  {/* Remove from Compare Button */}
                   <Button
                     size="icon"
                     variant="ghost"
@@ -1698,7 +1796,7 @@ export function ComparePage() {
                       e.preventDefault();
                       e.stopPropagation();
                       const userId = getUserId();
-                      await removeFromCompare(String(product.id), userId || undefined);
+                      await removeFromCompare(productId, userId || undefined);
                     }}
                   >
                     <X className="w-3.5 h-3.5" />
@@ -1736,17 +1834,18 @@ export function ComparePage() {
                       </h3>
                     </Link>
 
-                    {/* Price - Show min/max price with discount */}
+                    {/* Price - Show only min and max without discount */}
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <span className="text-lg font-bold text-primary">
                         {getDisplayPrice(product)}
                       </span>
-                      {parseFloat(product.discount) > 0 && (
-                        <span className="text-xs text-muted-foreground line-through">
-                          {getDisplayOriginalPrice(product)}
-                        </span>
-                      )}
                     </div>
+                    
+                    {minPrice > 0 && maxPrice > 0 && minPrice !== maxPrice && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Price range: {formatPrice(minPrice)} - {formatPrice(maxPrice)}
+                      </p>
+                    )}
 
                     <p className="text-xs text-muted-foreground line-clamp-2 mt-2 flex-1">
                       {product.product_description?.substring(0, 100) || ''}
@@ -1783,11 +1882,9 @@ export function ComparePage() {
               );
             })}
 
-            {/* Add product slots - Show only the next available slot */}
             {compareList.length < 4 && renderAddProductSlot(compareList.length)}
           </div>
 
-          {/* General Information Section - Only show when comparing 2+ products */}
           {compareList.length >= 2 && generalInfoItems.length > 0 && (
             <div className="mb-6">
               <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 rounded-t-lg font-semibold text-sm flex items-center justify-between">
@@ -1819,7 +1916,7 @@ export function ComparePage() {
                         const value = item.value(product);
                         const isBest = bestValue && value === bestValue && isDifferent;
                         return (
-                          <div key={product.id} className={cn(
+                          <div key={product.product_id || product.id} className={cn(
                             "p-3 text-sm border-l first:border-l-0",
                             isBest && "bg-green-50 dark:bg-green-950/20"
                           )}>
@@ -1849,7 +1946,6 @@ export function ComparePage() {
             </div>
           )}
 
-          {/* Specifications Section - Only show when comparing 2+ products */}
           {compareList.length >= 2 && specItems.length > 0 && (
             <div className="mb-6">
               <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 rounded-t-lg font-semibold text-sm flex items-center justify-between">
@@ -1881,7 +1977,7 @@ export function ComparePage() {
                         const value = item.value(product);
                         const isBest = bestValue && value === bestValue && isDifferent;
                         return (
-                          <div key={product.id} className={cn(
+                          <div key={product.product_id || product.id} className={cn(
                             "p-3 text-sm border-l first:border-l-0",
                             isBest && "bg-green-50 dark:bg-green-950/20"
                           )}>
@@ -1905,7 +2001,6 @@ export function ComparePage() {
             </div>
           )}
 
-          {/* Variants Section - Only show when comparing 2+ products */}
           {compareList.length >= 2 && (
             <div className="mb-6">
               <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 rounded-t-lg font-semibold text-sm">
@@ -1918,16 +2013,22 @@ export function ComparePage() {
                 >
                   <div className="p-3 text-sm font-medium text-muted-foreground border-r">Variants</div>
                   {displayProducts.map((product) => (
-                    <div key={product.id} className="p-3 border-l first:border-l-0">
+                    <div key={product.product_id || product.id} className="p-3 border-l first:border-l-0">
                       {product.variants && product.variants.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
                           {product.variants.map((variant) => (
-                            <div key={variant.id} className="flex items-center gap-1.5 bg-card px-2.5 py-1 rounded-full border text-xs">
+                            <div key={variant.id} className={cn(
+                              "flex items-center gap-1.5 bg-card px-2.5 py-1 rounded-full border text-xs",
+                              variant.is_selected && "border-primary bg-primary/10"
+                            )}>
                               <div 
                                 className="w-3.5 h-3.5 rounded-full border"
                                 style={{ backgroundColor: variant.color || '#cccccc' }}
                               />
                               <span>{variant.variant_name || variant.color || 'N/A'}</span>
+                              {variant.is_selected && (
+                                <Badge className="text-[8px] bg-primary text-white border-0 px-1.5 py-0 h-4">Selected</Badge>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -1941,7 +2042,6 @@ export function ComparePage() {
             </div>
           )}
 
-          {/* Related Products Section */}
           {relatedProducts.length > 0 && (
             <div className="mt-12">
               <div className="flex items-center justify-between mb-5">
@@ -1957,7 +2057,7 @@ export function ComparePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {relatedProducts.map((rp) => (
                   <ProductCard 
-                    key={rp.id} 
+                    key={rp.product_id || rp.id} 
                     product={transformForProductCard(rp)} 
                   />
                 ))}
@@ -1967,7 +2067,6 @@ export function ComparePage() {
         </>
       )}
 
-      {/* Wishlist Lead Modal */}
       <WishlistLeadModal 
         product={selectedProductForWishlist ? transformForProductCard(selectedProductForWishlist) : null} 
         open={wishlistModalOpen} 

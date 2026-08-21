@@ -818,43 +818,45 @@ const handleWishlist = async (e: React.MouseEvent) => {
 };
 
 
-  const toggleCompare = async (): Promise<boolean> => {
-    if (isCompareLoading) return false;
-    if (!inCompare && compareFull) {
-      toast.warning('You can compare up to 4 products', {
-        duration: 3000,
-        position: 'top-right',
-        style: {
-          background: '#F59E0B',
-          color: 'white',
-          border: 'none',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '500',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          marginTop: '70px',
-        },
-      });
-      return false;
+ const toggleCompare = async (): Promise<boolean> => {
+  if (isCompareLoading) return false;
+  if (!inCompare && compareFull) {
+    toast.warning('You can compare up to 4 products', {
+      duration: 3000,
+      position: 'top-right',
+      style: {
+        background: '#F59E0B',
+        color: 'white',
+        border: 'none',
+        padding: '12px 24px',
+        borderRadius: '8px',
+        fontSize: '14px',
+        fontWeight: '500',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        marginTop: '70px',
+      },
+    });
+    return false;
+  }
+  setIsCompareLoading(true);
+  const uid = getUserId();
+  try {
+    if (inCompare) {
+      await removeFromCompare(product.id, uid);
+    } else {
+      // ✅ Pass the selected variant ID when adding to compare
+      const variantId = selectedVariant?.id;
+      await addToCompare(product.id, uid, variantId);
     }
-    setIsCompareLoading(true);
-    const uid = getUserId();
-    try {
-      if (inCompare) {
-        await removeFromCompare(product.id, uid);
-      } else {
-        await addToCompare(product.id, uid);
-      }
-      return true;
-    } catch (error) {
-      console.error('Error toggling compare:', error);
-      toast.error('Failed to update compare list');
-      return false;
-    } finally {
-      setIsCompareLoading(false);
-    }
-  };
+    return true;
+  } catch (error) {
+    console.error('Error toggling compare:', error);
+    toast.error('Failed to update compare list');
+    return false;
+  } finally {
+    setIsCompareLoading(false);
+  }
+};
 
   const handleCompareCheckbox = async (e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
@@ -1129,26 +1131,26 @@ const handleWishlist = async (e: React.MouseEvent) => {
   };
 
   // Get min/max for discount
-  const getMinMaxForDiscount = (): { min: number; max: number } => {
-    if (selectedVariant) {
-      const min = Number(selectedVariant.min_price);
-      const max = Number(selectedVariant.max_price);
-      const price = Number(selectedVariant.price);
+  // const getMinMaxForDiscount = (): { min: number; max: number } => {
+  //   if (selectedVariant) {
+  //     const min = Number(selectedVariant.min_price);
+  //     const max = Number(selectedVariant.max_price);
+  //     const price = Number(selectedVariant.price);
       
-      if (Number.isFinite(min) && min > 0) {
-        return { min, max: Number.isFinite(max) && max > 0 ? max : min };
-      }
-      if (Number.isFinite(price) && price > 0) {
-        return { min: price, max: price };
-      }
-    }
+  //     if (Number.isFinite(min) && min > 0) {
+  //       return { min, max: Number.isFinite(max) && max > 0 ? max : min };
+  //     }
+  //     if (Number.isFinite(price) && price > 0) {
+  //       return { min: price, max: price };
+  //     }
+  //   }
     
-    if (product.minPrice && product.maxPrice) {
-      return { min: Number(product.minPrice), max: Number(product.maxPrice) };
-    }
+  //   if (product.minPrice && product.maxPrice) {
+  //     return { min: Number(product.minPrice), max: Number(product.maxPrice) };
+  //   }
     
-    return { min: product.price, max: product.price };
-  };
+  //   return { min: product.price, max: product.price };
+  // };
 
   const hasDiscount = (product.discountPercentage ?? 0) > 0;
   const stock = product.stock ?? 0;

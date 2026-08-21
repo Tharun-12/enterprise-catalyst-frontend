@@ -322,7 +322,6 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-// import { SectionHeader } from '@/components/shared';
 import { ProductCard } from '@/components/product-card';
 import { baseurl } from "@/Baseurl/baseurl";
 import type { Product } from '@/types';
@@ -357,12 +356,15 @@ interface ApiVariant {
   product_id: number;
   color_name?: string;
   color_hex?: string;
-  price: string;
+  price?: string;
+  min_price?: string;
+  max_price?: string;
   stock: number;
   image_url: string;
   variant_name?: string;
   part_code?: string;
   category?: string;
+  sub_category?: string;
   brand?: string;
   description?: string;
   spec_type?: string;
@@ -383,7 +385,7 @@ interface ApiProduct {
   min_price?: string;
   max_price?: string;
   dimensions?: string;
-  specifications?: string;
+  specifications?: string | Record<string, string>; // ✅ Can be string or object
   weight?: string;
   discount: string;
   product_description: string;
@@ -401,12 +403,6 @@ interface ApiProduct {
   poe_support?: string;
   variants?: ApiVariant[];
 }
-
-// Helper function to create slug
-// const createSlug = (name: string): string => {
-//   if (!name) return '';
-//   return name.toLowerCase().replace(/\s+/g, '-');
-// };
 
 // ---- Transform API product into the app-wide `Product` type ----
 const transformProduct = (
@@ -431,6 +427,31 @@ const transformProduct = (
   const minPrice = product.min_price ? parseFloat(product.min_price) : undefined;
   const maxPrice = product.max_price ? parseFloat(product.max_price) : undefined;
 
+  // ✅ Handle specifications - could be string or object
+  let features: string[] = [];
+  let specFields: { key: string; label: string; value: string }[] = [];
+  
+  if (product.specifications) {
+    if (typeof product.specifications === 'string') {
+      // If it's a string, split by comma
+      features = product.specifications.split(',').map(s => s.trim()).filter(Boolean);
+      specFields = features.map(f => ({
+        key: f.toLowerCase().replace(/\s+/g, '_'),
+        label: f,
+        value: f
+      }));
+    } else if (typeof product.specifications === 'object' && !Array.isArray(product.specifications)) {
+      // If it's an object, convert to features array
+      const specObj = product.specifications as Record<string, string>;
+      features = Object.entries(specObj).map(([key, value]) => `${key}: ${value}`);
+      specFields = Object.entries(specObj).map(([key, value]) => ({
+        key: key.toLowerCase().replace(/\s+/g, '_'),
+        label: key,
+        value: value
+      }));
+    }
+  }
+
   return {
     id: String(product.id),
     name: product.product_name,
@@ -443,8 +464,8 @@ const transformProduct = (
     shortDescription: product.product_description?.substring(0, 150) || '',
     description: product.product_description || '',
     gallery,
-    features: product.specifications?.split(',').map(s => s.trim()).filter(Boolean) || [],
-    specifications: {},
+    features: features,
+    specifications: typeof product.specifications === 'object' ? product.specifications : {},
     currency: 'INR',
     relatedProductIds: [],
     specGroups: [
@@ -453,7 +474,9 @@ const transformProduct = (
         fields: [
           { key: 'dimensions', label: 'Dimensions', value: product.dimensions || 'N/A' },
           { key: 'weight', label: 'Weight', value: product.weight ? `${product.weight} kg` : 'N/A' },
-          { key: 'specifications', label: 'Specifications', value: product.specifications || 'N/A' },
+          ...(specFields.length > 0 ? specFields : [
+            { key: 'specifications', label: 'Specifications', value: product.specifications ? JSON.stringify(product.specifications) : 'N/A' }
+          ]),
           { key: 'warranty', label: 'Warranty', value: product.warranty || 'Standard' },
         ]
       }
@@ -464,7 +487,7 @@ const transformProduct = (
     originalPrice: priceNum * (1 + discountNum / 100),
     discountPercentage: discountNum,
     status: 'active',
-    isPopular: true, // Set to true for featured products
+    isPopular: true,
     isNew: false,
     rating: 4.5,
     reviewCount: 0,
@@ -476,10 +499,23 @@ const transformProduct = (
     variants: product.variants?.map(v => ({
       id: v.id,
       color_name: v.color_name || v.color || 'Default',
-      color_hex: v.color_hex || '#000000',
-      price: v.price,
-      stock: v.stock,
-      image_url: v.image_url,
+      color: v.color || v.color_name || 'Default',
+      color_hex: v.color_hex || '#CCCCCC',
+      price: v.price || undefined,
+      min_price: v.min_price || undefined,
+      max_price: v.max_price || undefined,
+      stock: v.stock || 0,
+      image_url: v.image_url || '',
+      variant_name: v.variant_name,
+      part_code: v.part_code,
+      category: v.category,
+      sub_category: v.sub_category,
+      brand: v.brand,
+      description: v.description,
+      spec_type: v.spec_type,
+      size: v.size,
+      availability: v.availability,
+      datasheet_url: v.datasheet_url,
     })),
     hasVariants: (product.variants?.length || 0) > 0,
     stock: product.variants?.reduce((sum, v) => sum + v.stock, 0) || 0,

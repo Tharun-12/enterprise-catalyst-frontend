@@ -4,7 +4,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Heart, Download, FileText, Star, ChevronRight,
   ZoomIn, Share2, ShieldCheck, Package, ArrowLeft,
-  BadgeCheck, Truck, Wrench, FileSpreadsheet, Minus, Plus
+  BadgeCheck, Truck, Wrench, FileSpreadsheet
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -80,7 +80,7 @@ interface ApiProduct {
   id: number;
   product_name: string;
   product_code: string;
-  product_category_id: number;
+  product_category_id: number | null;  // ✅ Can be null
   product_brand: string;
   product_details_pdf: string;
   price: string;
@@ -103,6 +103,7 @@ interface ApiProduct {
   created_at: string;
   updated_at: string;
   category_name?: string;
+  subcategory_name?: string;
   variants?: ApiVariant[];
 }
 
@@ -276,7 +277,7 @@ const transformProduct = (
     sku: product.product_code,
     brandId: String(brand?.id ?? 'unknown'),
     brandName: brand?.brand_name || product.product_brand || 'Unknown',
-    categoryId: String(product.product_category_id),
+    categoryId: String(product.product_category_id ?? ''),
     categoryName: category?.category_name || product.category_name || 'Uncategorized',
     shortDescription: product.product_description?.substring(0, 150) || '',
     description: product.product_description || '',
@@ -330,7 +331,7 @@ export function ProductDetailsPage() {
   const [zoomed, setZoomed] = useState(false);
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
   const [submitting, setSubmitting] = useState(false);
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, _setQuantity] = useState(1);
   const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
   const { addToWishlist, removeFromWishlist, isInWishlist, isLoggedIn } = useApp();
 
@@ -368,28 +369,6 @@ export function ProductDetailsPage() {
     });
     return Array.from(colorMap.values());
   }, [detailVariants]);
-
-  const handleQuantityChange = (newQuantity: number) => {
-    if (newQuantity >= 1 && newQuantity <= maxStock) {
-      setQuantity(newQuantity);
-    } else if (newQuantity > maxStock) {
-      toast.warning(`Only ${maxStock} items available in stock`, {
-        duration: 3000,
-        position: 'top-right',
-        style: {
-          background: '#F59E0B',
-          color: 'white',
-          border: 'none',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '500',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          marginTop: '70px',
-        },
-      });
-    }
-  };
 
   const handleVariantSelect = (variantId: number) => {
     setSelectedVariantId(variantId);
@@ -486,32 +465,53 @@ export function ProductDetailsPage() {
     }
   }, [slug]);
 
-  // Related products
+  // ✅ FIXED: Related products based on subcategory_name with null checks
   const relatedProducts = useMemo(() => {
-    if (!product || allProducts.length === 0) return [];
+    if (!productData || allProducts.length === 0) return [];
 
-    const extendedProduct = product as ExtendedProduct;
-    const productType = extendedProduct.productType;
-
-    const hasValidProductType = productType &&
-      productType !== 'N/A' &&
-      productType.trim() !== '';
-
-    if (!hasValidProductType) {
-      return [];
+    const currentSubCategoryName = productData.subcategory_name;
+    const currentCategoryId = productData.product_category_id;
+    
+    // If no subcategory, fallback to category
+    if (!currentSubCategoryName) {
+      // Fallback to category-based related products
+      const sameCategoryProducts = allProducts.filter(p => {
+        // ✅ Null check for both ids
+        if (currentCategoryId === null || p.product_category_id === null) return false;
+        return String(p.product_category_id) === String(currentCategoryId) &&
+          String(p.id) !== String(productData.id);
+      });
+      
+      if (sameCategoryProducts.length === 0) return [];
+      
+      const topRelated = sameCategoryProducts.slice(0, 4);
+      return topRelated.map(p => transformProduct(p, categories, brands));
     }
 
-    const sameTypeProducts = allProducts.filter(p =>
-      String(p.product_category_id) === product.categoryId &&
-      String(p.id) !== product.id &&
-      p.product_type === productType
+    // Find products with the same subcategory_name (case-insensitive)
+    const sameSubCategoryProducts = allProducts.filter(p =>
+      p.subcategory_name &&
+      p.subcategory_name.toLowerCase() === currentSubCategoryName.toLowerCase() &&
+      String(p.id) !== String(productData.id)
     );
 
-    if (sameTypeProducts.length === 0) {
-      return [];
+    if (sameSubCategoryProducts.length === 0) {
+      // Fallback: find products in same category
+      const sameCategoryProducts = allProducts.filter(p => {
+        // ✅ Null check for both ids
+        if (currentCategoryId === null || p.product_category_id === null) return false;
+        return String(p.product_category_id) === String(currentCategoryId) &&
+          String(p.id) !== String(productData.id);
+      });
+      
+      if (sameCategoryProducts.length === 0) return [];
+      
+      const topRelated = sameCategoryProducts.slice(0, 4);
+      return topRelated.map(p => transformProduct(p, categories, brands));
     }
 
-    sameTypeProducts.sort((a, b) => {
+    // Sort by popularity or price
+    sameSubCategoryProducts.sort((a, b) => {
       const aHasVariant = (a.variants?.length || 0) > 0;
       const bHasVariant = (b.variants?.length || 0) > 0;
       if (aHasVariant && !bHasVariant) return -1;
@@ -519,10 +519,11 @@ export function ProductDetailsPage() {
       return parseFloat(a.price) - parseFloat(b.price);
     });
 
-    const topRelated = sameTypeProducts.slice(0, 4);
+    // Get top 4 related products
+    const topRelated = sameSubCategoryProducts.slice(0, 4);
 
     return topRelated.map(p => transformProduct(p, categories, brands));
-  }, [product, allProducts, categories, brands]);
+  }, [productData, allProducts, categories, brands]);
 
   const getUserId = () => {
     const session = localStorage.getItem('userSession');
@@ -849,6 +850,9 @@ export function ProductDetailsPage() {
   const allSpecFields = product.specGroups[0]?.fields || [];
   const previewSpecs = allSpecFields.slice(0, 4);
 
+  // Get the subcategory name for the related products heading
+  const subcategoryName = productData?.subcategory_name || extendedProduct.productType || 'Products';
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <Breadcrumb items={[
@@ -978,13 +982,6 @@ export function ProductDetailsPage() {
                   Min - Max price for {selectedVariant.color_name || selectedVariant.color || 'selected variant'}
                 </p>
               )}
-          </div>
-
-          {/* Quantity Selector - Fixed to 1 */}
-          <div className="flex items-center gap-4 mb-6">
-            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Quantity:</span>
-            <span className="text-base font-semibold text-gray-900 dark:text-white">1</span>
-            <span className="text-xs text-gray-400">(Fixed quantity for quotation)</span>
           </div>
 
           {/* Key specs preview */}
@@ -1180,12 +1177,12 @@ export function ProductDetailsPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Related Products */}
+      {/* Related Products - Now based on subcategory_name */}
       {relatedProducts.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-xl font-bold">
-              Related {extendedProduct.productType || 'Products'}
+              Related {subcategoryName || 'Products'}
             </h2>
             <Button asChild variant="ghost" size="sm">
               <Link to={`/products?category=${product.categoryName.toLowerCase().replace(/\s+/g, '-').replace(/&/g, '')}`}>

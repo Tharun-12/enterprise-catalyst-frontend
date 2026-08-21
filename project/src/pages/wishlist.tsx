@@ -379,7 +379,7 @@
 
 // src/pages/wishlist.tsx - Fixed with min/max price from variants
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, ArrowRight, Trash2, Loader2, FileText, Eye, Star, BadgeCheck, FileSpreadsheet, Minus, Plus } from 'lucide-react';
+import { Heart, ArrowRight, Trash2, Loader2, FileText, Eye, Star, BadgeCheck, Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -475,7 +475,7 @@ export function WishlistPage() {
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [isCompareLoading, setIsCompareLoading] = useState<Record<string, boolean>>({});
-  const [isQuotationLoading, setIsQuotationLoading] = useState<Record<string, boolean>>({});
+  const [_isQuotationLoading, _setIsQuotationLoading] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const session = localStorage.getItem('userSession');
@@ -851,100 +851,100 @@ const displayProducts = useMemo((): DisplayProduct[] => {
     }
   }, [selectedProducts, displayProducts, quantities, userId, fetchWishlist, navigate]);
 
-  const handleIndividualQuotation = async (productId: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  // const handleIndividualQuotation = async (productId: string, e: React.MouseEvent) => {
+  //   e.preventDefault();
+  //   e.stopPropagation();
 
-    const session = localStorage.getItem('userSession');
-    if (!session) {
-      toast.error('Please login to request a quotation', {
-        duration: 3000,
-        position: 'top-right',
-        style: {
-          background: '#EF4444',
-          color: 'white',
-          border: 'none',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '500',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          marginTop: '70px',
-        },
-        action: {
-          label: 'Login',
-          onClick: () => window.location.href = '/login'
-        }
-      });
-      setTimeout(() => {
-        window.location.href = '/login';
-      }, 1500);
-      return;
-    }
+  //   const session = localStorage.getItem('userSession');
+  //   if (!session) {
+  //     toast.error('Please login to request a quotation', {
+  //       duration: 3000,
+  //       position: 'top-right',
+  //       style: {
+  //         background: '#EF4444',
+  //         color: 'white',
+  //         border: 'none',
+  //         padding: '12px 24px',
+  //         borderRadius: '8px',
+  //         fontSize: '14px',
+  //         fontWeight: '500',
+  //         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+  //         marginTop: '70px',
+  //       },
+  //       action: {
+  //         label: 'Login',
+  //         onClick: () => window.location.href = '/login'
+  //       }
+  //     });
+  //     setTimeout(() => {
+  //       window.location.href = '/login';
+  //     }, 1500);
+  //     return;
+  //   }
 
-    setIsQuotationLoading(prev => ({ ...prev, [productId]: true }));
+  //   setIsQuotationLoading(prev => ({ ...prev, [productId]: true }));
 
-    try {
-      const product = displayProducts.find(p => p.id === productId);
-      if (!product) throw new Error('Product not found');
+  //   try {
+  //     const product = displayProducts.find(p => p.id === productId);
+  //     if (!product) throw new Error('Product not found');
 
-      const quantity = quantities[productId] || 1;
+  //     const quantity = quantities[productId] || 1;
       
-      const payload = {
-        user_id: userId,
-        product_id: parseInt(productId),
-        product_name: product.name,
-        product_code: product.sku,
-        product_brand: product.brandName,
-        price: product.price,
-        min_price: product.minPrice || null,
-        max_price: product.maxPrice || null,
-        discount: product.discountPercentage || 0,
-        quantity: quantity,
-        remarks: `Quotation requested for ${product.name} (Qty: ${quantity})`,
-      };
+  //     const payload = {
+  //       user_id: userId,
+  //       product_id: parseInt(productId),
+  //       product_name: product.name,
+  //       product_code: product.sku,
+  //       product_brand: product.brandName,
+  //       price: product.price,
+  //       min_price: product.minPrice || null,
+  //       max_price: product.maxPrice || null,
+  //       discount: product.discountPercentage || 0,
+  //       quantity: quantity,
+  //       remarks: `Quotation requested for ${product.name} (Qty: ${quantity})`,
+  //     };
 
-      const response = await axios.post(`${baseurl}/api/quotations/single`, payload);
+  //     const response = await axios.post(`${baseurl}/api/quotations/single`, payload);
 
-      if (response.data.success) {
-        toast.success(`Quotation requested for ${quantity} item(s)!`, {
-          duration: 3000,
-          position: 'top-right',
-          style: {
-            background: '#10B981',
-            color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '500',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            marginTop: '70px',
-          },
-        });
-        navigate('/my-quotations');
-      }
-    } catch (error) {
-      console.error('Error submitting quotation:', error);
-      toast.error('Failed to submit quotation request. Please try again.', {
-        duration: 3000,
-        position: 'top-right',
-        style: {
-          background: '#EF4444',
-          color: 'white',
-          border: 'none',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '500',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          marginTop: '70px',
-        },
-      });
-    } finally {
-      setIsQuotationLoading(prev => ({ ...prev, [productId]: false }));
-    }
-  };
+  //     if (response.data.success) {
+  //       toast.success(`Quotation requested for ${quantity} item(s)!`, {
+  //         duration: 3000,
+  //         position: 'top-right',
+  //         style: {
+  //           background: '#10B981',
+  //           color: 'white',
+  //           border: 'none',
+  //           padding: '12px 24px',
+  //           borderRadius: '8px',
+  //           fontSize: '14px',
+  //           fontWeight: '500',
+  //           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+  //           marginTop: '70px',
+  //         },
+  //       });
+  //       navigate('/my-quotations');
+  //     }
+  //   } catch (error) {
+  //     console.error('Error submitting quotation:', error);
+  //     toast.error('Failed to submit quotation request. Please try again.', {
+  //       duration: 3000,
+  //       position: 'top-right',
+  //       style: {
+  //         background: '#EF4444',
+  //         color: 'white',
+  //         border: 'none',
+  //         padding: '12px 24px',
+  //         borderRadius: '8px',
+  //         fontSize: '14px',
+  //         fontWeight: '500',
+  //         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+  //         marginTop: '70px',
+  //       },
+  //     });
+  //   } finally {
+  //     setIsQuotationLoading(prev => ({ ...prev, [productId]: false }));
+  //   }
+  // };
 
   const handleCompareToggle = async (productId: string, e: React.MouseEvent) => {
     e.preventDefault();
