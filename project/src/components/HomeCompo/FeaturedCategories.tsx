@@ -7,7 +7,7 @@ import {
   Wifi,
   ChevronRight,
   Loader2,
-  ChevronDown
+  // ChevronDown
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {baseurl} from "@/Baseurl/baseurl"
@@ -38,7 +38,7 @@ const FeaturedCategories: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedCategory, setExpandedCategory] = useState<number | null>(null);
+  const [expandedCategory, _setExpandedCategory] = useState<number | null>(null);
 
   // Map category names to icons and colors
   const getCategoryIcon = (categoryName: string) => {
@@ -102,10 +102,10 @@ const FeaturedCategories: React.FC = () => {
     navigate('/products');
   };
 
-  const toggleSubcategories = (categoryId: number, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent triggering the category click
-    setExpandedCategory(expandedCategory === categoryId ? null : categoryId);
-  };
+  // const toggleSubcategories = (categoryId: number, e: React.MouseEvent) => {
+  //   e.stopPropagation(); // Prevent triggering the category click
+  //   setExpandedCategory(expandedCategory === categoryId ? null : categoryId);
+  // };
 
   // Loading state
   if (loading) {
