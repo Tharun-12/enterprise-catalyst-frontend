@@ -6,16 +6,26 @@ import {
   Lock, 
   Wifi,
   ChevronRight,
-  Loader2
+  Loader2,
+  ChevronDown
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {baseurl} from "@/Baseurl/baseurl"
 
+interface Subcategory {
+  id: number;
+  subcategory_name: string;
+  created_at: string;
+}
+
 interface Category {
   id: number;
   category_name: string;
+  description: string;
+  category_image: string;
   created_at: string;
   updated_at: string;
+  subcategories: Subcategory[];
 }
 
 interface ApiResponse {
@@ -28,6 +38,7 @@ const FeaturedCategories: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedCategory, setExpandedCategory] = useState<number | null>(null);
 
   // Map category names to icons and colors
   const getCategoryIcon = (categoryName: string) => {
@@ -45,14 +56,6 @@ const FeaturedCategories: React.FC = () => {
     }
     // Default icon and color
     return { icon: Cpu, color: 'from-gray-500 to-gray-600' };
-  };
-
-  // Helper function to convert category name to URL-friendly format
-  const formatCategoryForUrl = (categoryName: string) => {
-    return categoryName
-      .toLowerCase()
-      .replace(/\s+/g, '-') // Replace spaces with hyphens
-      .replace(/[^a-z0-9-]/g, ''); // Remove any special characters
   };
 
   // Fetch categories from API
@@ -89,9 +92,19 @@ const FeaturedCategories: React.FC = () => {
     navigate('/categories');
   };
 
-  const handleCategoryClick = (categoryName: string) => {
-    const formattedCategory = formatCategoryForUrl(categoryName);
-    navigate(`/products?category=${formattedCategory}`);
+  const handleCategoryClick = () => {
+    // Navigate to products without any query parameters
+    navigate('/products');
+  };
+
+  const handleSubcategoryClick = () => {
+    // Navigate to products without any query parameters
+    navigate('/products');
+  };
+
+  const toggleSubcategories = (categoryId: number, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering the category click
+    setExpandedCategory(expandedCategory === categoryId ? null : categoryId);
   };
 
   // Loading state
@@ -174,29 +187,70 @@ const FeaturedCategories: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-8">
           {categories.map((category) => {
             const { icon: Icon, color } = getCategoryIcon(category.category_name);
+            const isExpanded = expandedCategory === category.id;
             
             return (
               <div
                 key={category.id}
-                className="group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-8 flex flex-col items-center text-center border border-gray-100 hover:border-transparent hover:-translate-y-2 cursor-pointer"
-                onClick={() => handleCategoryClick(category.category_name)}
+                className="group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-transparent"
               >
-                {/* Gradient Icon Background */}
-                <div className={`mb-5 p-4 rounded-2xl bg-gradient-to-br ${color} shadow-lg group-hover:shadow-xl transition-all duration-300`}>
-                  <Icon className="w-10 h-10 text-white" strokeWidth={1.5} />
+                {/* Main Category Card */}
+                <div 
+                  className="p-8 flex flex-col items-center text-center cursor-pointer hover:-translate-y-1 transition-transform duration-300"
+                  onClick={handleCategoryClick}
+                >
+                  {/* Gradient Icon Background */}
+                  <div className={`mb-5 p-4 rounded-2xl bg-gradient-to-br ${color} shadow-lg group-hover:shadow-xl transition-all duration-300`}>
+                    <Icon className="w-10 h-10 text-white" strokeWidth={1.5} />
+                  </div>
+
+                  {/* Category Name */}
+                  <h3 className="text-xl font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
+                    {category.category_name}
+                  </h3>
+
+                  {/* Description (truncated) */}
+                  {category.description && (
+                    <p className="text-sm text-gray-600 mt-2 line-clamp-2">
+                      {category.description}
+                    </p>
+                  )}
+
+                  {/* Subcategory toggle button */}
+                  {category.subcategories && category.subcategories.length > 0 && (
+                    <button
+                      onClick={(e) => toggleSubcategories(category.id, e)}
+                      className="mt-4 flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 transition-colors"
+                    >
+                      <span>{isExpanded ? 'Hide' : 'Show'} Subcategories</span>
+                      <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                    </button>
+                  )}
+
+                  {/* Hover Arrow Effect */}
+                  <div className="absolute bottom-4 right-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                  </div>
                 </div>
 
-                {/* Category Name */}
-                <h3 className="text-xl font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
-                  {category.category_name}
-                </h3>
-
-                {/* Hover Arrow Effect */}
-                <div className="absolute bottom-4 right-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                  </svg>
-                </div>
+                {/* Subcategories List (expandable) */}
+                {isExpanded && category.subcategories && category.subcategories.length > 0 && (
+                  <div className="border-t border-gray-200 bg-gray-50 px-6 py-4">
+                    <div className="flex flex-wrap gap-2 justify-center">
+                      {category.subcategories.map((sub) => (
+                        <span
+                          key={sub.id}
+                          className="px-3 py-1 bg-white rounded-full text-sm text-gray-700 border border-gray-200 hover:border-blue-400 hover:text-blue-600 transition-colors cursor-pointer"
+                          onClick={handleSubcategoryClick}
+                        >
+                          {sub.subcategory_name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
