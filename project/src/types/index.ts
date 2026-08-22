@@ -89,6 +89,8 @@ export interface Product {
   brandName: string;
   categoryId: string;
   categoryName: string;
+  subcategoryId?: string; 
+  subcategoryName?: string; 
   shortDescription: string;
   description: string;
   gallery: string[];

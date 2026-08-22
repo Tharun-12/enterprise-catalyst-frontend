@@ -217,7 +217,7 @@ const FeaturedCategories: React.FC = () => {
                   )}
 
                   {/* Subcategory toggle button */}
-                  {category.subcategories && category.subcategories.length > 0 && (
+                  {/* {category.subcategories && category.subcategories.length > 0 && (
                     <button
                       onClick={(e) => toggleSubcategories(category.id, e)}
                       className="mt-4 flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 transition-colors"
@@ -225,7 +225,7 @@ const FeaturedCategories: React.FC = () => {
                       <span>{isExpanded ? 'Hide' : 'Show'} Subcategories</span>
                       <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
                     </button>
-                  )}
+                  )} */}
 
                   {/* Hover Arrow Effect */}
                   <div className="absolute bottom-4 right-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300">

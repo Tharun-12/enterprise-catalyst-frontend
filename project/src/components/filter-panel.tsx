@@ -35,14 +35,14 @@ interface FilterPanelProps {
 }
 
 // Specification field labels and icons
-const specLabels: Record<string, { label: string; icon?: string }> = {
-  bandwidth: { label: 'Bandwidth', icon: '📶' },
-  conductor_type: { label: 'Conductor Type', icon: '⚡' },
-  cable_od: { label: 'Cable OD', icon: '📏' },
-  jacket_material: { label: 'Jacket Material', icon: '🧵' },
-  operating_temperature: { label: 'Operating Temperature', icon: '🌡️' },
-  poe_support: { label: 'PoE Support', icon: '🔌' },
-};
+// const specLabels: Record<string, { label: string; icon?: string }> = {
+//   bandwidth: { label: 'Bandwidth', icon: '📶' },
+//   conductor_type: { label: 'Conductor Type', icon: '⚡' },
+//   cable_od: { label: 'Cable OD', icon: '📏' },
+//   jacket_material: { label: 'Jacket Material', icon: '🧵' },
+//   operating_temperature: { label: 'Operating Temperature', icon: '🌡️' },
+//   poe_support: { label: 'PoE Support', icon: '🔌' },
+// };
 
 // Variant field labels and icons
 const variantLabels: Record<string, { label: string; icon?: string }> = {
@@ -59,7 +59,7 @@ export function FilterPanel({
   brands,
   categories = [],
   subcategories = {},
-  specOptions = {},
+  // specOptions = {},
   variantOptions = {},
   priceRange = { min: 0, max: 100000 }
 }: FilterPanelProps) {
@@ -68,14 +68,14 @@ export function FilterPanel({
     subcategory: true,
     brands: true,
     price: true,
-    specifications: true,
     variants: true,
-    bandwidth: false,
-    conductor_type: false,
-    cable_od: false,
-    jacket_material: false,
-    operating_temperature: false,
-    poe_support: false,
+    // specifications: true, // Commented out
+    // bandwidth: false,
+    // conductor_type: false,
+    // cable_od: false,
+    // jacket_material: false,
+    // operating_temperature: false,
+    // poe_support: false,
     spec_type: false,
     color: false,
     size: false,
@@ -181,7 +181,7 @@ export function FilterPanel({
     filters.subcategory !== null;
 
   // Get active spec sections (those that have options)
-  const activeSpecSections = Object.keys(specOptions).filter(key => specOptions[key]?.length > 0);
+  // const activeSpecSections = Object.keys(specOptions).filter(key => specOptions[key]?.length > 0); // Commented out
   const activeVariantSections = Object.keys(variantOptions).filter(key => variantOptions[key]?.length > 0);
 
   const formatCurrency = (amount: number) => {
@@ -420,7 +420,10 @@ export function FilterPanel({
             </>
           )}
 
-          {/* Specifications Section - Grouped */}
+          {/* ================================================================ */}
+          {/* SPECIFICATIONS SECTION - COMMENTED OUT */}
+          {/* ================================================================ */}
+          {/* 
           {activeSpecSections.length > 0 && (
             <>
               <Collapsible open={openSections['specifications'] ?? true} onOpenChange={() => toggleSection('specifications')}>
@@ -477,6 +480,10 @@ export function FilterPanel({
               </Collapsible>
             </>
           )}
+          */}
+          {/* ================================================================ */}
+          {/* END OF COMMENTED SPECIFICATIONS SECTION */}
+          {/* ================================================================ */}
         </div>
       </ScrollArea>
     </div>

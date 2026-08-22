@@ -1,4 +1,4 @@
-// products.tsx
+// products.tsx - Fixed version without variantPriceRanges
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -92,6 +92,9 @@ interface ApiProduct {
   created_at: string;
   updated_at: string;
   category_name?: string;
+  category_id?: number;
+  sub_category_id?: number;
+  subcategory_name?: string;
   product_series?: string;
   product_type?: string;
   conductor_type?: string;
@@ -118,7 +121,7 @@ const transformProduct = (
   categories: ApiCategory[],
   brands: ApiBrand[]
 ): Product => {
-  const category = categories.find(c => c.id === product.product_category_id);
+  const category = categories.find(c => c.id === product.category_id || c.id === product.product_category_id);
   const brand = brands.find(b => b.brand_name === product.product_brand);
 
   const galleryImages = product.variants?.map(v =>
@@ -207,8 +210,10 @@ const transformProduct = (
     sku: product.product_code,
     brandId: String(brand?.id ?? 'unknown'),
     brandName: brand?.brand_name || product.product_brand || 'Unknown',
-    categoryId: String(product.product_category_id),
+    categoryId: String(product.category_id || product.product_category_id || ''),
     categoryName: category?.category_name || product.category_name || 'Uncategorized',
+    subcategoryId: String(product.sub_category_id || ''),
+    subcategoryName: product.subcategory_name || '',
     shortDescription: product.product_description?.substring(0, 150) || '',
     description: product.product_description || '',
     gallery,
@@ -248,7 +253,7 @@ const transformProduct = (
       id: v.id,
       color_name: v.color_name || v.color || 'Default',
       color: v.color || v.color_name || 'Default',
-      color_hex: v.color_hex || '#CCCCCC', // FIXED: Provide default hex value
+      color_hex: v.color_hex || '#CCCCCC',
       price: v.price ?? undefined,
       min_price: v.min_price ?? undefined,
       max_price: v.max_price ?? undefined,
@@ -405,65 +410,42 @@ export function ProductsPage() {
     return options;
   }, [products]);
 
-  // Calculate global price range - FIXED to check variants
+  // Calculate global price range - FIXED to include all variant prices
   const priceRange = useMemo(() => {
     let min = Infinity;
     let max = -Infinity;
 
     products.forEach((product) => {
-      // Product-level prices
-      if (product.min_price !== null && product.min_price !== undefined) {
-        const value = Number(product.min_price);
-        if (Number.isFinite(value)) {
-          min = Math.min(min, value);
+      // Check all variants for their individual prices
+      if (product.variants && product.variants.length > 0) {
+        product.variants.forEach((variant) => {
+          const variantMin = validNumber(variant.min_price) ?? validNumber(variant.price);
+          const variantMax = validNumber(variant.max_price) ?? validNumber(variant.price);
+          
+          if (variantMin !== undefined && Number.isFinite(variantMin)) {
+            min = Math.min(min, variantMin);
+          }
+          if (variantMax !== undefined && Number.isFinite(variantMax)) {
+            max = Math.max(max, variantMax);
+          }
+        });
+      } else {
+        // Fallback to product-level prices if no variants
+        const prodMin = validNumber(product.min_price) ?? validNumber(product.price);
+        const prodMax = validNumber(product.max_price) ?? validNumber(product.price);
+        
+        if (prodMin !== undefined && Number.isFinite(prodMin)) {
+          min = Math.min(min, prodMin);
         }
-      }
-
-      if (product.max_price !== null && product.max_price !== undefined) {
-        const value = Number(product.max_price);
-        if (Number.isFinite(value)) {
-          max = Math.max(max, value);
-        }
-      }
-
-      // Variant-level prices
-      product.variants?.forEach((variant) => {
-        const variantMin =
-          variant.min_price !== null && variant.min_price !== undefined
-            ? Number(variant.min_price)
-            : variant.price !== null && variant.price !== undefined
-              ? Number(variant.price)
-              : NaN;
-
-        const variantMax =
-          variant.max_price !== null && variant.max_price !== undefined
-            ? Number(variant.max_price)
-            : variant.price !== null && variant.price !== undefined
-              ? Number(variant.price)
-              : NaN;
-
-        if (Number.isFinite(variantMin)) {
-          min = Math.min(min, variantMin);
-        }
-
-        if (Number.isFinite(variantMax)) {
-          max = Math.max(max, variantMax);
-        }
-      });
-
-      // Final fallback
-      if (product.price !== null && product.price !== undefined && product.price !== '') {
-        const price = Number(product.price);
-        if (Number.isFinite(price)) {
-          min = Math.min(min, price);
-          max = Math.max(max, price);
+        if (prodMax !== undefined && Number.isFinite(prodMax)) {
+          max = Math.max(max, prodMax);
         }
       }
     });
 
     return {
-      min: min === Infinity ? 0 : min,
-      max: max === -Infinity ? 100000 : max,
+      min: min === Infinity ? 0 : Math.floor(min),
+      max: max === -Infinity ? 100000 : Math.ceil(max),
     };
   }, [products]);
 
@@ -553,42 +535,111 @@ export function ProductsPage() {
     return () => clearTimeout(timer);
   }, [filters]);
 
+  // FIXED: Filter products based on category, subcategory, and price (variant-aware)
   const filteredProducts = useMemo(() => {
     let result = transformedProducts.filter((p) => p.status === 'active');
 
+    // Filter by category - check both category_id and category_name
     if (filters.category) {
       result = result.filter((p) => {
+        const categoryMatch = p.categoryId === filters.category;
+        const categoryNameMatch = p.categoryName.toLowerCase() === 
+          categories.find(c => String(c.id) === filters.category)?.category_name?.toLowerCase();
         const productApi = products.find(api => String(api.id) === p.id);
-        if (!productApi) return false;
-        return productApi.variants?.some(v => v.category === filters.category) || false;
+        const variantCategoryMatch = productApi?.variants?.some(v => 
+          String(v.category) === filters.category || 
+          v.category === categories.find(c => String(c.id) === filters.category)?.category_name
+        ) || false;
+        
+        return categoryMatch || categoryNameMatch || variantCategoryMatch;
       });
     }
 
+    // Filter by subcategory
     if (filters.subcategory) {
       result = result.filter((p) => {
+        const subcategoryMatch = p.subcategoryId === filters.subcategory;
+        const subcategoryNameMatch = p.subcategoryName?.toLowerCase() === 
+          categories
+            .flatMap(c => c.subcategories || [])
+            .find(s => String(s.id) === filters.subcategory)
+            ?.subcategory_name?.toLowerCase();
         const productApi = products.find(api => String(api.id) === p.id);
-        if (!productApi) return false;
-        return productApi.variants?.some(v => v.sub_category === filters.subcategory) || false;
+        const variantSubcategoryMatch = productApi?.variants?.some(v => 
+          String(v.sub_category) === filters.subcategory ||
+          v.sub_category === categories
+            .flatMap(c => c.subcategories || [])
+            .find(s => String(s.id) === filters.subcategory)
+            ?.subcategory_name
+        ) || false;
+        
+        return subcategoryMatch || subcategoryNameMatch || variantSubcategoryMatch;
       });
     }
 
+    // Filter by brands
     if (filters.brands.length > 0) {
       result = result.filter((p) => filters.brands.includes(p.brandId));
     }
 
+    // FIXED: Filter by price - Check if ANY variant falls within the price range
     if (filters.minPrice !== undefined && filters.minPrice > 0) {
       result = result.filter((p) => {
-        const price = p.minPrice ?? p.price;
+        const productApi = products.find(api => String(api.id) === p.id);
+        if (!productApi) return false;
+        
+        // Check if any variant has a price >= minPrice
+        if (productApi.variants && productApi.variants.length > 0) {
+          return productApi.variants.some(variant => {
+            const variantMin = validNumber(variant.min_price) ?? validNumber(variant.price);
+            const variantMax = validNumber(variant.max_price) ?? validNumber(variant.price);
+            
+            // Check if variant's price range overlaps with the filter range
+            if (variantMin !== undefined && variantMax !== undefined) {
+              return variantMax >= (filters.minPrice || 0);
+            }
+            if (variantMin !== undefined) {
+              return variantMin >= (filters.minPrice || 0);
+            }
+            return false;
+          });
+        }
+        
+        // Fallback to product-level price
+        const price = p.maxPrice ?? p.price;
         return price >= (filters.minPrice || 0);
       });
     }
+    
     if (filters.maxPrice !== undefined && filters.maxPrice > 0) {
       result = result.filter((p) => {
-        const price = p.maxPrice ?? p.price;
+        const productApi = products.find(api => String(api.id) === p.id);
+        if (!productApi) return false;
+        
+        // Check if any variant has a price <= maxPrice
+        if (productApi.variants && productApi.variants.length > 0) {
+          return productApi.variants.some(variant => {
+            const variantMin = validNumber(variant.min_price) ?? validNumber(variant.price);
+            const variantMax = validNumber(variant.max_price) ?? validNumber(variant.price);
+            
+            // Check if variant's price range overlaps with the filter range
+            if (variantMin !== undefined && variantMax !== undefined) {
+              return variantMin <= (filters.maxPrice || Infinity);
+            }
+            if (variantMax !== undefined) {
+              return variantMax <= (filters.maxPrice || Infinity);
+            }
+            return false;
+          });
+        }
+        
+        // Fallback to product-level price
+        const price = p.minPrice ?? p.price;
         return price <= (filters.maxPrice || Infinity);
       });
     }
 
+    // Filter by specifications
     if (Object.keys(filters.specs).length > 0) {
       result = result.filter((p) => {
         const productApi = products.find(api => String(api.id) === p.id);
@@ -631,6 +682,7 @@ export function ProductsPage() {
       });
     }
 
+    // Search filter
     if (filters.search) {
       const q = filters.search.toLowerCase();
       result = result.filter(
@@ -642,6 +694,7 @@ export function ProductsPage() {
       );
     }
 
+    // Sorting
     switch (filters.sort) {
       case 'popular':
         result = [...result].sort((a, b) => Number(b.isPopular) - Number(a.isPopular) || b.reviewCount - a.reviewCount);
