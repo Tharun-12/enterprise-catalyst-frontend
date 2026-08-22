@@ -742,6 +742,8 @@
 // ComparePage.tsx - Fixed with working wishlist and quotation
 
 // ComparePage.tsx - Complete Fixed Version
+
+// ComparePage.tsx - Fixed to show product cards even without login
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { X, GitCompare, Plus, ArrowRight, AlertCircle, Loader2, Heart } from 'lucide-react';
@@ -885,6 +887,9 @@ export function ComparePage() {
   const [wishlistModalOpen, setWishlistModalOpen] = useState(false);
   const [selectedProductForWishlist, _setSelectedProductForWishlist] = useState<ApiProduct | null>(null);
 
+  // Check if user is logged in - using the context isLoggedIn
+  const isUserLoggedIn = isLoggedIn;
+
   const getUserId = (): number | null => {
     const session = localStorage.getItem('userSession');
     if (session) {
@@ -954,15 +959,20 @@ export function ComparePage() {
       const userId = getUserId();
       if (!userId) {
         console.log('No user ID found, cannot fetch compare list');
+        // If no user, try to get from compareList context
+        if (compareList.length > 0) {
+          await updateDisplayProductsFromContext();
+        }
         return;
       }
 
       const response = await axios.get(`${baseurl}/api/compare/${userId}`);
       if (response.data.success && response.data.data.length > 0) {
         const compareData = response.data.data;
-        
-        // Update display products with compare data
         await updateDisplayProducts(compareData);
+      } else if (compareList.length > 0) {
+        // Fallback to context compare list
+        await updateDisplayProductsFromContext();
       } else {
         setProducts([]);
         setRelatedProducts([]);
@@ -970,7 +980,34 @@ export function ComparePage() {
       }
     } catch (error) {
       console.error('Error fetching compare list:', error);
+      // If API fails, try using compareList from context
+      if (compareList.length > 0) {
+        await updateDisplayProductsFromContext();
+      }
     }
+  };
+
+  // Update display products from context compareList
+  const updateDisplayProductsFromContext = async () => {
+    if (compareList.length === 0) {
+      setProducts([]);
+      setRelatedProducts([]);
+      setCompareProductType(null);
+      return;
+    }
+
+    const compareProducts = allProductsData.filter(
+      p => compareList.includes(String(p.id))
+    );
+
+    if (compareProducts.length === 0) {
+      setProducts([]);
+      setRelatedProducts([]);
+      setCompareProductType(null);
+      return;
+    }
+
+    await updateDisplayProducts(compareProducts);
   };
 
   useEffect(() => {
@@ -981,7 +1018,7 @@ export function ComparePage() {
       setRelatedProducts([]);
       setCompareProductType(null);
     }
-  }, [compareList]);
+  }, [compareList, allProductsData]);
 
   const updateDisplayProducts = async (compareProducts: ApiProduct[]) => {
     if (!compareProducts || compareProducts.length === 0) {
@@ -1167,7 +1204,6 @@ export function ComparePage() {
     let minPrice = 0;
     let maxPrice = 0;
     
-    // STEP 1: Check if there's a selected variant (highest priority)
     const selectedVariant = product.variants?.find(v => v.is_selected === true);
     
     if (selectedVariant) {
@@ -1182,7 +1218,6 @@ export function ComparePage() {
       }
     }
     
-    // STEP 2: Check product-level min/max
     if (minPrice === 0 && product.min_price) {
       minPrice = parseFloat(product.min_price) || 0;
     }
@@ -1190,7 +1225,6 @@ export function ComparePage() {
       maxPrice = parseFloat(product.max_price) || 0;
     }
     
-    // STEP 3: Get from all variants (lowest priority)
     if (minPrice === 0 || maxPrice === 0) {
       if (product.variants && product.variants.length > 0) {
         const variantMinPrices = product.variants
@@ -1213,7 +1247,6 @@ export function ComparePage() {
     return { minPrice, maxPrice };
   };
 
-  // Get display price - show only min and max without discount
   const getDisplayPrice = (product: ApiProduct): string => {
     const { minPrice, maxPrice } = getMinMaxPrice(product);
     
@@ -1292,10 +1325,6 @@ export function ComparePage() {
         label: 'Subcategory', 
         value: (p: ApiProductWithSpec) => p.subcategory_name || '—' 
       },
-      // { 
-      //   label: 'Product Type', 
-      //   value: (p: ApiProductWithSpec) => p.product_type || '—' 
-      // },
       { 
         label: 'Warranty', 
         value: (p: ApiProductWithSpec) => p.warranty || '—' 
@@ -1317,7 +1346,6 @@ export function ComparePage() {
 
   const getSpecificationItems = () => {
     const specKeys = [
-      // { label: 'Product Series', key: 'product_series' },
       { label: 'Spec Type', key: 'spec_type' },
       { label: 'Bandwidth', key: 'bandwidth' },
       { label: 'Max Data Rate', key: 'max_data_rate' },
@@ -1339,102 +1367,102 @@ export function ComparePage() {
     return items;
   };
 
- const transformForProductCard = (product: ApiProduct): Product => {
-  const gallery = product.variants?.map(v => 
-    v.image_url ? `${baseurl}${v.image_url}` : null
-  ).filter(Boolean) as string[] || ['https://via.placeholder.com/400x400'];
+  const transformForProductCard = (product: ApiProduct): Product => {
+    const gallery = product.variants?.map(v => 
+      v.image_url ? `${baseurl}${v.image_url}` : null
+    ).filter(Boolean) as string[] || ['https://via.placeholder.com/400x400'];
 
-  const specFields = [];
-  if (product.product_series) {
-    specFields.push({ key: 'series', label: 'Series', value: product.product_series });
-  }
-  if (product.product_type) {
-    specFields.push({ key: 'type', label: 'Type', value: product.product_type });
-  }
-  if (product.warranty) {
-    specFields.push({ key: 'warranty', label: 'Warranty', value: product.warranty });
-  }
-
-  if (product.variants && product.variants.length > 0) {
-    const variant = product.variants[0];
-    if (variant.spec_type) {
-      specFields.push({ key: 'spec_type', label: 'Spec Type', value: variant.spec_type });
+    const specFields = [];
+    if (product.product_series) {
+      specFields.push({ key: 'series', label: 'Series', value: product.product_series });
     }
-    if (variant.size) {
-      specFields.push({ key: 'size', label: 'Size', value: variant.size });
+    if (product.product_type) {
+      specFields.push({ key: 'type', label: 'Type', value: product.product_type });
     }
-    if (variant.color) {
-      specFields.push({ key: 'color', label: 'Color', value: variant.color });
+    if (product.warranty) {
+      specFields.push({ key: 'warranty', label: 'Warranty', value: product.warranty });
     }
-  }
 
-  const totalStock = product.variants?.reduce((sum, v) => sum + v.stock, 0) || 0;
-  const status: ProductStatus = 'active';
-
-  const { minPrice, maxPrice } = getMinMaxPrice(product);
-  const price = minPrice > 0 ? minPrice : 0;
-
-  const variants = product.variants?.map(v => ({
-    id: v.id,
-    color_name: v.color || 'Default',
-    color: v.color || 'Default',
-    color_hex: v.color || '#cccccc',
-    price: v.price || '0',
-    min_price: v.min_price || '0',
-    max_price: v.max_price || '0',
-    stock: v.stock || 0,
-    image_url: v.image_url || '',
-    variant_name: v.variant_name || '',
-    part_code: v.part_code || '',
-    spec_type: v.spec_type || '',
-    size: v.size || '',
-    availability: v.availability || '',
-    datasheet_url: v.datasheet_url || '',
-    description: v.description || '',
-  })) || [];
-
-  return {
-    id: String(product.product_id || product.id),
-    name: product.product_name,
-    slug: getProductSlug(product.product_name),
-    sku: product.product_code,
-    brandId: String(product.product_category_id),
-    brandName: product.product_brand || 'Unknown',
-    categoryId: String(product.product_category_id),
-    categoryName: product.category_name || 'Uncategorized',
-    shortDescription: product.product_description?.substring(0, 150) || '',
-    description: product.product_description || '',
-    features: [],
-    specifications: {},
-    specGroups: [
-      {
-        groupName: 'Specifications',
-        fields: specFields
+    if (product.variants && product.variants.length > 0) {
+      const variant = product.variants[0];
+      if (variant.spec_type) {
+        specFields.push({ key: 'spec_type', label: 'Spec Type', value: variant.spec_type });
       }
-    ],
-    gallery,
-    price: price,
-    minPrice: minPrice,
-    maxPrice: maxPrice,
-    currency: 'INR',
-    status: status,
-    isPopular: false,
-    isNew: false,
-    rating: 4.5,
-    reviewCount: 0,
-    downloads: product.product_details_pdf 
-      ? [{ name: 'Product Details', type: 'pdf' as const, size: 'PDF', url: product.product_details_pdf }]
-      : [],
-    relatedProductIds: [],
-    createdAt: product.created_at,
-    warranty: product.warranty || 'Standard warranty',
-    originalPrice: price * (1 + parseFloat(product.discount || '0') / 100) || 0,
-    discountPercentage: parseFloat(product.discount || '0'),
-    variants: variants,
-    hasVariants: (product.variants?.length || 0) > 0,
-    stock: totalStock,
+      if (variant.size) {
+        specFields.push({ key: 'size', label: 'Size', value: variant.size });
+      }
+      if (variant.color) {
+        specFields.push({ key: 'color', label: 'Color', value: variant.color });
+      }
+    }
+
+    const totalStock = product.variants?.reduce((sum, v) => sum + v.stock, 0) || 0;
+    const status: ProductStatus = 'active';
+
+    const { minPrice, maxPrice } = getMinMaxPrice(product);
+    const price = minPrice > 0 ? minPrice : 0;
+
+    const variants = product.variants?.map(v => ({
+      id: v.id,
+      color_name: v.color || 'Default',
+      color: v.color || 'Default',
+      color_hex: v.color || '#cccccc',
+      price: v.price || '0',
+      min_price: v.min_price || '0',
+      max_price: v.max_price || '0',
+      stock: v.stock || 0,
+      image_url: v.image_url || '',
+      variant_name: v.variant_name || '',
+      part_code: v.part_code || '',
+      spec_type: v.spec_type || '',
+      size: v.size || '',
+      availability: v.availability || '',
+      datasheet_url: v.datasheet_url || '',
+      description: v.description || '',
+    })) || [];
+
+    return {
+      id: String(product.product_id || product.id),
+      name: product.product_name,
+      slug: getProductSlug(product.product_name),
+      sku: product.product_code,
+      brandId: String(product.product_category_id),
+      brandName: product.product_brand || 'Unknown',
+      categoryId: String(product.product_category_id),
+      categoryName: product.category_name || 'Uncategorized',
+      shortDescription: product.product_description?.substring(0, 150) || '',
+      description: product.product_description || '',
+      features: [],
+      specifications: {},
+      specGroups: [
+        {
+          groupName: 'Specifications',
+          fields: specFields
+        }
+      ],
+      gallery,
+      price: price,
+      minPrice: minPrice,
+      maxPrice: maxPrice,
+      currency: 'INR',
+      status: status,
+      isPopular: false,
+      isNew: false,
+      rating: 4.5,
+      reviewCount: 0,
+      downloads: product.product_details_pdf 
+        ? [{ name: 'Product Details', type: 'pdf' as const, size: 'PDF', url: product.product_details_pdf }]
+        : [],
+      relatedProductIds: [],
+      createdAt: product.created_at,
+      warranty: product.warranty || 'Standard warranty',
+      originalPrice: price * (1 + parseFloat(product.discount || '0') / 100) || 0,
+      discountPercentage: parseFloat(product.discount || '0'),
+      variants: variants,
+      hasVariants: (product.variants?.length || 0) > 0,
+      stock: totalStock,
+    };
   };
-};
 
   const handleWishlistToggle = async (product: ApiProduct, e: React.MouseEvent) => {
     e.preventDefault();
@@ -1442,7 +1470,7 @@ export function ComparePage() {
     
     const productId = String(product.product_id || product.id);
     
-    if (!isLoggedIn) {
+    if (!isUserLoggedIn) {
       toast.error('Please login to add to wishlist', {
         duration: 3000,
         position: 'top-right',
@@ -1462,7 +1490,6 @@ export function ComparePage() {
           onClick: () => window.location.href = '/login'
         }
       });
-      setTimeout(() => window.location.href = '/login', 1500);
       return;
     }
     
@@ -1509,128 +1536,122 @@ export function ComparePage() {
   };
 
   const handleSingleQuotation = async (product: ApiProduct, e: React.MouseEvent) => {
-  e.preventDefault();
-  e.stopPropagation();
-  
-  if (!isLoggedIn) {
-    toast.error('Please login to request a quotation', {
-      duration: 3000,
-      position: 'top-right',
-      style: {
-        background: '#EF4444',
-        color: 'white',
-        border: 'none',
-        padding: '12px 24px',
-        borderRadius: '8px',
-        fontSize: '14px',
-        fontWeight: '500',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        marginTop: '70px',
-      },
-      action: {
-        label: 'Login',
-        onClick: () => window.location.href = '/login'
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!isUserLoggedIn) {
+      toast.error('Please login to request a quotation', {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+        action: {
+          label: 'Login',
+          onClick: () => window.location.href = '/login'
+        }
+      });
+      return;
+    }
+
+    const userId = getUserId();
+    if (!userId) {
+      toast.error('User ID not found. Please login again.', {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+      });
+      return;
+    }
+
+    const productId = String(product.product_id || product.id);
+    setQuotationLoading(productId);
+
+    try {
+      const user = getUserDetails();
+      
+      const { minPrice, maxPrice } = getMinMaxPrice(product);
+      const price = minPrice > 0 ? minPrice : 0;
+      
+      const selectedVariant = product.variants?.find(v => v.is_selected);
+      const variant = selectedVariant || product.variants?.[0] || null;
+      
+      let variantImage = null;
+      if (variant?.image_url) {
+        variantImage = variant.image_url;
       }
-    });
-    setTimeout(() => window.location.href = '/login', 1500);
-    return;
-  }
+      
+      let variantDetails = null;
+      if (product.variants && product.variants.length > 0) {
+        variantDetails = JSON.stringify(
+          product.variants.map((v: Variant) => ({
+            id: v.id,
+            variant_name: v.variant_name || 'Default',
+            part_code: v.part_code || '',
+            spec_type: v.spec_type || '',
+            color: v.color || '',
+            size: v.size || '',
+            price: v.price,
+            min_price: v.min_price,
+            max_price: v.max_price,
+            image_url: v.image_url,
+            stock: v.stock
+          }))
+        );
+      }
+      
+      const payload = {
+        user_id: userId,
+        product_id: parseInt(productId),
+        product_name: product.product_name,
+        product_code: product.product_code,
+        product_brand: product.product_brand,
+        price: price,
+        min_price: minPrice || price,
+        max_price: maxPrice || price,
+        discount: 0,
+        quantity: 1,
+        remarks: `Quotation requested for ${product.product_name}`,
+        customer_name: user?.name || '',
+        customer_mobile: user?.mobile || '',
+        customer_email: user?.email || '',
+        variant_image: variantImage,
+        variant_details: variantDetails
+      };
 
-  const userId = getUserId();
-  if (!userId) {
-    toast.error('User ID not found. Please login again.', {
-      duration: 3000,
-      position: 'top-right',
-      style: {
-        background: '#EF4444',
-        color: 'white',
-        border: 'none',
-        padding: '12px 24px',
-        borderRadius: '8px',
-        fontSize: '14px',
-        fontWeight: '500',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        marginTop: '70px',
-      },
-    });
-    return;
-  }
+      const response = await axios.post(`${baseurl}/api/quotations/single`, payload);
 
-  const productId = String(product.product_id || product.id);
-  setQuotationLoading(productId);
-
-  try {
-    const user = getUserDetails();
-    
-    const { minPrice, maxPrice } = getMinMaxPrice(product);
-    const price = minPrice > 0 ? minPrice : 0;
-    
-    // ✅ Get the selected variant (like in product-card)
-    const selectedVariant = product.variants?.find(v => v.is_selected);
-    const variant = selectedVariant || product.variants?.[0] || null;
-    
-    // ✅ Build variant image URL
-    let variantImage = null;
-    if (variant?.image_url) {
-      variantImage = variant.image_url;
+      if (response.data.success) {
+        toast.success(`Quotation #${response.data.quotation_no} generated successfully!`);
+        navigate('/my-quotations');
+      } else {
+        toast.error(response.data.message || 'Failed to submit quotation request');
+      }
+    } catch (error: any) {
+      console.error('Error submitting quotation:', error);
+      toast.error(error.response?.data?.message || 'Failed to submit quotation request. Please try again.');
+    } finally {
+      setQuotationLoading(null);
     }
-    
-    // ✅ Build variant details
-    let variantDetails = null;
-    if (product.variants && product.variants.length > 0) {
-      variantDetails = JSON.stringify(
-        product.variants.map((v: Variant) => ({
-          id: v.id,
-          variant_name: v.variant_name || 'Default',
-          part_code: v.part_code || '',
-          spec_type: v.spec_type || '',
-          color: v.color || '',
-          size: v.size || '',
-          price: v.price,
-          min_price: v.min_price,
-          max_price: v.max_price,
-          image_url: v.image_url,
-          stock: v.stock
-        }))
-      );
-    }
-    
-    const payload = {
-      user_id: userId,
-      product_id: parseInt(productId),
-      product_name: product.product_name,
-      product_code: product.product_code,
-      product_brand: product.product_brand,
-      price: price,
-      min_price: minPrice || price,
-      max_price: maxPrice || price,
-      discount: 0,
-      quantity: 1,
-      remarks: `Quotation requested for ${product.product_name}`,
-      customer_name: user?.name || '',
-      customer_mobile: user?.mobile || '',
-      customer_email: user?.email || '',
-      variant_image: variantImage,  // ✅ Add variant image
-      variant_details: variantDetails  // ✅ Add variant details
-    };
-
-    console.log('Quotation payload with image:', payload);
-
-    const response = await axios.post(`${baseurl}/api/quotations/single`, payload);
-
-    if (response.data.success) {
-      toast.success(`Quotation #${response.data.quotation_no} generated successfully!`);
-      navigate('/my-quotations');
-    } else {
-      toast.error(response.data.message || 'Failed to submit quotation request');
-    }
-  } catch (error: any) {
-    console.error('Error submitting quotation:', error);
-    toast.error(error.response?.data?.message || 'Failed to submit quotation request. Please try again.');
-  } finally {
-    setQuotationLoading(null);
-  }
-};
+  };
 
   if (loading) {
     return (
