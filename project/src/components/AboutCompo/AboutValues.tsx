@@ -135,10 +135,10 @@ import {
 const icons = [Heart, ShieldCheck, Lightbulb, Handshake];
 
 const images = [
-  "https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=1200&q=80",
+  "https://i.pinimg.com/1200x/42/55/85/42558529502f61e50a1b58beccec951a.jpg",
   "https://images.unsplash.com/photo-1565793298595-6a879b1d9492?w=1200&q=80",
-  "https://images.unsplash.com/photo-1521791136064-7986c2920216?w=1200&q=80",
-  "https://images.unsplash.com/photo-1565008447742-97f6f38c985c?w=1200&q=80",
+  "https://i.pinimg.com/736x/07/d8/0a/07d80a091c228680b8f109447889f570.jpg",
+  "https://i.pinimg.com/1200x/da/72/75/da727595d95a369a127aa18e610e833f.jpg",
 ];
 
 export function AboutValues() {

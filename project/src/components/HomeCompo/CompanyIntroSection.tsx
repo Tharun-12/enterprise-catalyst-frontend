@@ -310,7 +310,7 @@ export function CompanyIntroSection() {
                   className="overflow-hidden rounded-2xl shadow-xl border-2 border-white/50"
                 >
                   <img 
-                    src="https://images.pexels.com/photos/3183150/pexels-photo-3183150.jpeg?auto=compress&cs=tinysrgb&w=600" 
+                    src="https://i.pinimg.com/736x/c4/51/af/c451af2d377382c8b501fe13f439f088.jpg" 
                     alt="Professional Team" 
                     className="w-full h-48 object-cover hover:scale-110 transition-transform duration-500" 
                   />
@@ -321,7 +321,7 @@ export function CompanyIntroSection() {
                   className="overflow-hidden rounded-2xl shadow-xl border-2 border-white/50"
                 >
                   <img 
-                    src="https://images.pexels.com/photos/3182812/pexels-photo-3182812.jpeg?auto=compress&cs=tinysrgb&w=600" 
+                    src="https://i.pinimg.com/1200x/c3/6f/1a/c36f1aa8953924a8c2c789751da079c7.jpg" 
                     alt="Modern Office" 
                     className="w-full h-64 object-cover hover:scale-110 transition-transform duration-500" 
                   />
@@ -336,7 +336,7 @@ export function CompanyIntroSection() {
                   className="overflow-hidden rounded-2xl shadow-xl border-2 border-white/50"
                 >
                   <img 
-                    src="https://images.pexels.com/photos/3183197/pexels-photo-3183197.jpeg?auto=compress&cs=tinysrgb&w=600" 
+                    src="https://i.pinimg.com/1200x/3f/c6/83/3fc6835163e118b45adbafa80477e20c.jpg" 
                     alt="Business Meeting" 
                     className="w-full h-64 object-cover hover:scale-110 transition-transform duration-500" 
                   />
@@ -347,7 +347,7 @@ export function CompanyIntroSection() {
                   className="overflow-hidden rounded-2xl shadow-xl border-2 border-white/50"
                 >
                   <img 
-                    src="https://images.pexels.com/photos/3183132/pexels-photo-3183132.jpeg?auto=compress&cs=tinysrgb&w=600" 
+                    src="https://i.pinimg.com/1200x/0f/a3/b1/0fa3b14e079c55fca911bedc17f46e45.jpg" 
                     alt="Team Work" 
                     className="w-full h-48 object-cover hover:scale-110 transition-transform duration-500" 
                   />

@@ -74,7 +74,7 @@ export function AboutMissionVision() {
           {/* Image Side */}
           <div className="relative h-96 lg:h-[500px] overflow-hidden">
             <img 
-              src="https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=600" 
+              src="https://i.pinimg.com/736x/b1/bc/b3/b1bcb3670470eafa046599b36506572e.jpg" 
               alt="Mission - Empowering Businesses"
               className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
             />
@@ -139,7 +139,7 @@ export function AboutMissionVision() {
           {/* Image Side */}
           <div className="relative h-96 lg:h-[500px] overflow-hidden order-1 lg:order-2">
             <img 
-              src="https://images.pexels.com/photos/3184339/pexels-photo-3184339.jpeg?auto=compress&cs=tinysrgb&w=600" 
+              src="https://i.pinimg.com/1200x/da/4c/a5/da4ca55d89823f2f4edf9774540753c9.jpg" 
               alt="Vision - Future of Enterprise"
               className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
             />
