@@ -1,7 +1,7 @@
 // src/pages/admin/categories-form.tsx
 import { useState, useEffect, ChangeEvent, FormEvent, KeyboardEvent, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Save, X, Plus, Upload, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Save, X, Plus, Image as ImageIcon } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
