@@ -1,7 +1,7 @@
 // src/pages/admin/categories-form.tsx
 import { useState, useEffect, ChangeEvent, FormEvent, KeyboardEvent, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Save, X, Plus, Upload } from 'lucide-react';
+import { ArrowLeft, Save, X, Plus, Upload, Image as ImageIcon } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -312,6 +312,9 @@ export function CategoryForm() {
                 required
                 disabled={isLoading}
               />
+              <p className="text-xs text-muted-foreground">
+                This will be displayed as the category title
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -378,7 +381,7 @@ export function CategoryForm() {
                 value={formData.description}
                 onChange={handleChange}
                 placeholder="Enter category description..."
-                className="w-full min-h-[120px]"
+                className="w-full min-h-[200px] resize-none"
                 disabled={isLoading}
               />
             </div>
@@ -387,30 +390,32 @@ export function CategoryForm() {
               <Label className="text-sm font-medium">Category Image</Label>
               
               {imagePreview ? (
-                <div className="relative inline-block">
+                // Image preview - full width, no content overlay
+                <div className="relative w-full rounded-lg overflow-hidden border border-gray-200">
                   <img 
                     src={imagePreview} 
                     alt="Category preview" 
-                    className="w-32 h-32 object-cover rounded-lg border"
+                    className="w-full h-[200px] object-cover"
                   />
                   <button
                     type="button"
                     onClick={handleRemoveImage}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors shadow-lg"
                     disabled={isLoading}
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-5 w-5" />
                   </button>
                 </div>
               ) : (
+                // Upload placeholder - full width with upload icon
                 <div 
-                  className="flex flex-col items-center justify-center w-full h-[120px] border-2 border-dashed rounded-lg cursor-pointer hover:border-gray-400 transition-colors bg-gray-50"
+                  className="flex flex-col items-center justify-center w-full h-[200px] border-2 border-dashed rounded-lg cursor-pointer hover:border-blue-400 transition-colors bg-gray-50 hover:bg-gray-100"
                   onClick={handleUploadClick}
                 >
                   <div className="text-center pointer-events-none">
-                    <Upload className="h-8 w-8 mx-auto text-gray-400" />
-                    <span className="text-sm text-gray-500">Upload Image</span>
-                    <div className="text-xs text-muted-foreground mt-1">
+                    <ImageIcon className="h-12 w-12 mx-auto text-gray-400 mb-2" />
+                    <p className="text-base font-medium text-gray-600">Click to upload image</p>
+                    <div className="text-xs text-muted-foreground mt-2">
                       <p>Recommended: JPG, PNG, GIF, WebP</p>
                       <p>Max size: 5MB</p>
                     </div>
