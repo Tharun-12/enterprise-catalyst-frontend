@@ -8,16 +8,26 @@ import { PageBreadcrumb as Breadcrumb } from '@/layouts/customer-layout-wrapper'
 import { useState, useEffect } from 'react';
 import { baseurl } from '@/Baseurl/baseurl';
 
-// Category interface based on your API response
+// Updated Category interface based on your API response
+interface Subcategory {
+  id: number;
+  subcategory_name: string;
+  created_at: string;
+}
+
 interface Category {
   id: number;
   category_name: string;
+  description: string;
+  category_image: string;
   created_at: string;
   updated_at: string;
+  subcategories: Subcategory[];
 }
 
 // Define a color mapping for categories
 const categoryColors: Record<string, string> = {
+  'Artifical Intelligence': '#6C63FF', // Note: Fixed spelling to match API
   'Artificial Intelligence': '#6C63FF',
   'Data Cabling': '#00B4D8',
   'Data Infrastructure': '#2D9CDB',
@@ -28,22 +38,13 @@ const categoryColors: Record<string, string> = {
 
 // Define icon mapping for categories
 const categoryIcons: Record<string, React.ElementType> = {
+  'Artifical Intelligence': Brain,
   'Artificial Intelligence': Brain,
   'Data Cabling': Network,
   'Data Infrastructure': Server,
   'Data Physical Security': Shield,
   'Data Security': Lock,
   'Default': Package
-};
-
-// Placeholder images for categories
-const categoryImages: Record<string, string> = {
-  'Artificial Intelligence': 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&h=400&fit=crop',
-  'Data Cabling': 'https://images.unsplash.com/photo-1581091226033-d5c48150dbaa?w=800&h=400&fit=crop',
-  'Data Infrastructure': 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&h=400&fit=crop',
-  'Data Physical Security': 'https://images.unsplash.com/photo-1558002038-1055907df827?w=800&h=400&fit=crop',
-  'Data Security': 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800&h=400&fit=crop',
-  'Default': 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=400&fit=crop'
 };
 
 // Function to create slug from name with fallback
@@ -179,9 +180,15 @@ export function CategoriesPage() {
           const color = categoryColors[categoryName] || categoryColors.Default;
           // Get icon component or default
           const Icon = categoryIcons[categoryName] || categoryIcons.Default;
-          // Get image or default
-          const imageUrl = categoryImages[categoryName] || categoryImages.Default;
+          // Use actual category image from API
+          const imageUrl = cat.category_image 
+            ? `${baseurl}/uploads/categories/${cat.category_image}`
+            : 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=400&fit=crop';
+          
           const slug = createSlug(categoryName);
+          
+          // Get subcategory names for display
+          const subcategoryNames = cat.subcategories?.map(sub => sub.subcategory_name) || [];
 
           return (
             <motion.div
@@ -212,12 +219,15 @@ export function CategoriesPage() {
                     <Icon className="w-20 h-20 text-white drop-shadow-lg opacity-90 group-hover:scale-110 transition-transform duration-300" />
                   </div>
 
-                  {/* Category Badge - Product Count (optional) */}
-                  <div className="absolute bottom-3 left-3">
-                    <span className="bg-black/30 backdrop-blur-sm text-white text-xs px-3 py-1 rounded-full">
-                      {cat.id ? `${cat.id} Products` : 'Available'}
-                    </span>
-                  </div>
+                  {/* Subcategories Badge */}
+                  {subcategoryNames.length > 0 && (
+                    <div className="absolute bottom-3 left-3">
+                      <span className="bg-black/30 backdrop-blur-sm text-white text-xs px-3 py-1 rounded-full">
+                        {subcategoryNames.slice(0, 2).join(' • ')}
+                        {subcategoryNames.length > 2 && ` +${subcategoryNames.length - 2}`}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Content Section */}
@@ -226,9 +236,29 @@ export function CategoriesPage() {
                     {categoryName}
                   </h3>
                   
-                  <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-4 flex-1 line-clamp-2">
-                    Explore our comprehensive range of {categoryName.toLowerCase()} solutions designed for enterprise needs.
+                  {/* Use actual description from API */}
+                  <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-4 flex-1 line-clamp-3">
+                    {cat.description || `Explore our comprehensive range of ${categoryName.toLowerCase()} solutions designed for enterprise needs.`}
                   </p>
+                  
+                  {/* Subcategories Tags */}
+                  {subcategoryNames.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-4">
+                      {subcategoryNames.slice(0, 3).map((name, idx) => (
+                        <span 
+                          key={idx}
+                          className="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                        >
+                          {name}
+                        </span>
+                      ))}
+                      {subcategoryNames.length > 3 && (
+                        <span className="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                          +{subcategoryNames.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   
                   {/* Browse Products Button */}
                   <Link to={`/products?category=${slug}`} className="w-full mt-auto">
