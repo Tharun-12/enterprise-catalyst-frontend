@@ -52,11 +52,11 @@ interface Quotation {
 export function MyQuotations() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
+  const [selectedQuotation, _setSelectedQuotation] = useState<Quotation | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [expandedQuotation, setExpandedQuotation] = useState<number | null>(null);
   const [updatingItem, setUpdatingItem] = useState<{ quotationId: number; itemId: number } | null>(null);
-  const [updatingQuantity, setUpdatingQuantity] = useState(false);
+  const [_updatingQuantity, setUpdatingQuantity] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {

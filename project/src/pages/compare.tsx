@@ -741,7 +741,7 @@
 
 // ComparePage.tsx - Fixed with working wishlist and quotation
 
-// ComparePage.tsx - Fixed with proper product ID handling
+// ComparePage.tsx - Complete Fixed Version
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { X, GitCompare, Plus, ArrowRight, AlertCircle, Loader2, Heart } from 'lucide-react';
@@ -805,10 +805,11 @@ interface SpecComparison {
 
 interface ApiProduct {
   id: number;
-  product_id: number;  // ✅ Added this - compare API uses product_id
+  product_id: number;
   product_name: string;
   product_code: string;
   product_category_id: number;
+  sub_category_id?: number;
   product_brand: string;
   product_details_pdf: string;
   price: string;
@@ -822,9 +823,11 @@ interface ApiProduct {
   created_at: string;
   updated_at: string;
   category_name: string;
+  subcategory_name?: string;
   variants: Variant[];
   spec_comparison?: SpecComparison[];
   selected_variant_id?: number | null;
+  specifications?: Record<string, any>;
 }
 
 interface Brand {
@@ -856,7 +859,7 @@ export function ComparePage() {
   
   const [products, setProducts] = useState<ApiProductWithSpec[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showOnlyDifferences, _setShowOnlyDifferences] = useState(false);
+  const [showOnlyDifferences, setShowOnlyDifferences] = useState(false);
   const [relatedProducts, setRelatedProducts] = useState<ApiProduct[]>([]);
   const [allProductsData, setAllProductsData] = useState<ApiProduct[]>([]);
   
@@ -880,7 +883,7 @@ export function ComparePage() {
   const [wishlistLoading, setWishlistLoading] = useState<string | null>(null);
   const [quotationLoading, setQuotationLoading] = useState<string | null>(null);
   const [wishlistModalOpen, setWishlistModalOpen] = useState(false);
-  const [selectedProductForWishlist, setSelectedProductForWishlist] = useState<ApiProduct | null>(null);
+  const [selectedProductForWishlist, _setSelectedProductForWishlist] = useState<ApiProduct | null>(null);
 
   const getUserId = (): number | null => {
     const session = localStorage.getItem('userSession');
@@ -996,7 +999,6 @@ export function ComparePage() {
     const productsWithSpecs = await Promise.all(
       compareProducts.map(async (product: ApiProduct): Promise<ApiProductWithSpec> => {
         try {
-          // ✅ FIXED: Use product_id from compare API response
           const productId = product.product_id || product.id;
           if (!productId) {
             console.error('Product ID is undefined for product:', product);
@@ -1287,9 +1289,13 @@ export function ComparePage() {
         value: (p: ApiProductWithSpec) => p.category_name || '—' 
       },
       { 
-        label: 'Product Type', 
-        value: (p: ApiProductWithSpec) => p.product_type || '—' 
+        label: 'Subcategory', 
+        value: (p: ApiProductWithSpec) => p.subcategory_name || '—' 
       },
+      // { 
+      //   label: 'Product Type', 
+      //   value: (p: ApiProductWithSpec) => p.product_type || '—' 
+      // },
       { 
         label: 'Warranty', 
         value: (p: ApiProductWithSpec) => p.warranty || '—' 
@@ -1311,7 +1317,7 @@ export function ComparePage() {
 
   const getSpecificationItems = () => {
     const specKeys = [
-      { label: 'Product Series', key: 'product_series' },
+      // { label: 'Product Series', key: 'product_series' },
       { label: 'Spec Type', key: 'spec_type' },
       { label: 'Bandwidth', key: 'bandwidth' },
       { label: 'Max Data Rate', key: 'max_data_rate' },
@@ -1333,112 +1339,109 @@ export function ComparePage() {
     return items;
   };
 
-  const transformForProductCard = (product: ApiProduct): Product => {
-    const gallery = product.variants?.map(v => 
-      v.image_url ? `${baseurl}${v.image_url}` : null
-    ).filter(Boolean) as string[] || ['https://via.placeholder.com/400x400'];
+ const transformForProductCard = (product: ApiProduct): Product => {
+  const gallery = product.variants?.map(v => 
+    v.image_url ? `${baseurl}${v.image_url}` : null
+  ).filter(Boolean) as string[] || ['https://via.placeholder.com/400x400'];
 
-    const specFields = [];
-    if (product.product_series) {
-      specFields.push({ key: 'series', label: 'Series', value: product.product_series });
-    }
-    if (product.product_type) {
-      specFields.push({ key: 'type', label: 'Type', value: product.product_type });
-    }
-    if (product.warranty) {
-      specFields.push({ key: 'warranty', label: 'Warranty', value: product.warranty });
-    }
+  const specFields = [];
+  if (product.product_series) {
+    specFields.push({ key: 'series', label: 'Series', value: product.product_series });
+  }
+  if (product.product_type) {
+    specFields.push({ key: 'type', label: 'Type', value: product.product_type });
+  }
+  if (product.warranty) {
+    specFields.push({ key: 'warranty', label: 'Warranty', value: product.warranty });
+  }
 
-    if (product.variants && product.variants.length > 0) {
-      const variant = product.variants[0];
-      if (variant.spec_type) {
-        specFields.push({ key: 'spec_type', label: 'Spec Type', value: variant.spec_type });
+  if (product.variants && product.variants.length > 0) {
+    const variant = product.variants[0];
+    if (variant.spec_type) {
+      specFields.push({ key: 'spec_type', label: 'Spec Type', value: variant.spec_type });
+    }
+    if (variant.size) {
+      specFields.push({ key: 'size', label: 'Size', value: variant.size });
+    }
+    if (variant.color) {
+      specFields.push({ key: 'color', label: 'Color', value: variant.color });
+    }
+  }
+
+  const totalStock = product.variants?.reduce((sum, v) => sum + v.stock, 0) || 0;
+  const status: ProductStatus = 'active';
+
+  const { minPrice, maxPrice } = getMinMaxPrice(product);
+  const price = minPrice > 0 ? minPrice : 0;
+
+  const variants = product.variants?.map(v => ({
+    id: v.id,
+    color_name: v.color || 'Default',
+    color: v.color || 'Default',
+    color_hex: v.color || '#cccccc',
+    price: v.price || '0',
+    min_price: v.min_price || '0',
+    max_price: v.max_price || '0',
+    stock: v.stock || 0,
+    image_url: v.image_url || '',
+    variant_name: v.variant_name || '',
+    part_code: v.part_code || '',
+    spec_type: v.spec_type || '',
+    size: v.size || '',
+    availability: v.availability || '',
+    datasheet_url: v.datasheet_url || '',
+    description: v.description || '',
+  })) || [];
+
+  return {
+    id: String(product.product_id || product.id),
+    name: product.product_name,
+    slug: getProductSlug(product.product_name),
+    sku: product.product_code,
+    brandId: String(product.product_category_id),
+    brandName: product.product_brand || 'Unknown',
+    categoryId: String(product.product_category_id),
+    categoryName: product.category_name || 'Uncategorized',
+    shortDescription: product.product_description?.substring(0, 150) || '',
+    description: product.product_description || '',
+    features: [],
+    specifications: {},
+    specGroups: [
+      {
+        groupName: 'Specifications',
+        fields: specFields
       }
-      if (variant.size) {
-        specFields.push({ key: 'size', label: 'Size', value: variant.size });
-      }
-      if (variant.color) {
-        specFields.push({ key: 'color', label: 'Color', value: variant.color });
-      }
-    }
-
-    const totalStock = product.variants?.reduce((sum, v) => sum + v.stock, 0) || 0;
-    const status: ProductStatus = 'active';
-
-    const { minPrice, maxPrice } = getMinMaxPrice(product);
-    const price = minPrice > 0 ? minPrice : 0;
-
-    const variants = product.variants?.map(v => ({
-      id: v.id,
-      color_name: v.color || 'Default',
-      color: v.color || 'Default',
-      color_hex: v.color || '#cccccc',
-      price: v.price || '0',
-      min_price: v.min_price || '0',
-      max_price: v.max_price || '0',
-      stock: v.stock || 0,
-      image_url: v.image_url || '',
-      variant_name: v.variant_name || '',
-      part_code: v.part_code || '',
-      spec_type: v.spec_type || '',
-      size: v.size || '',
-      availability: v.availability || '',
-      datasheet_url: v.datasheet_url || '',
-      description: v.description || '',
-    })) || [];
-
-    return {
-      id: String(product.product_id || product.id),
-      name: product.product_name,
-      slug: getProductSlug(product.product_name),
-      sku: product.product_code,
-      brandId: String(product.product_category_id),
-      brandName: product.product_brand || 'Unknown',
-      categoryId: String(product.product_category_id),
-      categoryName: product.category_name || 'Uncategorized',
-      shortDescription: product.product_description?.substring(0, 150) || '',
-      description: product.product_description || '',
-      features: [],
-      specifications: {},
-      specGroups: [
-        {
-          groupName: 'Specifications',
-          fields: specFields
-        }
-      ],
-      gallery,
-      price: price,
-      minPrice: minPrice,
-      maxPrice: maxPrice,
-      currency: 'INR',
-      status: status,
-      isPopular: false,
-      isNew: false,
-      rating: 4.5,
-      reviewCount: 0,
-      downloads: product.product_details_pdf 
-        ? [{ name: 'Product Details', type: 'pdf' as const, size: 'PDF', url: product.product_details_pdf }]
-        : [],
-      relatedProductIds: [],
-      createdAt: product.created_at,
-      warranty: product.warranty || 'Standard warranty',
-      originalPrice: price * (1 + parseFloat(product.discount || '0') / 100) || 0,
-      discountPercentage: parseFloat(product.discount || '0'),
-      variants: variants,
-      hasVariants: (product.variants?.length || 0) > 0,
-      stock: totalStock,
-    };
+    ],
+    gallery,
+    price: price,
+    minPrice: minPrice,
+    maxPrice: maxPrice,
+    currency: 'INR',
+    status: status,
+    isPopular: false,
+    isNew: false,
+    rating: 4.5,
+    reviewCount: 0,
+    downloads: product.product_details_pdf 
+      ? [{ name: 'Product Details', type: 'pdf' as const, size: 'PDF', url: product.product_details_pdf }]
+      : [],
+    relatedProductIds: [],
+    createdAt: product.created_at,
+    warranty: product.warranty || 'Standard warranty',
+    originalPrice: price * (1 + parseFloat(product.discount || '0') / 100) || 0,
+    discountPercentage: parseFloat(product.discount || '0'),
+    variants: variants,
+    hasVariants: (product.variants?.length || 0) > 0,
+    stock: totalStock,
   };
+};
 
-  // ✅ FIXED: Wishlist toggle with proper user ID
   const handleWishlistToggle = async (product: ApiProduct, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    // Use product_id from compare API or fallback to id
     const productId = String(product.product_id || product.id);
     
-    // Check if user is logged in
     if (!isLoggedIn) {
       toast.error('Please login to add to wishlist', {
         duration: 3000,
@@ -1463,7 +1466,6 @@ export function ComparePage() {
       return;
     }
     
-    // Get user ID from session
     const userId = getUserId();
     if (!userId) {
       toast.error('User ID not found. Please login again.', {
@@ -1493,7 +1495,6 @@ export function ComparePage() {
         await removeFromWishlist(productId, userId);
         toast.success('Removed from wishlist');
       } else {
-        // Find the selected variant
         const selectedVariant = product.variants?.find(v => v.is_selected);
         const variantId = selectedVariant?.id;
         await addToWishlist(productId, userId, variantId);
@@ -1507,99 +1508,129 @@ export function ComparePage() {
     }
   };
 
-  // ✅ FIXED: Quotation request with proper user ID and data
   const handleSingleQuotation = async (product: ApiProduct, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Check if user is logged in
-    if (!isLoggedIn) {
-      toast.error('Please login to request a quotation', {
-        duration: 3000,
-        position: 'top-right',
-        style: {
-          background: '#EF4444',
-          color: 'white',
-          border: 'none',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '500',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          marginTop: '70px',
-        },
-        action: {
-          label: 'Login',
-          onClick: () => window.location.href = '/login'
-        }
-      });
-      setTimeout(() => window.location.href = '/login', 1500);
-      return;
-    }
-
-    const userId = getUserId();
-    if (!userId) {
-      toast.error('User ID not found. Please login again.', {
-        duration: 3000,
-        position: 'top-right',
-        style: {
-          background: '#EF4444',
-          color: 'white',
-          border: 'none',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '500',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          marginTop: '70px',
-        },
-      });
-      return;
-    }
-
-    const productId = String(product.product_id || product.id);
-    setQuotationLoading(productId);
-
-    try {
-      const user = getUserDetails();
-      
-      const { minPrice, maxPrice } = getMinMaxPrice(product);
-      const price = minPrice > 0 ? minPrice : 0;
-      
-      const payload = {
-        user_id: userId,
-        product_id: parseInt(productId),
-        product_name: product.product_name,
-        product_code: product.product_code,
-        product_brand: product.product_brand,
-        price: price,
-        min_price: minPrice || price,
-        max_price: maxPrice || price,
-        discount: 0,
-        quantity: 1,
-        remarks: `Quotation requested for ${product.product_name}`,
-        customer_name: user?.name || '',
-        customer_mobile: user?.mobile || '',
-        customer_email: user?.email || ''
-      };
-
-      console.log('Quotation payload:', payload);
-
-      const response = await axios.post(`${baseurl}/api/quotations/single`, payload);
-
-      if (response.data.success) {
-        toast.success(`Quotation #${response.data.quotation_no} generated successfully!`);
-        navigate('/my-quotations');
-      } else {
-        toast.error(response.data.message || 'Failed to submit quotation request');
+  e.preventDefault();
+  e.stopPropagation();
+  
+  if (!isLoggedIn) {
+    toast.error('Please login to request a quotation', {
+      duration: 3000,
+      position: 'top-right',
+      style: {
+        background: '#EF4444',
+        color: 'white',
+        border: 'none',
+        padding: '12px 24px',
+        borderRadius: '8px',
+        fontSize: '14px',
+        fontWeight: '500',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        marginTop: '70px',
+      },
+      action: {
+        label: 'Login',
+        onClick: () => window.location.href = '/login'
       }
-    } catch (error: any) {
-      console.error('Error submitting quotation:', error);
-      toast.error(error.response?.data?.message || 'Failed to submit quotation request. Please try again.');
-    } finally {
-      setQuotationLoading(null);
+    });
+    setTimeout(() => window.location.href = '/login', 1500);
+    return;
+  }
+
+  const userId = getUserId();
+  if (!userId) {
+    toast.error('User ID not found. Please login again.', {
+      duration: 3000,
+      position: 'top-right',
+      style: {
+        background: '#EF4444',
+        color: 'white',
+        border: 'none',
+        padding: '12px 24px',
+        borderRadius: '8px',
+        fontSize: '14px',
+        fontWeight: '500',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        marginTop: '70px',
+      },
+    });
+    return;
+  }
+
+  const productId = String(product.product_id || product.id);
+  setQuotationLoading(productId);
+
+  try {
+    const user = getUserDetails();
+    
+    const { minPrice, maxPrice } = getMinMaxPrice(product);
+    const price = minPrice > 0 ? minPrice : 0;
+    
+    // ✅ Get the selected variant (like in product-card)
+    const selectedVariant = product.variants?.find(v => v.is_selected);
+    const variant = selectedVariant || product.variants?.[0] || null;
+    
+    // ✅ Build variant image URL
+    let variantImage = null;
+    if (variant?.image_url) {
+      variantImage = variant.image_url;
     }
-  };
+    
+    // ✅ Build variant details
+    let variantDetails = null;
+    if (product.variants && product.variants.length > 0) {
+      variantDetails = JSON.stringify(
+        product.variants.map((v: Variant) => ({
+          id: v.id,
+          variant_name: v.variant_name || 'Default',
+          part_code: v.part_code || '',
+          spec_type: v.spec_type || '',
+          color: v.color || '',
+          size: v.size || '',
+          price: v.price,
+          min_price: v.min_price,
+          max_price: v.max_price,
+          image_url: v.image_url,
+          stock: v.stock
+        }))
+      );
+    }
+    
+    const payload = {
+      user_id: userId,
+      product_id: parseInt(productId),
+      product_name: product.product_name,
+      product_code: product.product_code,
+      product_brand: product.product_brand,
+      price: price,
+      min_price: minPrice || price,
+      max_price: maxPrice || price,
+      discount: 0,
+      quantity: 1,
+      remarks: `Quotation requested for ${product.product_name}`,
+      customer_name: user?.name || '',
+      customer_mobile: user?.mobile || '',
+      customer_email: user?.email || '',
+      variant_image: variantImage,  // ✅ Add variant image
+      variant_details: variantDetails  // ✅ Add variant details
+    };
+
+    console.log('Quotation payload with image:', payload);
+
+    const response = await axios.post(`${baseurl}/api/quotations/single`, payload);
+
+    if (response.data.success) {
+      toast.success(`Quotation #${response.data.quotation_no} generated successfully!`);
+      navigate('/my-quotations');
+    } else {
+      toast.error(response.data.message || 'Failed to submit quotation request');
+    }
+  } catch (error: any) {
+    console.error('Error submitting quotation:', error);
+    toast.error(error.response?.data?.message || 'Failed to submit quotation request. Please try again.');
+  } finally {
+    setQuotationLoading(null);
+  }
+};
 
   if (loading) {
     return (
@@ -1714,6 +1745,13 @@ export function ComparePage() {
         </div>
         {compareList.length > 0 && (
           <div className="flex items-center gap-2 flex-wrap">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowOnlyDifferences(!showOnlyDifferences)}
+            >
+              {showOnlyDifferences ? 'Show All' : 'Show Differences Only'}
+            </Button>
             <Button variant="outline" size="sm" onClick={async () => { 
               await clearCompare(); 
               const resetSlots = slotDropdowns.map(() => ({
@@ -1820,12 +1858,18 @@ export function ComparePage() {
                   </Link>
 
                   <div className="p-4 flex flex-col flex-1">
-                    <div className="flex items-center gap-1.5 mb-2">
+                    <div className="flex items-center gap-1.5 mb-2 flex-wrap">
                       <Badge className="text-[10px] font-semibold bg-primary/10 text-primary border-0">
                         {product.product_brand || 'N/A'}
                       </Badge>
                       <span className="text-xs text-muted-foreground/50">·</span>
                       <span className="text-xs text-muted-foreground">{product.category_name || 'Uncategorized'}</span>
+                      {product.subcategory_name && (
+                        <>
+                          <span className="text-xs text-muted-foreground/50">→</span>
+                          <span className="text-xs text-muted-foreground">{product.subcategory_name}</span>
+                        </>
+                      )}
                     </div>
 
                     <Link to={`/products/${getProductSlug(product.product_name)}`}>
@@ -1834,7 +1878,6 @@ export function ComparePage() {
                       </h3>
                     </Link>
 
-                    {/* Price - Show only min and max without discount */}
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <span className="text-lg font-bold text-primary">
                         {getDisplayPrice(product)}
@@ -1889,6 +1932,9 @@ export function ComparePage() {
             <div className="mb-6">
               <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 rounded-t-lg font-semibold text-sm flex items-center justify-between">
                 <span>General Information</span>
+                <Badge variant="secondary" className="bg-white/20 text-white">
+                  {generalInfoItems.length} items
+                </Badge>
               </div>
               <div className="border border-t-0 rounded-b-lg overflow-hidden">
                 {generalInfoItems.map((item, index) => {
@@ -1950,6 +1996,9 @@ export function ComparePage() {
             <div className="mb-6">
               <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 rounded-t-lg font-semibold text-sm flex items-center justify-between">
                 <span>Specifications</span>
+                <Badge variant="secondary" className="bg-white/20 text-white">
+                  {specItems.length} items
+                </Badge>
               </div>
               <div className="border border-t-0 rounded-b-lg overflow-hidden">
                 {specItems.map((item, index) => {
