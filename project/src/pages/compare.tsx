@@ -743,7 +743,9 @@
 
 // ComparePage.tsx - Complete Fixed Version
 
-// ComparePage.tsx - Fixed to show product cards even without login
+// ComparePage.tsx - Fixed to properly show specifications from JSON
+
+// ComparePage.tsx - Fixed to display specifications from JSON object
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { X, GitCompare, Plus, ArrowRight, AlertCircle, Loader2, Heart } from 'lucide-react';
@@ -793,18 +795,6 @@ interface Variant {
   is_selected?: boolean;
 }
 
-interface SpecComparison {
-  id: number;
-  product_id: number;
-  spec_type: string;
-  bandwidth: string;
-  max_data_rate: string;
-  internal_design: string;
-  typical_applications: string;
-  created_at: string;
-  updated_at: string;
-}
-
 interface ApiProduct {
   id: number;
   product_id: number;
@@ -827,9 +817,14 @@ interface ApiProduct {
   category_name: string;
   subcategory_name?: string;
   variants: Variant[];
-  spec_comparison?: SpecComparison[];
   selected_variant_id?: number | null;
   specifications?: Record<string, any>;
+  // These are added by backend but we'll use specifications instead
+  spec_type?: string;
+  bandwidth?: string;
+  max_data_rate?: string;
+  internal_design?: string;
+  typical_applications?: string;
 }
 
 interface Brand {
@@ -840,11 +835,6 @@ interface Brand {
 }
 
 type Product = AppProduct;
-
-// Extended product type with spec_comparison
-interface ApiProductWithSpec extends ApiProduct {
-  spec_comparison?: SpecComparison[];
-}
 
 export function ComparePage() {
   const navigate = useNavigate();
@@ -859,7 +849,7 @@ export function ComparePage() {
     isLoggedIn
   } = useApp();
   
-  const [products, setProducts] = useState<ApiProductWithSpec[]>([]);
+  const [products, setProducts] = useState<ApiProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [showOnlyDifferences, setShowOnlyDifferences] = useState(false);
   const [relatedProducts, setRelatedProducts] = useState<ApiProduct[]>([]);
@@ -959,7 +949,6 @@ export function ComparePage() {
       const userId = getUserId();
       if (!userId) {
         console.log('No user ID found, cannot fetch compare list');
-        // If no user, try to get from compareList context
         if (compareList.length > 0) {
           await updateDisplayProductsFromContext();
         }
@@ -971,7 +960,6 @@ export function ComparePage() {
         const compareData = response.data.data;
         await updateDisplayProducts(compareData);
       } else if (compareList.length > 0) {
-        // Fallback to context compare list
         await updateDisplayProductsFromContext();
       } else {
         setProducts([]);
@@ -980,7 +968,6 @@ export function ComparePage() {
       }
     } catch (error) {
       console.error('Error fetching compare list:', error);
-      // If API fails, try using compareList from context
       if (compareList.length > 0) {
         await updateDisplayProductsFromContext();
       }
@@ -1032,33 +1019,20 @@ export function ComparePage() {
       setCompareProductType(compareProducts[0].product_type);
     }
     
-    // Fetch spec comparison for each product in compare list
-    const productsWithSpecs = await Promise.all(
-      compareProducts.map(async (product: ApiProduct): Promise<ApiProductWithSpec> => {
+    // Process products - keep the specifications as they are from the API
+    const processedProducts = compareProducts.map((product) => {
+      // If specifications is a string, parse it
+      if (product.specifications && typeof product.specifications === 'string') {
         try {
-          const productId = product.product_id || product.id;
-          if (!productId) {
-            console.error('Product ID is undefined for product:', product);
-            return { ...product, spec_comparison: [] };
-          }
-          
-          const specRes = await axios.get<Record<string, SpecComparison>>(
-            `${baseurl}/api/products/spec-comparison/${productId}`
-          );
-          if (specRes.data && Object.keys(specRes.data).length > 0) {
-            const specArray: SpecComparison[] = Object.values(specRes.data) as SpecComparison[];
-            return { ...product, spec_comparison: specArray };
-          }
-          return { ...product, spec_comparison: [] };
-        } catch (error) {
-          const productId = product.product_id || product.id;
-          console.error(`Error fetching spec for product ${productId}:`, error);
-          return { ...product, spec_comparison: [] };
+          product.specifications = JSON.parse(product.specifications);
+        } catch (e) {
+          product.specifications = {};
         }
-      })
-    );
+      }
+      return product;
+    });
     
-    setProducts(productsWithSpecs);
+    setProducts(processedProducts);
 
     if (compareProducts.length > 0) {
       const firstProductType = compareProducts[0].product_type;
@@ -1294,18 +1268,36 @@ export function ComparePage() {
     }).format(numPrice);
   };
 
-  const getSpecValue = (product: ApiProductWithSpec, specKey: string): string => {
-    const directValue = (product as any)[specKey];
-    if (directValue && directValue !== 'null' && directValue !== '') {
-      return directValue;
-    }
+  // FIXED: Get spec value from the specifications JSON object
+  const getSpecValue = (product: ApiProduct, specKey: string): string => {
+    // Map display labels to the keys in the specifications object
+    const specKeyMap: Record<string, string> = {
+      'Product Series': 'Product Series',
+      'Conductor Type': 'Conductor Type',
+      'Cable OD': 'Cable OD',
+      'Jacket Material': 'Jacket Material',
+      'Bandwidth': 'Bandwidth',
+    };
+
+    const actualKey = specKeyMap[specKey] || specKey;
     
-    if (product.spec_comparison && product.spec_comparison.length > 0) {
-      const spec = product.spec_comparison[0];
-      const specValue = (spec as any)[specKey];
-      if (specValue && specValue !== 'null' && specValue !== '') {
+    // First check the specifications JSON object
+    if (product.specifications) {
+      const specValue = product.specifications[actualKey];
+      if (specValue && specValue !== 'null' && specValue !== '' && specValue !== '—') {
         return specValue;
       }
+    }
+    
+    // If not found in specifications, try the product_series field
+    if (actualKey === 'Product Series' && product.product_series) {
+      return product.product_series;
+    }
+    
+    // If not found, check if there's a direct field
+    const directValue = (product as any)[actualKey];
+    if (directValue && directValue !== 'null' && directValue !== '' && directValue !== '—') {
+      return directValue;
     }
     
     return '—';
@@ -1315,23 +1307,23 @@ export function ComparePage() {
     const items = [
       { 
         label: 'Brand', 
-        value: (p: ApiProductWithSpec) => p.product_brand || '—' 
+        value: (p: ApiProduct) => p.product_brand || '—' 
       },
       { 
         label: 'Category', 
-        value: (p: ApiProductWithSpec) => p.category_name || '—' 
+        value: (p: ApiProduct) => p.category_name || '—' 
       },
       { 
         label: 'Subcategory', 
-        value: (p: ApiProductWithSpec) => p.subcategory_name || '—' 
+        value: (p: ApiProduct) => p.subcategory_name || '—' 
       },
       { 
         label: 'Warranty', 
-        value: (p: ApiProductWithSpec) => p.warranty || '—' 
+        value: (p: ApiProduct) => p.warranty || '—' 
       },
       { 
         label: 'Stock Status', 
-        value: (p: ApiProductWithSpec) => getStockStatus(p) 
+        value: (p: ApiProduct) => getStockStatus(p) 
       },
     ];
 
@@ -1344,18 +1336,20 @@ export function ComparePage() {
     return items;
   };
 
+  // FIXED: Get specification items from the specifications JSON
   const getSpecificationItems = () => {
+    // These are the keys from the specifications JSON object
     const specKeys = [
-      { label: 'Spec Type', key: 'spec_type' },
-      { label: 'Bandwidth', key: 'bandwidth' },
-      { label: 'Max Data Rate', key: 'max_data_rate' },
-      { label: 'Internal Design', key: 'internal_design' },
-      { label: 'Typical Applications', key: 'typical_applications' },
+      { label: 'Product Series', key: 'Product Series' },
+      { label: 'Conductor Type', key: 'Conductor Type' },
+      { label: 'Cable OD', key: 'Cable OD' },
+      { label: 'Jacket Material', key: 'Jacket Material' },
+      { label: 'Bandwidth', key: 'Bandwidth' },
     ];
 
     const items = specKeys.map(spec => ({
       label: spec.label,
-      value: (p: ApiProductWithSpec) => getSpecValue(p, spec.key)
+      value: (p: ApiProduct) => getSpecValue(p, spec.key)
     }));
 
     if (showOnlyDifferences) {
@@ -1373,14 +1367,39 @@ export function ComparePage() {
     ).filter(Boolean) as string[] || ['https://via.placeholder.com/400x400'];
 
     const specFields = [];
-    if (product.product_series) {
-      specFields.push({ key: 'series', label: 'Series', value: product.product_series });
+    
+    // Add specifications from the JSON
+    if (product.specifications) {
+      const specMap: Record<string, string> = {
+        'Product Series': 'Product Series',
+        'Conductor Type': 'Conductor Type',
+        'Cable OD': 'Cable OD',
+        'Jacket Material': 'Jacket Material',
+        'Bandwidth': 'Bandwidth',
+      };
+      
+      for (const [label, key] of Object.entries(specMap)) {
+        if (product.specifications[key]) {
+          specFields.push({ 
+            key: key.toLowerCase().replace(/\s+/g, '_'), 
+            label: label, 
+            value: product.specifications[key] 
+          });
+        }
+      }
     }
-    if (product.product_type) {
-      specFields.push({ key: 'type', label: 'Type', value: product.product_type });
-    }
-    if (product.warranty) {
-      specFields.push({ key: 'warranty', label: 'Warranty', value: product.warranty });
+    
+    // Fallback to product fields if specifications not available
+    if (specFields.length === 0) {
+      if (product.product_series) {
+        specFields.push({ key: 'series', label: 'Product Series', value: product.product_series });
+      }
+      if (product.product_type) {
+        specFields.push({ key: 'type', label: 'Type', value: product.product_type });
+      }
+      if (product.warranty) {
+        specFields.push({ key: 'warranty', label: 'Warranty', value: product.warranty });
+      }
     }
 
     if (product.variants && product.variants.length > 0) {
@@ -1433,7 +1452,7 @@ export function ComparePage() {
       shortDescription: product.product_description?.substring(0, 150) || '',
       description: product.product_description || '',
       features: [],
-      specifications: {},
+      specifications: product.specifications || {},
       specGroups: [
         {
           groupName: 'Specifications',
@@ -1949,6 +1968,7 @@ export function ComparePage() {
             {compareList.length < 4 && renderAddProductSlot(compareList.length)}
           </div>
 
+          {/* General Information Section */}
           {compareList.length >= 2 && generalInfoItems.length > 0 && (
             <div className="mb-6">
               <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 rounded-t-lg font-semibold text-sm flex items-center justify-between">
@@ -2013,6 +2033,7 @@ export function ComparePage() {
             </div>
           )}
 
+          {/* Specifications Section - Now showing values from specifications JSON */}
           {compareList.length >= 2 && specItems.length > 0 && (
             <div className="mb-6">
               <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 rounded-t-lg font-semibold text-sm flex items-center justify-between">
@@ -2071,6 +2092,7 @@ export function ComparePage() {
             </div>
           )}
 
+          {/* Variants Section */}
           {compareList.length >= 2 && (
             <div className="mb-6">
               <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 rounded-t-lg font-semibold text-sm">

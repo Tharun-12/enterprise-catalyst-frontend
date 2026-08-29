@@ -79,14 +79,15 @@ interface Variant {
     brand_name?: string;
 }
 
-interface SpecComparison {
-    id?: number;
-    spec_type: string;
-    bandwidth: string;
-    max_data_rate: string;
-    internal_design: string;
-    typical_applications: string;
-}
+// COMMENTED OUT - Spec Comparison not needed
+// interface SpecComparison {
+//     id?: number;
+//     spec_type: string;
+//     bandwidth: string;
+//     max_data_rate: string;
+//     internal_design: string;
+//     typical_applications: string;
+// }
 
 const ProductForm = () => {
     const navigate = useNavigate();
@@ -128,15 +129,15 @@ const ProductForm = () => {
     });
     const [editingVariantIndex, setEditingVariantIndex] = useState<number | null>(null);
 
-    // Spec Comparison State
-    const [specComparisons, setSpecComparisons] = useState<SpecComparison[]>([]);
-    const [currentSpecComparison, setCurrentSpecComparison] = useState<SpecComparison>({
-        spec_type: '',
-        bandwidth: '',
-        max_data_rate: '',
-        internal_design: '',
-        typical_applications: ''
-    });
+    // COMMENTED OUT - Spec Comparison state not needed
+    // const [specComparisons, setSpecComparisons] = useState<SpecComparison[]>([]);
+    // const [currentSpecComparison, setCurrentSpecComparison] = useState<SpecComparison>({
+    //     spec_type: '',
+    //     bandwidth: '',
+    //     max_data_rate: '',
+    //     internal_design: '',
+    //     typical_applications: ''
+    // });
 
     const [categories, setCategories] = useState<Category[]>([]);
     const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
@@ -149,7 +150,8 @@ const ProductForm = () => {
     const [error, setError] = useState<string>('');
     const [success, setSuccess] = useState<string>('');
     const [selectedFileNames, setSelectedFileNames] = useState<string>('');
-    const [showSpecComparison, setShowSpecComparison] = useState<boolean>(false);
+    // COMMENTED OUT - Not needed
+    // const [showSpecComparison, setShowSpecComparison] = useState<boolean>(false);
     const [showVariantForm, setShowVariantForm] = useState<boolean>(false);
     const [hasSpecifications, setHasSpecifications] = useState<boolean>(false);
 
@@ -161,7 +163,8 @@ const ProductForm = () => {
         fetchBrands();
         if (isEditMode) {
             fetchProductData();
-            fetchSpecComparisons();
+            // COMMENTED OUT - Not needed
+            // fetchSpecComparisons();
         }
     }, [id]);
 
@@ -350,80 +353,81 @@ const ProductForm = () => {
         }
     };
 
-    const fetchSpecComparisons = async () => {
-        try {
-            const response = await axios.get(`${API_URL}/api/products/spec-comparison/${id}`);
-            const data = response.data;
-            const comparisons = [];
-            if (data) {
-                if (Array.isArray(data)) {
-                    comparisons.push(...data);
-                } else {
-                    Object.keys(data).forEach(key => {
-                        comparisons.push({ ...data[key], spec_type: key });
-                    });
-                }
-            }
-            setSpecComparisons(comparisons);
-        } catch (error) {
-            console.error('Error fetching spec comparisons:', error);
-        }
-    };
+    // COMMENTED OUT - Not needed
+    // const fetchSpecComparisons = async () => {
+    //     try {
+    //         const response = await axios.get(`${API_URL}/api/products/spec-comparison/${id}`);
+    //         const data = response.data;
+    //         const comparisons = [];
+    //         if (data) {
+    //             if (Array.isArray(data)) {
+    //                 comparisons.push(...data);
+    //             } else {
+    //                 Object.keys(data).forEach(key => {
+    //                     comparisons.push({ ...data[key], spec_type: key });
+    //                 });
+    //             }
+    //         }
+    //         setSpecComparisons(comparisons);
+    //     } catch (error) {
+    //         console.error('Error fetching spec comparisons:', error);
+    //     }
+    // };
 
     // ============================================
-    // SPEC COMPARISON HANDLERS
+    // SPEC COMPARISON HANDLERS - COMMENTED OUT
     // ============================================
-    const handleSpecComparisonChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        setCurrentSpecComparison(prev => ({ ...prev, [name]: value }));
-    };
+    // const handleSpecComparisonChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    //     const { name, value } = e.target;
+    //     setCurrentSpecComparison(prev => ({ ...prev, [name]: value }));
+    // };
 
-    const handleAddSpecComparison = () => {
-        if (!currentSpecComparison.spec_type) {
-            setError('Please enter a spec type');
-            return;
-        }
+    // const handleAddSpecComparison = () => {
+    //     if (!currentSpecComparison.spec_type) {
+    //         setError('Please enter a spec type');
+    //         return;
+    //     }
 
-        const exists = specComparisons.some(s => s.spec_type === currentSpecComparison.spec_type);
-        if (exists) {
-            setError(`Spec comparison for ${currentSpecComparison.spec_type} already exists. Please edit it instead.`);
-            return;
-        }
+    //     const exists = specComparisons.some(s => s.spec_type === currentSpecComparison.spec_type);
+    //     if (exists) {
+    //         setError(`Spec comparison for ${currentSpecComparison.spec_type} already exists. Please edit it instead.`);
+    //         return;
+    //     }
 
-        setSpecComparisons(prev => [...prev, { ...currentSpecComparison }]);
-        setCurrentSpecComparison({
-            spec_type: '',
-            bandwidth: '',
-            max_data_rate: '',
-            internal_design: '',
-            typical_applications: ''
-        });
-        setSuccess('Spec comparison added successfully');
-        setTimeout(() => setSuccess(''), 3000);
-    };
+    //     setSpecComparisons(prev => [...prev, { ...currentSpecComparison }]);
+    //     setCurrentSpecComparison({
+    //         spec_type: '',
+    //         bandwidth: '',
+    //         max_data_rate: '',
+    //         internal_design: '',
+    //         typical_applications: ''
+    //     });
+    //     setSuccess('Spec comparison added successfully');
+    //     setTimeout(() => setSuccess(''), 3000);
+    // };
 
-    const handleEditSpecComparison = (index: number) => {
-        setCurrentSpecComparison({ ...specComparisons[index] });
-        const updated = specComparisons.filter((_, i) => i !== index);
-        setSpecComparisons(updated);
-    };
+    // const handleEditSpecComparison = (index: number) => {
+    //     setCurrentSpecComparison({ ...specComparisons[index] });
+    //     const updated = specComparisons.filter((_, i) => i !== index);
+    //     setSpecComparisons(updated);
+    // };
 
-    const handleRemoveSpecComparison = (index: number) => {
-        const spec = specComparisons[index];
-        if (spec.id && id) {
-            axios.delete(`${API_URL}/api/products/spec-comparison/${id}/${spec.spec_type}`)
-                .then(() => {
-                    const updated = specComparisons.filter((_, i) => i !== index);
-                    setSpecComparisons(updated);
-                    setSuccess('Spec comparison removed');
-                    setTimeout(() => setSuccess(''), 3000);
-                })
-                .catch(err => console.error('Error deleting spec comparison:', err));
-        } else {
-            const updated = specComparisons.filter((_, i) => i !== index);
-            setSpecComparisons(updated);
-        }
-    };
+    // const handleRemoveSpecComparison = (index: number) => {
+    //     const spec = specComparisons[index];
+    //     if (spec.id && id) {
+    //         axios.delete(`${API_URL}/api/products/spec-comparison/${id}/${spec.spec_type}`)
+    //             .then(() => {
+    //                 const updated = specComparisons.filter((_, i) => i !== index);
+    //                 setSpecComparisons(updated);
+    //                 setSuccess('Spec comparison removed');
+    //                 setTimeout(() => setSuccess(''), 3000);
+    //             })
+    //             .catch(err => console.error('Error deleting spec comparison:', err));
+    //     } else {
+    //         const updated = specComparisons.filter((_, i) => i !== index);
+    //         setSpecComparisons(updated);
+    //     }
+    // };
 
     // ============================================
     // SPECIFICATION HANDLERS
@@ -712,19 +716,19 @@ const ProductForm = () => {
                     }
                 }
 
-                // Handle spec comparisons
-                await axios.delete(`${API_URL}/api/products/spec-comparison/${productId}/all`);
+                // COMMENTED OUT - Spec Comparison deletion not needed
+                // await axios.delete(`${API_URL}/api/products/spec-comparison/${productId}/all`);
                 
-                for (const spec of specComparisons) {
-                    await axios.post(`${API_URL}/api/products/spec-comparison`, {
-                        product_id: productId,
-                        spec_type: spec.spec_type,
-                        bandwidth: spec.bandwidth || '',
-                        max_data_rate: spec.max_data_rate || '',
-                        internal_design: spec.internal_design || '',
-                        typical_applications: spec.typical_applications || ''
-                    });
-                }
+                // for (const spec of specComparisons) {
+                //     await axios.post(`${API_URL}/api/products/spec-comparison`, {
+                //         product_id: productId,
+                //         spec_type: spec.spec_type,
+                //         bandwidth: spec.bandwidth || '',
+                //         max_data_rate: spec.max_data_rate || '',
+                //         internal_design: spec.internal_design || '',
+                //         typical_applications: spec.typical_applications || ''
+                //     });
+                // }
 
             } else {
                 // Create new product
@@ -795,16 +799,17 @@ const ProductForm = () => {
                     );
                 }
 
-                for (const spec of specComparisons) {
-                    await axios.post(`${API_URL}/api/products/spec-comparison`, {
-                        product_id: productId,
-                        spec_type: spec.spec_type,
-                        bandwidth: spec.bandwidth || '',
-                        max_data_rate: spec.max_data_rate || '',
-                        internal_design: spec.internal_design || '',
-                        typical_applications: spec.typical_applications || ''
-                    });
-                }
+                // COMMENTED OUT - Spec Comparison creation not needed
+                // for (const spec of specComparisons) {
+                //     await axios.post(`${API_URL}/api/products/spec-comparison`, {
+                //         product_id: productId,
+                //         spec_type: spec.spec_type,
+                //         bandwidth: spec.bandwidth || '',
+                //         max_data_rate: spec.max_data_rate || '',
+                //         internal_design: spec.internal_design || '',
+                //         typical_applications: spec.typical_applications || ''
+                //     });
+                // }
             }
 
             setSuccess(`${isEditMode ? 'Product updated' : 'Product added'} successfully!`);
@@ -1081,9 +1086,9 @@ const ProductForm = () => {
                 </div>
 
                 {/* ============================================
-                    SPEC COMPARISON SECTION
+                    SPEC COMPARISON SECTION - COMMENTED OUT
                     ============================================ */}
-                <div className="form-section">
+                {/* <div className="form-section">
                     <button
                         type="button"
                         className="section-toggle"
@@ -1223,7 +1228,7 @@ const ProductForm = () => {
                             )}
                         </div>
                     )}
-                </div>
+                </div> */}
 
                 {/* ============================================
                     VARIANTS SECTION

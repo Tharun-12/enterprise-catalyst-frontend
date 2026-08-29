@@ -76,13 +76,13 @@ export function CategoriesPage() {
       try {
         setLoading(true);
         const response = await fetch(`${baseurl}/api/categories/`);
-        
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const data = await response.json();
-        
+
         if (data && data.success && Array.isArray(data.data)) {
           setCategories(data.data);
         } else {
@@ -131,8 +131,8 @@ export function CategoriesPage() {
             <div className="text-red-500 text-5xl mb-4">⚠️</div>
             <h2 className="text-xl font-semibold mb-2">Failed to Load Categories</h2>
             <p className="text-muted-foreground">{error}</p>
-            <Button 
-              onClick={() => window.location.reload()} 
+            <Button
+              onClick={() => window.location.reload()}
               className="mt-4"
             >
               Retry
@@ -166,7 +166,7 @@ export function CategoriesPage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <Breadcrumb items={[{ label: 'Home', path: '/' }, { label: 'Categories' }]} />
-      
+
       <SectionHeader
         title="Product Categories"
         subtitle="Browse our comprehensive catalog of enterprise product categories, each with specialized solutions."
@@ -175,18 +175,18 @@ export function CategoriesPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {categories.map((cat, index) => {
           const categoryName = cat.category_name;
-          
+
           // Get category color or default
           const color = categoryColors[categoryName] || categoryColors.Default;
           // Get icon component or default
           const Icon = categoryIcons[categoryName] || categoryIcons.Default;
           // Use actual category image from API
-          const imageUrl = cat.category_image 
+          const imageUrl = cat.category_image
             ? `${baseurl}/uploads/categories/${cat.category_image}`
             : 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=400&fit=crop';
-          
+
           const slug = createSlug(categoryName);
-          
+
           // Get subcategory names for display
           const subcategoryNames = cat.subcategories?.map(sub => sub.subcategory_name) || [];
 
@@ -202,18 +202,18 @@ export function CategoriesPage() {
                 {/* Image Section */}
                 <div
                   className="h-48 relative bg-cover bg-center"
-                  style={{ 
+                  style={{
                     backgroundImage: `url(${imageUrl})`,
                   }}
                 >
                   {/* Gradient Overlay */}
-                  <div 
+                  <div
                     className="absolute inset-0"
-                    style={{ 
-                      background: `linear-gradient(135deg, ${color}cc, ${color}66)` 
+                    style={{
+                      background: `linear-gradient(135deg, ${color}cc, ${color}66)`
                     }}
                   />
-                  
+
                   {/* Icon Overlay */}
                   <div className="absolute inset-0 flex items-center justify-center">
                     <Icon className="w-20 h-20 text-white drop-shadow-lg opacity-90 group-hover:scale-110 transition-transform duration-300" />
@@ -235,17 +235,17 @@ export function CategoriesPage() {
                   <h3 className="font-bold text-xl mb-2 line-clamp-1 text-gray-900 dark:text-white">
                     {categoryName}
                   </h3>
-                  
+
                   {/* Use actual description from API */}
                   <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-4 flex-1 line-clamp-3">
                     {cat.description || `Explore our comprehensive range of ${categoryName.toLowerCase()} solutions designed for enterprise needs.`}
                   </p>
-                  
+
                   {/* Subcategories Tags */}
                   {subcategoryNames.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mb-4">
                       {subcategoryNames.slice(0, 3).map((name, idx) => (
-                        <span 
+                        <span
                           key={idx}
                           className="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
                         >
@@ -259,18 +259,18 @@ export function CategoriesPage() {
                       )}
                     </div>
                   )}
-                  
+
                   {/* Browse Products Button */}
-                  <Link to={`/products?category=${slug}`} className="w-full mt-auto">
-                    <Button 
+                  <Link to= "/products" className="w-full mt-auto">
+                    <Button
                       className="w-full group-hover:shadow-lg transition-all duration-300"
-                      style={{ 
+                      style={{
                         backgroundColor: color,
                         color: 'white',
                         border: 'none'
                       }}
                     >
-                      Browse Products 
+                      Browse Products
                       <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                     </Button>
                   </Link>
