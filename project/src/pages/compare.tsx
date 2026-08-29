@@ -745,7 +745,7 @@
 
 // ComparePage.tsx - Fixed to properly show specifications from JSON
 
-// ComparePage.tsx - Fixed to display specifications from JSON object
+// ComparePage.tsx - Fixed with subcategory-based comparison
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { X, GitCompare, Plus, ArrowRight, AlertCircle, Loader2, Heart } from 'lucide-react';
@@ -819,7 +819,6 @@ interface ApiProduct {
   variants: Variant[];
   selected_variant_id?: number | null;
   specifications?: Record<string, any>;
-  // These are added by backend but we'll use specifications instead
   spec_type?: string;
   bandwidth?: string;
   max_data_rate?: string;
@@ -870,14 +869,13 @@ export function ComparePage() {
   ]);
   
   const [filteredProductsForSlots, setFilteredProductsForSlots] = useState<ApiProduct[][]>([]);
-  const [compareProductType, setCompareProductType] = useState<string | null>(null);
+  const [compareSubCategory, setCompareSubCategory] = useState<string | null>(null);
   
   const [wishlistLoading, setWishlistLoading] = useState<string | null>(null);
   const [quotationLoading, setQuotationLoading] = useState<string | null>(null);
   const [wishlistModalOpen, setWishlistModalOpen] = useState(false);
   const [selectedProductForWishlist, _setSelectedProductForWishlist] = useState<ApiProduct | null>(null);
 
-  // Check if user is logged in - using the context isLoggedIn
   const isUserLoggedIn = isLoggedIn;
 
   const getUserId = (): number | null => {
@@ -929,7 +927,6 @@ export function ComparePage() {
         const initialFiltered = Array(4).fill(null).map(() => allProducts);
         setFilteredProductsForSlots(initialFiltered);
         
-        // Fetch compare list from the compare API
         await fetchCompareList();
         
       } catch (error) {
@@ -964,7 +961,7 @@ export function ComparePage() {
       } else {
         setProducts([]);
         setRelatedProducts([]);
-        setCompareProductType(null);
+        setCompareSubCategory(null);
       }
     } catch (error) {
       console.error('Error fetching compare list:', error);
@@ -979,7 +976,7 @@ export function ComparePage() {
     if (compareList.length === 0) {
       setProducts([]);
       setRelatedProducts([]);
-      setCompareProductType(null);
+      setCompareSubCategory(null);
       return;
     }
 
@@ -990,7 +987,7 @@ export function ComparePage() {
     if (compareProducts.length === 0) {
       setProducts([]);
       setRelatedProducts([]);
-      setCompareProductType(null);
+      setCompareSubCategory(null);
       return;
     }
 
@@ -1003,25 +1000,26 @@ export function ComparePage() {
     } else if (compareList.length === 0) {
       setProducts([]);
       setRelatedProducts([]);
-      setCompareProductType(null);
+      setCompareSubCategory(null);
     }
   }, [compareList, allProductsData]);
 
+  // FIXED: Update display products with subcategory-based filtering
   const updateDisplayProducts = async (compareProducts: ApiProduct[]) => {
     if (!compareProducts || compareProducts.length === 0) {
       setProducts([]);
       setRelatedProducts([]);
-      setCompareProductType(null);
+      setCompareSubCategory(null);
       return;
     }
     
+    // Set the subcategory name for filtering
     if (compareProducts.length > 0) {
-      setCompareProductType(compareProducts[0].product_type);
+      setCompareSubCategory(compareProducts[0].subcategory_name || null);
     }
     
     // Process products - keep the specifications as they are from the API
     const processedProducts = compareProducts.map((product) => {
-      // If specifications is a string, parse it
       if (product.specifications && typeof product.specifications === 'string') {
         try {
           product.specifications = JSON.parse(product.specifications);
@@ -1034,12 +1032,13 @@ export function ComparePage() {
     
     setProducts(processedProducts);
 
+    // Get related products with the SAME subcategory
     if (compareProducts.length > 0) {
-      const firstProductType = compareProducts[0].product_type;
+      const firstSubCategory = compareProducts[0].subcategory_name;
       
       const related = allProductsData
         .filter((p: ApiProduct) => 
-          p.product_type === firstProductType && 
+          p.subcategory_name === firstSubCategory && 
           !compareList.includes(String(p.product_id || p.id))
         )
         .slice(0, 4);
@@ -1048,6 +1047,7 @@ export function ComparePage() {
     }
   };
 
+  // FIXED: Update slot filtered products by subcategory
   const updateSlotFilteredProducts = (slotIndex: number, brand: string) => {
     let filtered = allProductsData;
     
@@ -1055,8 +1055,9 @@ export function ComparePage() {
       filtered = filtered.filter(p => p.product_brand === brand);
     }
     
-    if (compareProductType) {
-      filtered = filtered.filter(p => p.product_type === compareProductType);
+    // Filter by subcategory if we have one
+    if (compareSubCategory) {
+      filtered = filtered.filter(p => p.subcategory_name === compareSubCategory);
     }
     
     const newFiltered = [...filteredProductsForSlots];
@@ -1075,6 +1076,7 @@ export function ComparePage() {
     updateSlotFilteredProducts(slotIndex, brandName);
   };
 
+  // FIXED: Handle product selection with subcategory validation
   const handleSlotProductNameChange = async (slotIndex: number, productName: string) => {
     const newSlots = [...slotDropdowns];
     newSlots[slotIndex] = {
@@ -1108,13 +1110,18 @@ export function ComparePage() {
       return;
     }
 
+    // Check if products have the same subcategory
     if (compareList.length > 0) {
       const firstProduct = allProductsData.find(
         (p: ApiProduct) => String(p.id) === compareList[0]
       );
       
-      if (firstProduct && firstProduct.product_type !== selectedProduct.product_type) {
-        toast.error(`Cannot compare different product types. Existing: ${firstProduct.product_type}, New: ${selectedProduct.product_type}`);
+      // Get subcategory names for comparison
+      const firstSubCategory = firstProduct?.subcategory_name || '';
+      const selectedSubCategory = selectedProduct.subcategory_name || '';
+      
+      if (firstSubCategory !== selectedSubCategory) {
+        toast.error(`Cannot compare different subcategories. Existing: ${firstSubCategory || 'Unknown'}, New: ${selectedSubCategory || 'Unknown'}`);
         const resetSlots = [...slotDropdowns];
         resetSlots[slotIndex] = {
           ...resetSlots[slotIndex],
@@ -1141,7 +1148,7 @@ export function ComparePage() {
       await addToCompare(productId, userId || undefined);
     } catch (error: any) {
       console.error('Error adding to compare:', error);
-      if (error?.response?.data?.message?.includes('Cannot compare different product types')) {
+      if (error?.response?.data?.message?.includes('different subcategories')) {
         toast.error(error.response.data.message);
       } else {
         toast.error('Failed to add product to compare');
@@ -1173,7 +1180,6 @@ export function ComparePage() {
     return productName.toLowerCase().replace(/\s+/g, '-');
   };
 
-  // Get min and max price - PRIORITIZE SELECTED VARIANT
   const getMinMaxPrice = (product: ApiProduct): { minPrice: number; maxPrice: number } => {
     let minPrice = 0;
     let maxPrice = 0;
@@ -1268,9 +1274,7 @@ export function ComparePage() {
     }).format(numPrice);
   };
 
-  // FIXED: Get spec value from the specifications JSON object
   const getSpecValue = (product: ApiProduct, specKey: string): string => {
-    // Map display labels to the keys in the specifications object
     const specKeyMap: Record<string, string> = {
       'Product Series': 'Product Series',
       'Conductor Type': 'Conductor Type',
@@ -1281,7 +1285,6 @@ export function ComparePage() {
 
     const actualKey = specKeyMap[specKey] || specKey;
     
-    // First check the specifications JSON object
     if (product.specifications) {
       const specValue = product.specifications[actualKey];
       if (specValue && specValue !== 'null' && specValue !== '' && specValue !== '—') {
@@ -1289,12 +1292,10 @@ export function ComparePage() {
       }
     }
     
-    // If not found in specifications, try the product_series field
     if (actualKey === 'Product Series' && product.product_series) {
       return product.product_series;
     }
     
-    // If not found, check if there's a direct field
     const directValue = (product as any)[actualKey];
     if (directValue && directValue !== 'null' && directValue !== '' && directValue !== '—') {
       return directValue;
@@ -1336,9 +1337,7 @@ export function ComparePage() {
     return items;
   };
 
-  // FIXED: Get specification items from the specifications JSON
   const getSpecificationItems = () => {
-    // These are the keys from the specifications JSON object
     const specKeys = [
       { label: 'Product Series', key: 'Product Series' },
       { label: 'Conductor Type', key: 'Conductor Type' },
@@ -1368,7 +1367,6 @@ export function ComparePage() {
 
     const specFields = [];
     
-    // Add specifications from the JSON
     if (product.specifications) {
       const specMap: Record<string, string> = {
         'Product Series': 'Product Series',
@@ -1389,7 +1387,6 @@ export function ComparePage() {
       }
     }
     
-    // Fallback to product fields if specifications not available
     if (specFields.length === 0) {
       if (product.product_series) {
         specFields.push({ key: 'series', label: 'Product Series', value: product.product_series });
@@ -1685,7 +1682,7 @@ export function ComparePage() {
 
   const generalInfoItems = getGeneralInfoItems();
   const specItems = getSpecificationItems();
-  const productType = products[0]?.product_type || '';
+  const subCategoryName = products[0]?.subcategory_name || '';
 
   const displayProducts = products;
 
@@ -1755,9 +1752,9 @@ export function ComparePage() {
             </Select>
           </div>
           
-          {compareProductType && (
+          {compareSubCategory && (
             <div className="text-center text-xs text-muted-foreground pt-2 border-t">
-              Showing products of type: <span className="font-medium text-primary">{compareProductType}</span>
+              Showing products in subcategory: <span className="font-medium text-primary">{compareSubCategory}</span>
             </div>
           )}
         </div>
@@ -1777,9 +1774,9 @@ export function ComparePage() {
               ? `Comparing ${compareList.length} product${compareList.length > 1 ? 's' : ''}`
               : 'Select products to compare'}
           </p>
-          {compareProductType && compareList.length > 0 && (
+          {compareSubCategory && compareList.length > 0 && (
             <p className="text-xs text-muted-foreground mt-1">
-              Product Type: <span className="font-medium text-primary">{compareProductType}</span>
+              Subcategory: <span className="font-medium text-primary">{compareSubCategory}</span>
             </p>
           )}
         </div>
@@ -1810,7 +1807,7 @@ export function ComparePage() {
         <EmptyState
           icon={<GitCompare className="w-8 h-8" />}
           title="No products to compare"
-          description="Add products using the dropdown below to start comparing. You can compare up to 4 products of the same type at once."
+          description="Add products using the dropdown below to start comparing. You can compare up to 4 products from the same subcategory at once."
           action={
             <div className="flex flex-col sm:flex-row gap-3">
               <Button asChild>
@@ -1824,7 +1821,7 @@ export function ComparePage() {
           {compareList.length < 2 && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-accent/10 border border-accent/20 mb-4 text-sm">
               <AlertCircle className="w-4 h-4 text-accent shrink-0" />
-              <span>Add at least 2 products to see a meaningful comparison.</span>
+              <span>Add at least 2 products from the same subcategory to see a meaningful comparison.</span>
             </div>
           )}
 
@@ -2033,7 +2030,7 @@ export function ComparePage() {
             </div>
           )}
 
-          {/* Specifications Section - Now showing values from specifications JSON */}
+          {/* Specifications Section */}
           {compareList.length >= 2 && specItems.length > 0 && (
             <div className="mb-6">
               <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 rounded-t-lg font-semibold text-sm flex items-center justify-between">
@@ -2134,14 +2131,15 @@ export function ComparePage() {
             </div>
           )}
 
+          {/* Related Products - Now filtered by subcategory */}
           {relatedProducts.length > 0 && (
             <div className="mt-12">
               <div className="flex items-center justify-between mb-5">
                 <h2 className="text-xl font-bold">
-                  Related {productType} Products
+                  Related {subCategoryName} Products
                 </h2>
                 <Button asChild variant="ghost" size="sm">
-                  <Link to={`/products?type=${encodeURIComponent(productType)}`}>
+                  <Link to={`/products?subcategory=${encodeURIComponent(subCategoryName)}`}>
                     View More <ArrowRight className="w-4 h-4 ml-1" />
                   </Link>
                 </Button>
