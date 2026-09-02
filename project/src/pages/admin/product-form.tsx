@@ -124,7 +124,7 @@ const ProductForm = () => {
     const [brands, setBrands] = useState<Brand[]>([]);
     const [filteredBrands, setFilteredBrands] = useState<Brand[]>([]);
     const [brandsLoaded, setBrandsLoaded] = useState<boolean>(false);
-    const [specTypes, setSpecTypes] = useState<string[]>([]);
+    const [_specTypes, setSpecTypes] = useState<string[]>([]);
     const [selectedSpecifications, setSelectedSpecifications] = useState<Specification[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
     const [loadingSpecs, setLoadingSpecs] = useState<boolean>(false);

@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
-  Heart, Download, FileText, Star, ChevronRight,
+  Heart, Star, ChevronRight,
   ZoomIn, Share2, ShieldCheck, Package, ArrowLeft,
   BadgeCheck, Truck, Wrench, FileSpreadsheet
 } from 'lucide-react';
@@ -80,7 +80,7 @@ interface ApiProduct {
   id: number;
   product_name: string;
   product_code: string;
-  product_category_id: number | null;  // ✅ Can be null
+  product_category_id: number | null;
   product_brand: string;
   product_details_pdf: string;
   price: string;
@@ -91,6 +91,7 @@ interface ApiProduct {
   weight?: string;
   discount: string;
   product_description: string;
+  extra_information?: string;  // ✅ Added this field
   warranty: string;
   product_series?: string;
   product_type?: string;
@@ -105,20 +106,6 @@ interface ApiProduct {
   category_name?: string;
   subcategory_name?: string;
   variants?: ApiVariant[];
-}
-
-interface SpecComparison {
-  [specType: string]: {
-    id: number;
-    product_id: number;
-    spec_type: string;
-    bandwidth: string;
-    max_data_rate: string;
-    internal_design: string;
-    typical_applications: string;
-    created_at: string;
-    updated_at: string;
-  };
 }
 
 // Helper function to parse numbers safely
@@ -196,7 +183,7 @@ const transformProduct = (
 
   const priceNum = productPrice ?? minPrice ?? 0;
 
-  // Build specifications
+  // Build specifications from product.specifications (already parsed from API)
   const specFields: { key: string; label: string; value: string }[] = [];
 
   const addSpecField = (key: string, label: string, value: string | undefined | null) => {
@@ -205,6 +192,7 @@ const transformProduct = (
     }
   };
 
+  // Add product-level specs
   addSpecField('series', 'Series', product.product_series);
   addSpecField('type', 'Type', product.product_type);
   addSpecField('conductor_type', 'Conductor Type', product.conductor_type);
@@ -215,11 +203,13 @@ const transformProduct = (
   addSpecField('poe_support', 'PoE Support', product.poe_support);
   addSpecField('warranty', 'Warranty', product.warranty);
 
+  // Parse specifications from product.specifications (JSON object)
   if (product.specifications && typeof product.specifications === 'object') {
     const specObj = product.specifications as Record<string, string>;
     Object.entries(specObj).forEach(([key, value]) => {
       if (value && value.trim() !== '') {
-        const exists = specFields.some(f => f.key === key.toLowerCase().replace(/\s+/g, '_'));
+        // Check if this spec already exists
+        const exists = specFields.some(f => f.label.toLowerCase() === key.toLowerCase());
         if (!exists) {
           specFields.push({
             key: key.toLowerCase().replace(/\s+/g, '_'),
@@ -231,6 +221,7 @@ const transformProduct = (
     });
   }
 
+  // Add variant-level specs (from first variant as preview)
   if (product.variants && product.variants.length > 0) {
     const variant = product.variants[0];
     addSpecField('spec_type', 'Spec Type', variant.spec_type);
@@ -238,6 +229,7 @@ const transformProduct = (
     addSpecField('color', 'Color', variant.color);
     addSpecField('availability', 'Availability', variant.availability);
     addSpecField('part_code', 'Part Code', variant.part_code);
+    addSpecField('brand', 'Brand', variant.brand);
   }
 
   // Transform variants with full data
@@ -269,6 +261,9 @@ const transformProduct = (
       features = Object.entries(specObj).map(([key, value]) => `${key}: ${value}`);
     }
   }
+
+  // Check if we have PDF download
+  const hasPdf = product.product_details_pdf && product.product_details_pdf.trim() !== '';
 
   return {
     id: String(product.id),
@@ -304,9 +299,7 @@ const transformProduct = (
     isNew: false,
     rating: 4.5,
     reviewCount: 0,
-    downloads: product.product_details_pdf
-      ? [{ name: 'Product Details', type: 'pdf' as const, size: 'PDF', url: product.product_details_pdf }]
-      : [],
+    downloads: hasPdf ? [{ name: 'Product Details', type: 'pdf' as const, size: 'PDF', url: product.product_details_pdf }] : [],
     createdAt: product.created_at,
     warranty: product.warranty || 'Standard warranty',
     variants: transformedVariants as any[],
@@ -323,9 +316,7 @@ export function ProductDetailsPage() {
   const [categories, setCategories] = useState<ApiCategory[]>([]);
   const [brands, setBrands] = useState<ApiBrand[]>([]);
   const [allProducts, setAllProducts] = useState<ApiProduct[]>([]);
-  const [specComparison, setSpecComparison] = useState<SpecComparison | null>(null);
   const [loading, setLoading] = useState(true);
-  const [loadingSpecs, setLoadingSpecs] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeImage, setActiveImage] = useState(0);
   const [zoomed, setZoomed] = useState(false);
@@ -431,21 +422,6 @@ export function ProductDetailsPage() {
             setProductData(foundProduct);
             setSelectedVariantId(foundProduct.variants?.[0]?.id ?? null);
             setActiveImage(0);
-
-            if (foundProduct.variants && foundProduct.variants.length > 0) {
-              setLoadingSpecs(true);
-              try {
-                const specRes = await fetch(`${baseurl}/api/products/spec-comparison/${foundProduct.id}`);
-                if (specRes.ok) {
-                  const specData = await specRes.json();
-                  setSpecComparison(specData);
-                }
-              } catch (specErr) {
-                console.error('Error fetching spec comparison:', specErr);
-              } finally {
-                setLoadingSpecs(false);
-              }
-            }
           } else {
             setError('Product not found');
           }
@@ -474,9 +450,7 @@ export function ProductDetailsPage() {
     
     // If no subcategory, fallback to category
     if (!currentSubCategoryName) {
-      // Fallback to category-based related products
       const sameCategoryProducts = allProducts.filter(p => {
-        // ✅ Null check for both ids
         if (currentCategoryId === null || p.product_category_id === null) return false;
         return String(p.product_category_id) === String(currentCategoryId) &&
           String(p.id) !== String(productData.id);
@@ -496,9 +470,7 @@ export function ProductDetailsPage() {
     );
 
     if (sameSubCategoryProducts.length === 0) {
-      // Fallback: find products in same category
       const sameCategoryProducts = allProducts.filter(p => {
-        // ✅ Null check for both ids
         if (currentCategoryId === null || p.product_category_id === null) return false;
         return String(p.product_category_id) === String(currentCategoryId) &&
           String(p.id) !== String(productData.id);
@@ -510,7 +482,6 @@ export function ProductDetailsPage() {
       return topRelated.map(p => transformProduct(p, categories, brands));
     }
 
-    // Sort by popularity or price
     sameSubCategoryProducts.sort((a, b) => {
       const aHasVariant = (a.variants?.length || 0) > 0;
       const bHasVariant = (b.variants?.length || 0) > 0;
@@ -519,9 +490,7 @@ export function ProductDetailsPage() {
       return parseFloat(a.price) - parseFloat(b.price);
     });
 
-    // Get top 4 related products
     const topRelated = sameSubCategoryProducts.slice(0, 4);
-
     return topRelated.map(p => transformProduct(p, categories, brands));
   }, [productData, allProducts, categories, brands]);
 
@@ -556,45 +525,42 @@ export function ProductDetailsPage() {
     return null;
   };
 
- const handleWishlist = async () => {
-  if (!product) return;
+  const handleWishlist = async () => {
+    if (!product) return;
 
-  if (!isLoggedIn) {
-    toast.error('Please login to sync wishlist', {
-      duration: 3000,
-      position: 'top-right',
-      style: {
-        background: '#EF4444',
-        color: 'white',
-        border: 'none',
-        padding: '12px 24px',
-        borderRadius: '8px',
-        fontSize: '14px',
-        fontWeight: '500',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        marginTop: '70px',
-      },
-      action: {
-        label: 'Login',
-        onClick: () => window.location.href = '/login'
-      }
-    });
-    setTimeout(() => window.location.href = '/login', 1500);
-    return;
-  }
+    if (!isLoggedIn) {
+      toast.error('Please login to sync wishlist', {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+        action: {
+          label: 'Login',
+          onClick: () => window.location.href = '/login'
+        }
+      });
+      setTimeout(() => window.location.href = '/login', 1500);
+      return;
+    }
 
-  const userId = getUserId();
-  // ✅ selectedVariant already tracks the color dot the user picked
-  // (set in handleVariantSelect, defaults to the first variant otherwise)
-  const variantId = selectedVariant?.id;
+    const userId = getUserId();
+    const variantId = selectedVariant?.id;
 
-  if (isInWishlist(product.id)) {
-    await removeFromWishlist(product.id, userId || undefined);
-  } else {
-    await addToWishlist(product.id, userId || undefined, variantId);
-  }
-};
-
+    if (isInWishlist(product.id)) {
+      await removeFromWishlist(product.id, userId || undefined);
+    } else {
+      await addToWishlist(product.id, userId || undefined, variantId);
+    }
+  };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -815,9 +781,6 @@ export function ProductDetailsPage() {
 
   const inWishlist = isInWishlist(product.id);
 
-  const variantSpecTypes = product.variants?.map(v => (v as any).spec_type).filter(Boolean) as string[] || [];
-  const uniqueSpecTypes = [...new Set(variantSpecTypes)];
-
   const extendedProduct = product as ExtendedProduct;
 
   // Get display price with min/max
@@ -852,6 +815,7 @@ export function ProductDetailsPage() {
 
   const hasDiscount = (product.discountPercentage ?? 0) > 0;
 
+  // Get all spec fields from product.specifications
   const allSpecFields = product.specGroups[0]?.fields || [];
   const previewSpecs = allSpecFields.slice(0, 4);
 
@@ -1059,21 +1023,25 @@ export function ProductDetailsPage() {
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs - Removed Spec Comparison and Downloads */}
       <Tabs defaultValue="description" className="mb-12">
         <TabsList className="w-full justify-start flex-wrap h-auto p-1 gap-1">
           <TabsTrigger value="description">Description</TabsTrigger>
           <TabsTrigger value="specifications">Specifications</TabsTrigger>
-          {uniqueSpecTypes.length > 0 && (
-            <TabsTrigger value="spec-comparison">Spec Comparison</TabsTrigger>
-          )}
-          <TabsTrigger value="downloads">Downloads</TabsTrigger>
         </TabsList>
 
         <TabsContent value="description" className="mt-6">
           <Card className="p-6">
             <h2 className="text-xl font-bold mb-4">Product Description</h2>
             <p className="text-muted-foreground leading-relaxed mb-4">{product.description}</p>
+            
+            {/* Extra Information */}
+            {productData?.extra_information && (
+              <div className="mt-4 p-4 bg-muted/30 rounded-lg">
+                <h3 className="text-sm font-semibold mb-2">Additional Information</h3>
+                <p className="text-sm text-muted-foreground">{productData.extra_information}</p>
+              </div>
+            )}
           </Card>
         </TabsContent>
 
@@ -1092,90 +1060,6 @@ export function ProductDetailsPage() {
             ) : (
               <p className="text-muted-foreground text-center py-8">
                 No specifications available for this product.
-              </p>
-            )}
-          </Card>
-        </TabsContent>
-
-        {uniqueSpecTypes.length > 0 && (
-          <TabsContent value="spec-comparison" className="mt-6">
-            <Card className="p-6">
-              <h2 className="text-xl font-bold mb-6">Specification Comparison</h2>
-              {loadingSpecs ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
-              ) : specComparison && Object.keys(specComparison).length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-muted/50">
-                        <th className="p-3 text-left text-sm font-semibold border">Feature</th>
-                        {Object.keys(specComparison).map((specType) => (
-                          <th key={specType} className="p-3 text-left text-sm font-semibold border">
-                            {specType}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.keys(specComparison[Object.keys(specComparison)[0]] || {}).map((key) => {
-                        if (['id', 'product_id', 'spec_type', 'created_at', 'updated_at'].includes(key)) return null;
-                        const label = key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-                        return (
-                          <tr key={key} className="hover:bg-muted/30 transition-colors">
-                            <td className="p-3 text-sm font-medium border">{label}</td>
-                            {Object.keys(specComparison).map((specType) => (
-                              <td key={`${specType}-${key}`} className="p-3 text-sm border">
-                                {specComparison[specType]?.[key as keyof typeof specComparison[typeof specType]] || 'N/A'}
-                              </td>
-                            ))}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-muted-foreground text-center py-8">
-                  No specification comparison available for this product.
-                </p>
-              )}
-            </Card>
-          </TabsContent>
-        )}
-
-        <TabsContent value="downloads" className="mt-6">
-          <Card className="p-6">
-            <h2 className="text-xl font-bold mb-6">Downloads & Resources</h2>
-            {product.downloads.length > 0 ? (
-              <div className="grid sm:grid-cols-2 gap-4">
-                {product.downloads.map((dl, idx) => (
-                  <div key={idx} className="flex items-center gap-4 p-4 rounded-xl border hover:shadow-md transition-all hover:border-primary/30 group">
-                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                      <FileText className="w-6 h-6 text-primary group-hover:text-primary-foreground transition-colors" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-sm">{dl.name}</div>
-                      <div className="text-xs text-muted-foreground">{dl.size}</div>
-                    </div>
-                    <Button size="icon" variant="outline" onClick={() => {
-                      const link = document.createElement('a');
-                      link.href = `${baseurl}${dl.url}`;
-                      link.download = dl.name;
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                      toast.success('Download started');
-                    }}>
-                      <Download className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-8">
-                No downloads available for this product.
               </p>
             )}
           </Card>

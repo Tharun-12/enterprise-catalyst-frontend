@@ -877,7 +877,7 @@ export function ComparePage() {
   const [wishlistLoading, setWishlistLoading] = useState<string | null>(null);
   const [quotationLoading, setQuotationLoading] = useState<string | null>(null);
   const [wishlistModalOpen, setWishlistModalOpen] = useState(false);
-  const [selectedProductForWishlist, setSelectedProductForWishlist] = useState<ApiProduct | null>(null);
+  const [selectedProductForWishlist, _setSelectedProductForWishlist] = useState<ApiProduct | null>(null);
 
   const isUserLoggedIn = isLoggedIn;
 
