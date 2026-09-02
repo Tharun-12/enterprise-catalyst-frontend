@@ -556,40 +556,45 @@ export function ProductDetailsPage() {
     return null;
   };
 
-  const handleWishlist = async () => {
-    if (!product) return;
-    
-    if (!isLoggedIn) {
-      toast.error('Please login to sync wishlist', {
-        duration: 3000,
-        position: 'top-right',
-        style: {
-          background: '#EF4444',
-          color: 'white',
-          border: 'none',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '500',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          marginTop: '70px',
-        },
-        action: {
-          label: 'Login',
-          onClick: () => window.location.href = '/login'
-        }
-      });
-      setTimeout(() => window.location.href = '/login', 1500);
-      return;
-    }
+ const handleWishlist = async () => {
+  if (!product) return;
 
-    const userId = getUserId();
-    if (isInWishlist(product.id)) {
-      await removeFromWishlist(product.id, userId || undefined);
-    } else {
-      await addToWishlist(product.id, userId || undefined);
-    }
-  };
+  if (!isLoggedIn) {
+    toast.error('Please login to sync wishlist', {
+      duration: 3000,
+      position: 'top-right',
+      style: {
+        background: '#EF4444',
+        color: 'white',
+        border: 'none',
+        padding: '12px 24px',
+        borderRadius: '8px',
+        fontSize: '14px',
+        fontWeight: '500',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        marginTop: '70px',
+      },
+      action: {
+        label: 'Login',
+        onClick: () => window.location.href = '/login'
+      }
+    });
+    setTimeout(() => window.location.href = '/login', 1500);
+    return;
+  }
+
+  const userId = getUserId();
+  // ✅ selectedVariant already tracks the color dot the user picked
+  // (set in handleVariantSelect, defaults to the first variant otherwise)
+  const variantId = selectedVariant?.id;
+
+  if (isInWishlist(product.id)) {
+    await removeFromWishlist(product.id, userId || undefined);
+  } else {
+    await addToWishlist(product.id, userId || undefined, variantId);
+  }
+};
+
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();

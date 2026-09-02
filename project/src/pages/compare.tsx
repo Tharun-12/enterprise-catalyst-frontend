@@ -745,7 +745,9 @@
 
 // ComparePage.tsx - Fixed to properly show specifications from JSON
 
-// ComparePage.tsx - Fixed with subcategory-based comparison
+// ComparePage.tsx - Fixed with subcategory-based comparison + DYNAMIC specifications
+
+// ComparePage.tsx - Fixed with subcategory-based comparison + DYNAMIC specifications
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { X, GitCompare, Plus, ArrowRight, AlertCircle, Loader2, Heart } from 'lucide-react';
@@ -837,44 +839,45 @@ type Product = AppProduct;
 
 export function ComparePage() {
   const navigate = useNavigate();
-  const { 
-    compareList, 
-    removeFromCompare, 
-    clearCompare, 
-    addToWishlist, 
-    removeFromWishlist, 
+  const {
+    compareList,
+    removeFromCompare,
+    clearCompare,
+    addToWishlist,
+    removeFromWishlist,
     isInWishlist,
     addToCompare,
     isLoggedIn
   } = useApp();
-  
+
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [showOnlyDifferences, setShowOnlyDifferences] = useState(false);
   const [relatedProducts, setRelatedProducts] = useState<ApiProduct[]>([]);
   const [allProductsData, setAllProductsData] = useState<ApiProduct[]>([]);
-  
+
   const [brands, setBrands] = useState<Brand[]>([]);
-  
+  const [filteredBrandsForSubcategory, setFilteredBrandsForSubcategory] = useState<Brand[]>([]);
+
   interface SlotDropdowns {
     brand: string;
     productName: string;
   }
-  
+
   const [slotDropdowns, setSlotDropdowns] = useState<SlotDropdowns[]>([
     { brand: 'all', productName: 'all' },
     { brand: 'all', productName: 'all' },
     { brand: 'all', productName: 'all' },
     { brand: 'all', productName: 'all' },
   ]);
-  
+
   const [filteredProductsForSlots, setFilteredProductsForSlots] = useState<ApiProduct[][]>([]);
   const [compareSubCategory, setCompareSubCategory] = useState<string | null>(null);
-  
+
   const [wishlistLoading, setWishlistLoading] = useState<string | null>(null);
   const [quotationLoading, setQuotationLoading] = useState<string | null>(null);
   const [wishlistModalOpen, setWishlistModalOpen] = useState(false);
-  const [selectedProductForWishlist, _setSelectedProductForWishlist] = useState<ApiProduct | null>(null);
+  const [selectedProductForWishlist, setSelectedProductForWishlist] = useState<ApiProduct | null>(null);
 
   const isUserLoggedIn = isLoggedIn;
 
@@ -914,7 +917,7 @@ export function ComparePage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
+
         const brandsRes = await axios.get(`${baseurl}/api/brands/`);
         if (brandsRes.data.success) {
           setBrands(brandsRes.data.data);
@@ -923,12 +926,12 @@ export function ComparePage() {
         const response = await axios.get(`${baseurl}/api/products/products-with-variants`);
         const allProducts = response.data;
         setAllProductsData(allProducts);
-        
+
         const initialFiltered = Array(4).fill(null).map(() => allProducts);
         setFilteredProductsForSlots(initialFiltered);
-        
+
         await fetchCompareList();
-        
+
       } catch (error) {
         console.error('Error fetching data:', error);
         toast.error('Failed to load products for comparison');
@@ -962,6 +965,7 @@ export function ComparePage() {
         setProducts([]);
         setRelatedProducts([]);
         setCompareSubCategory(null);
+        setFilteredBrandsForSubcategory([]);
       }
     } catch (error) {
       console.error('Error fetching compare list:', error);
@@ -977,6 +981,7 @@ export function ComparePage() {
       setProducts([]);
       setRelatedProducts([]);
       setCompareSubCategory(null);
+      setFilteredBrandsForSubcategory([]);
       return;
     }
 
@@ -988,6 +993,7 @@ export function ComparePage() {
       setProducts([]);
       setRelatedProducts([]);
       setCompareSubCategory(null);
+      setFilteredBrandsForSubcategory([]);
       return;
     }
 
@@ -1001,24 +1007,43 @@ export function ComparePage() {
       setProducts([]);
       setRelatedProducts([]);
       setCompareSubCategory(null);
+      setFilteredBrandsForSubcategory([]);
     }
   }, [compareList, allProductsData]);
 
-  // FIXED: Update display products with subcategory-based filtering
+  // Update display products with subcategory-based filtering
   const updateDisplayProducts = async (compareProducts: ApiProduct[]) => {
     if (!compareProducts || compareProducts.length === 0) {
       setProducts([]);
       setRelatedProducts([]);
       setCompareSubCategory(null);
+      setFilteredBrandsForSubcategory([]);
       return;
     }
-    
+
     // Set the subcategory name for filtering
     if (compareProducts.length > 0) {
-      setCompareSubCategory(compareProducts[0].subcategory_name || null);
+      const subCategory = compareProducts[0].subcategory_name || null;
+      setCompareSubCategory(subCategory);
+
+      // Filter brands that have products in this subcategory
+      if (subCategory) {
+        const productsInSubcategory = allProductsData.filter(
+          p => p.subcategory_name === subCategory
+        );
+        const brandNamesInSubcategory = new Set(
+          productsInSubcategory.map(p => p.product_brand).filter(Boolean)
+        );
+        const filteredBrands = brands.filter(b => 
+          brandNamesInSubcategory.has(b.brand_name)
+        );
+        setFilteredBrandsForSubcategory(filteredBrands);
+      } else {
+        setFilteredBrandsForSubcategory([]);
+      }
     }
-    
-    // Process products - keep the specifications as they are from the API
+
+    // Process products - parse specifications if it's a JSON string
     const processedProducts = compareProducts.map((product) => {
       if (product.specifications && typeof product.specifications === 'string') {
         try {
@@ -1029,37 +1054,38 @@ export function ComparePage() {
       }
       return product;
     });
-    
+
     setProducts(processedProducts);
 
     // Get related products with the SAME subcategory
     if (compareProducts.length > 0) {
       const firstSubCategory = compareProducts[0].subcategory_name;
-      
+
       const related = allProductsData
-        .filter((p: ApiProduct) => 
-          p.subcategory_name === firstSubCategory && 
+        .filter((p: ApiProduct) =>
+          p.subcategory_name === firstSubCategory &&
           !compareList.includes(String(p.product_id || p.id))
         )
         .slice(0, 4);
-      
+
       setRelatedProducts(related);
     }
   };
 
-  // FIXED: Update slot filtered products by subcategory
+  // Update slot filtered products by subcategory and brand
   const updateSlotFilteredProducts = (slotIndex: number, brand: string) => {
     let filtered = allProductsData;
-    
-    if (brand !== 'all') {
-      filtered = filtered.filter(p => p.product_brand === brand);
-    }
-    
-    // Filter by subcategory if we have one
+
+    // Filter by subcategory first
     if (compareSubCategory) {
       filtered = filtered.filter(p => p.subcategory_name === compareSubCategory);
     }
-    
+
+    // Then filter by brand if not 'all'
+    if (brand !== 'all') {
+      filtered = filtered.filter(p => p.product_brand === brand);
+    }
+
     const newFiltered = [...filteredProductsForSlots];
     newFiltered[slotIndex] = filtered;
     setFilteredProductsForSlots(newFiltered);
@@ -1076,7 +1102,7 @@ export function ComparePage() {
     updateSlotFilteredProducts(slotIndex, brandName);
   };
 
-  // FIXED: Handle product selection with subcategory validation
+  // Handle product selection with subcategory validation
   const handleSlotProductNameChange = async (slotIndex: number, productName: string) => {
     const newSlots = [...slotDropdowns];
     newSlots[slotIndex] = {
@@ -1084,15 +1110,15 @@ export function ComparePage() {
       productName: productName
     };
     setSlotDropdowns(newSlots);
-    
+
     if (productName === 'all') {
       return;
     }
-    
+
     const selectedProduct = allProductsData.find(
       (p: ApiProduct) => p.product_name === productName
     );
-    
+
     if (!selectedProduct) {
       toast.error('Product not found');
       return;
@@ -1115,11 +1141,11 @@ export function ComparePage() {
       const firstProduct = allProductsData.find(
         (p: ApiProduct) => String(p.id) === compareList[0]
       );
-      
+
       // Get subcategory names for comparison
       const firstSubCategory = firstProduct?.subcategory_name || '';
       const selectedSubCategory = selectedProduct.subcategory_name || '';
-      
+
       if (firstSubCategory !== selectedSubCategory) {
         toast.error(`Cannot compare different subcategories. Existing: ${firstSubCategory || 'Unknown'}, New: ${selectedSubCategory || 'Unknown'}`);
         const resetSlots = [...slotDropdowns];
@@ -1131,7 +1157,7 @@ export function ComparePage() {
         return;
       }
     }
-    
+
     if (compareList.length >= 4) {
       toast.error('You can compare up to 4 products at a time');
       const resetSlots = [...slotDropdowns];
@@ -1142,7 +1168,7 @@ export function ComparePage() {
       setSlotDropdowns(resetSlots);
       return;
     }
-    
+
     try {
       const userId = getUserId();
       await addToCompare(productId, userId || undefined);
@@ -1183,38 +1209,38 @@ export function ComparePage() {
   const getMinMaxPrice = (product: ApiProduct): { minPrice: number; maxPrice: number } => {
     let minPrice = 0;
     let maxPrice = 0;
-    
+
     const selectedVariant = product.variants?.find(v => v.is_selected === true);
-    
+
     if (selectedVariant) {
       const selectedMin = parseFloat(selectedVariant.min_price || '0');
       const selectedMax = parseFloat(selectedVariant.max_price || '0');
-      
+
       if (selectedMin > 0) minPrice = selectedMin;
       if (selectedMax > 0) maxPrice = selectedMax;
-      
+
       if (minPrice > 0 && maxPrice > 0) {
         return { minPrice, maxPrice };
       }
     }
-    
+
     if (minPrice === 0 && product.min_price) {
       minPrice = parseFloat(product.min_price) || 0;
     }
     if (maxPrice === 0 && product.max_price) {
       maxPrice = parseFloat(product.max_price) || 0;
     }
-    
+
     if (minPrice === 0 || maxPrice === 0) {
       if (product.variants && product.variants.length > 0) {
         const variantMinPrices = product.variants
           .map(v => parseFloat(v.min_price || '0'))
           .filter(p => !isNaN(p) && p > 0);
-        
+
         const variantMaxPrices = product.variants
           .map(v => parseFloat(v.max_price || '0'))
           .filter(p => !isNaN(p) && p > 0);
-        
+
         if (variantMinPrices.length > 0 && minPrice === 0) {
           minPrice = Math.min(...variantMinPrices);
         }
@@ -1223,21 +1249,21 @@ export function ComparePage() {
         }
       }
     }
-    
+
     return { minPrice, maxPrice };
   };
 
   const getDisplayPrice = (product: ApiProduct): string => {
     const { minPrice, maxPrice } = getMinMaxPrice(product);
-    
+
     if (minPrice === 0 && maxPrice === 0) {
       return 'Price on request';
     }
-    
+
     if (minPrice === maxPrice) {
       return formatPrice(minPrice);
     }
-    
+
     return `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`;
   };
 
@@ -1274,57 +1300,73 @@ export function ComparePage() {
     }).format(numPrice);
   };
 
-  const getSpecValue = (product: ApiProduct, specKey: string): string => {
-    const specKeyMap: Record<string, string> = {
-      'Product Series': 'Product Series',
-      'Conductor Type': 'Conductor Type',
-      'Cable OD': 'Cable OD',
-      'Jacket Material': 'Jacket Material',
-      'Bandwidth': 'Bandwidth',
-    };
+  // ─────────────────────────────────────────────────────────────
+  // DYNAMIC SPECIFICATIONS (fixed)
+  // ─────────────────────────────────────────────────────────────
 
-    const actualKey = specKeyMap[specKey] || specKey;
-    
-    if (product.specifications) {
-      const specValue = product.specifications[actualKey];
-      if (specValue && specValue !== 'null' && specValue !== '' && specValue !== '—') {
-        return specValue;
+  const getAllSpecKeys = (): string[] => {
+    const seen = new Set<string>();
+    const orderedKeys: string[] = [];
+
+    products.forEach((product) => {
+      if (product.specifications && typeof product.specifications === 'object') {
+        Object.keys(product.specifications).forEach((key) => {
+          if (!seen.has(key)) {
+            seen.add(key);
+            orderedKeys.push(key);
+          }
+        });
+      }
+    });
+
+    return orderedKeys;
+  };
+
+  const getSpecValue = (product: ApiProduct, specKey: string): string => {
+    if (product.specifications && typeof product.specifications === 'object') {
+      const specValue = product.specifications[specKey];
+      if (
+        specValue !== undefined &&
+        specValue !== null &&
+        specValue !== '' &&
+        specValue !== 'null' &&
+        specValue !== '—'
+      ) {
+        return String(specValue);
       }
     }
-    
-    if (actualKey === 'Product Series' && product.product_series) {
+
+    if (specKey === 'Product Series' && product.product_series) {
       return product.product_series;
     }
-    
-    const directValue = (product as any)[actualKey];
-    if (directValue && directValue !== 'null' && directValue !== '' && directValue !== '—') {
-      return directValue;
+    if (specKey === 'Bandwidth' && product.bandwidth) {
+      return product.bandwidth;
     }
-    
+
     return '—';
   };
 
   const getGeneralInfoItems = () => {
     const items = [
-      { 
-        label: 'Brand', 
-        value: (p: ApiProduct) => p.product_brand || '—' 
+      {
+        label: 'Brand',
+        value: (p: ApiProduct) => p.product_brand || '—'
       },
-      { 
-        label: 'Category', 
-        value: (p: ApiProduct) => p.category_name || '—' 
+      {
+        label: 'Category',
+        value: (p: ApiProduct) => p.category_name || '—'
       },
-      { 
-        label: 'Subcategory', 
-        value: (p: ApiProduct) => p.subcategory_name || '—' 
+      {
+        label: 'Subcategory',
+        value: (p: ApiProduct) => p.subcategory_name || '—'
       },
-      { 
-        label: 'Warranty', 
-        value: (p: ApiProduct) => p.warranty || '—' 
+      {
+        label: 'Warranty',
+        value: (p: ApiProduct) => p.warranty || '—'
       },
-      { 
-        label: 'Stock Status', 
-        value: (p: ApiProduct) => getStockStatus(p) 
+      {
+        label: 'Stock Status',
+        value: (p: ApiProduct) => getStockStatus(p)
       },
     ];
 
@@ -1338,17 +1380,11 @@ export function ComparePage() {
   };
 
   const getSpecificationItems = () => {
-    const specKeys = [
-      { label: 'Product Series', key: 'Product Series' },
-      { label: 'Conductor Type', key: 'Conductor Type' },
-      { label: 'Cable OD', key: 'Cable OD' },
-      { label: 'Jacket Material', key: 'Jacket Material' },
-      { label: 'Bandwidth', key: 'Bandwidth' },
-    ];
+    const specKeys = getAllSpecKeys();
 
-    const items = specKeys.map(spec => ({
-      label: spec.label,
-      value: (p: ApiProduct) => getSpecValue(p, spec.key)
+    const items = specKeys.map((key) => ({
+      label: key,
+      value: (p: ApiProduct) => getSpecValue(p, key),
     }));
 
     if (showOnlyDifferences) {
@@ -1360,33 +1396,33 @@ export function ComparePage() {
     return items;
   };
 
+  // ─────────────────────────────────────────────────────────────
+
   const transformForProductCard = (product: ApiProduct): Product => {
-    const gallery = product.variants?.map(v => 
+    const gallery = product.variants?.map(v =>
       v.image_url ? `${baseurl}${v.image_url}` : null
     ).filter(Boolean) as string[] || ['https://via.placeholder.com/400x400'];
 
-    const specFields = [];
-    
-    if (product.specifications) {
-      const specMap: Record<string, string> = {
-        'Product Series': 'Product Series',
-        'Conductor Type': 'Conductor Type',
-        'Cable OD': 'Cable OD',
-        'Jacket Material': 'Jacket Material',
-        'Bandwidth': 'Bandwidth',
-      };
-      
-      for (const [label, key] of Object.entries(specMap)) {
-        if (product.specifications[key]) {
-          specFields.push({ 
-            key: key.toLowerCase().replace(/\s+/g, '_'), 
-            label: label, 
-            value: product.specifications[key] 
+    const specFields: { key: string; label: string; value: string }[] = [];
+
+    if (product.specifications && typeof product.specifications === 'object') {
+      Object.entries(product.specifications).forEach(([label, value]) => {
+        if (
+          value !== undefined &&
+          value !== null &&
+          value !== '' &&
+          value !== 'null' &&
+          value !== '—'
+        ) {
+          specFields.push({
+            key: label.toLowerCase().replace(/\s+/g, '_'),
+            label,
+            value: String(value),
           });
         }
-      }
+      });
     }
-    
+
     if (specFields.length === 0) {
       if (product.product_series) {
         specFields.push({ key: 'series', label: 'Product Series', value: product.product_series });
@@ -1466,7 +1502,7 @@ export function ComparePage() {
       isNew: false,
       rating: 4.5,
       reviewCount: 0,
-      downloads: product.product_details_pdf 
+      downloads: product.product_details_pdf
         ? [{ name: 'Product Details', type: 'pdf' as const, size: 'PDF', url: product.product_details_pdf }]
         : [],
       relatedProductIds: [],
@@ -1483,9 +1519,9 @@ export function ComparePage() {
   const handleWishlistToggle = async (product: ApiProduct, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const productId = String(product.product_id || product.id);
-    
+
     if (!isUserLoggedIn) {
       toast.error('Please login to add to wishlist', {
         duration: 3000,
@@ -1508,7 +1544,7 @@ export function ComparePage() {
       });
       return;
     }
-    
+
     const userId = getUserId();
     if (!userId) {
       toast.error('User ID not found. Please login again.', {
@@ -1528,12 +1564,12 @@ export function ComparePage() {
       });
       return;
     }
-    
+
     setWishlistLoading(productId);
-    
+
     try {
       const isWishlisted = isInWishlist(productId);
-      
+
       if (isWishlisted) {
         await removeFromWishlist(productId, userId);
         toast.success('Removed from wishlist');
@@ -1554,7 +1590,7 @@ export function ComparePage() {
   const handleSingleQuotation = async (product: ApiProduct, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (!isUserLoggedIn) {
       toast.error('Please login to request a quotation', {
         duration: 3000,
@@ -1603,18 +1639,18 @@ export function ComparePage() {
 
     try {
       const user = getUserDetails();
-      
+
       const { minPrice, maxPrice } = getMinMaxPrice(product);
       const price = minPrice > 0 ? minPrice : 0;
-      
+
       const selectedVariant = product.variants?.find(v => v.is_selected);
       const variant = selectedVariant || product.variants?.[0] || null;
-      
+
       let variantImage = null;
       if (variant?.image_url) {
         variantImage = variant.image_url;
       }
-      
+
       let variantDetails = null;
       if (product.variants && product.variants.length > 0) {
         variantDetails = JSON.stringify(
@@ -1633,7 +1669,7 @@ export function ComparePage() {
           }))
         );
       }
-      
+
       const payload = {
         user_id: userId,
         product_id: parseInt(productId),
@@ -1689,21 +1725,24 @@ export function ComparePage() {
   const renderAddProductSlot = (slotIndex: number) => {
     const slot = slotDropdowns[slotIndex];
     const filteredProducts = filteredProductsForSlots[slotIndex] || [];
-    
+
     const isSlotUsed = compareList.length > slotIndex;
-    
+
     if (isSlotUsed) {
       return null;
     }
-    
+
     const isNextAvailable = compareList.length === slotIndex;
-    
+
     if (!isNextAvailable) {
       return null;
     }
-    
+
     const availableProducts = filteredProducts.filter(p => !compareList.includes(String(p.id)));
-    
+
+    // Get the brands that have products in this subcategory
+    const brandsForSubcategory = filteredBrandsForSubcategory;
+
     return (
       <Card key={`add-slot-${slotIndex}`} className="p-4 flex flex-col items-center justify-center border-2 border-dashed min-h-[400px] hover:border-primary/50 transition-colors">
         <div className="w-full max-w-xs space-y-4">
@@ -1711,11 +1750,11 @@ export function ComparePage() {
             <Plus className="w-12 h-12 text-muted-foreground/30 mx-auto mb-2" />
             <p className="text-sm font-medium text-muted-foreground">Add a product</p>
           </div>
-          
+
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Choose Brand</label>
-            <Select 
-              value={slot.brand} 
+            <Select
+              value={slot.brand}
               onValueChange={(value) => handleSlotBrandChange(slotIndex, value)}
             >
               <SelectTrigger className="w-full h-10">
@@ -1723,7 +1762,7 @@ export function ComparePage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Brands</SelectItem>
-                {brands.map((brand) => (
+                {brandsForSubcategory.map((brand) => (
                   <SelectItem key={brand.id} value={brand.brand_name}>
                     {brand.brand_name}
                   </SelectItem>
@@ -1731,11 +1770,11 @@ export function ComparePage() {
               </SelectContent>
             </Select>
           </div>
-          
+
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Choose a Product</label>
-            <Select 
-              value={slot.productName} 
+            <Select
+              value={slot.productName}
               onValueChange={(value) => handleSlotProductNameChange(slotIndex, value)}
             >
               <SelectTrigger className="w-full h-10">
@@ -1751,7 +1790,7 @@ export function ComparePage() {
               </SelectContent>
             </Select>
           </div>
-          
+
           {compareSubCategory && (
             <div className="text-center text-xs text-muted-foreground pt-2 border-t">
               Showing products in subcategory: <span className="font-medium text-primary">{compareSubCategory}</span>
@@ -1770,7 +1809,7 @@ export function ComparePage() {
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold">Compare Products</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {compareList.length > 0 
+            {compareList.length > 0
               ? `Comparing ${compareList.length} product${compareList.length > 1 ? 's' : ''}`
               : 'Select products to compare'}
           </p>
@@ -1782,20 +1821,21 @@ export function ComparePage() {
         </div>
         {compareList.length > 0 && (
           <div className="flex items-center gap-2 flex-wrap">
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setShowOnlyDifferences(!showOnlyDifferences)}
             >
               {showOnlyDifferences ? 'Show All' : 'Show Differences Only'}
             </Button>
-            <Button variant="outline" size="sm" onClick={async () => { 
-              await clearCompare(); 
+            <Button variant="outline" size="sm" onClick={async () => {
+              await clearCompare();
               const resetSlots = slotDropdowns.map(() => ({
                 brand: 'all',
                 productName: 'all'
               }));
               setSlotDropdowns(resetSlots);
+              setFilteredBrandsForSubcategory([]);
             }}>
               <X className="w-4 h-4 mr-1.5" /> Clear All
             </Button>
@@ -1832,10 +1872,10 @@ export function ComparePage() {
               const isWishlistLoading = wishlistLoading === productId;
               const isQuotationLoading = quotationLoading === productId;
               const { minPrice, maxPrice } = getMinMaxPrice(product);
-              
+
               return (
-                <Card 
-                  key={productId} 
+                <Card
+                  key={productId}
                   className="group relative overflow-hidden border-primary/50 ring-1 ring-primary/20 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col"
                 >
                   <Button
@@ -1844,8 +1884,8 @@ export function ComparePage() {
                     className={cn(
                       'absolute top-2 right-2 z-20 w-8 h-8 rounded-full transition-all duration-200',
                       'bg-white/80 hover:bg-white shadow-md backdrop-blur-sm',
-                      isWishlisted 
-                        ? 'text-red-500 hover:text-red-600 hover:bg-red-50' 
+                      isWishlisted
+                        ? 'text-red-500 hover:text-red-600 hover:bg-red-50'
                         : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
                     )}
                     onClick={(e) => handleWishlistToggle(product, e)}
@@ -1920,7 +1960,7 @@ export function ComparePage() {
                         {getDisplayPrice(product)}
                       </span>
                     </div>
-                    
+
                     {minPrice > 0 && maxPrice > 0 && minPrice !== maxPrice && (
                       <p className="text-[10px] text-muted-foreground mt-0.5">
                         Price range: {formatPrice(minPrice)} - {formatPrice(maxPrice)}
@@ -1943,8 +1983,8 @@ export function ComparePage() {
                           View Details
                         </Link>
                       </Button>
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         variant="outline"
                         onClick={(e) => handleSingleQuotation(product, e)}
                         disabled={isQuotationLoading}
@@ -1979,9 +2019,9 @@ export function ComparePage() {
                   const values = displayProducts.map(p => item.value(p));
                   const isDifferent = isValueDifferent(values);
                   const bestValue = findBestValue(values);
-                  
+
                   return (
-                    <div 
+                    <div
                       key={item.label}
                       className={cn(
                         'grid gap-0',
@@ -2030,7 +2070,7 @@ export function ComparePage() {
             </div>
           )}
 
-          {/* Specifications Section */}
+          {/* Specifications Section - now fully dynamic */}
           {compareList.length >= 2 && specItems.length > 0 && (
             <div className="mb-6">
               <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 rounded-t-lg font-semibold text-sm flex items-center justify-between">
@@ -2044,7 +2084,7 @@ export function ComparePage() {
                   const values = displayProducts.map(p => item.value(p));
                   const isDifferent = isValueDifferent(values);
                   const bestValue = findBestValue(values);
-                  
+
                   return (
                     <div
                       key={item.label}
@@ -2096,7 +2136,7 @@ export function ComparePage() {
                 Available Variants
               </div>
               <div className="border border-t-0 rounded-b-lg overflow-hidden">
-                <div 
+                <div
                   className={cn('grid gap-0', 'bg-muted/30')}
                   style={{ gridTemplateColumns: `200px repeat(${displayProducts.length}, 1fr)` }}
                 >
@@ -2110,7 +2150,7 @@ export function ComparePage() {
                               "flex items-center gap-1.5 bg-card px-2.5 py-1 rounded-full border text-xs",
                               variant.is_selected && "border-primary bg-primary/10"
                             )}>
-                              <div 
+                              <div
                                 className="w-3.5 h-3.5 rounded-full border"
                                 style={{ backgroundColor: variant.color || '#cccccc' }}
                               />
@@ -2131,7 +2171,7 @@ export function ComparePage() {
             </div>
           )}
 
-          {/* Related Products - Now filtered by subcategory */}
+          {/* Related Products - filtered by subcategory */}
           {relatedProducts.length > 0 && (
             <div className="mt-12">
               <div className="flex items-center justify-between mb-5">
@@ -2146,9 +2186,9 @@ export function ComparePage() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {relatedProducts.map((rp) => (
-                  <ProductCard 
-                    key={rp.product_id || rp.id} 
-                    product={transformForProductCard(rp)} 
+                  <ProductCard
+                    key={rp.product_id || rp.id}
+                    product={transformForProductCard(rp)}
                   />
                 ))}
               </div>
@@ -2157,10 +2197,10 @@ export function ComparePage() {
         </>
       )}
 
-      <WishlistLeadModal 
-        product={selectedProductForWishlist ? transformForProductCard(selectedProductForWishlist) : null} 
-        open={wishlistModalOpen} 
-        onOpenChange={setWishlistModalOpen} 
+      <WishlistLeadModal
+        product={selectedProductForWishlist ? transformForProductCard(selectedProductForWishlist) : null}
+        open={wishlistModalOpen}
+        onOpenChange={setWishlistModalOpen}
       />
     </div>
   );

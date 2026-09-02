@@ -48,10 +48,10 @@ const categoryIcons: Record<string, React.ElementType> = {
 };
 
 // Function to create slug from name with fallback
-const createSlug = (name: string): string => {
-  if (!name) return 'uncategorized';
-  return name.toLowerCase().replace(/\s+/g, '-');
-};
+// const createSlug = (name: string): string => {
+//   if (!name) return 'uncategorized';
+//   return name.toLowerCase().replace(/\s+/g, '-');
+// };
 
 // Skeleton Card Component
 const SkeletonCard = () => (
@@ -185,7 +185,7 @@ export function CategoriesPage() {
             ? `${baseurl}/uploads/categories/${cat.category_image}`
             : 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=400&fit=crop';
 
-          const slug = createSlug(categoryName);
+          // const slug = createSlug(categoryName);
 
           // Get subcategory names for display
           const subcategoryNames = cat.subcategories?.map(sub => sub.subcategory_name) || [];
