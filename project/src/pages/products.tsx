@@ -1,5 +1,6 @@
 // products.tsx - Fixed version with proper brand filtering
-import { useState, useEffect, useMemo } from 'react';
+// products.tsx - Fixed version with proper brand filtering and scroll to top on filter change
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -281,6 +282,11 @@ export function ProductsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(9);
 
+  // ═══════════════════════════════════════════════════════════════
+  // Ref for scrolling to products grid
+  // ═══════════════════════════════════════════════════════════════
+  const productsGridRef = useRef<HTMLDivElement>(null);
+
   const categorySlug = searchParams.get('category');
   const searchQuery = searchParams.get('search') || '';
 
@@ -300,6 +306,68 @@ export function ProductsPage() {
     minPrice: undefined,
     maxPrice: undefined,
   });
+
+  // ═══════════════════════════════════════════════════════════════
+  // SCROLL TO TOP FUNCTION - scrolls to products grid
+  // ═══════════════════════════════════════════════════════════════
+  const scrollToProducts = () => {
+    // Use requestAnimationFrame to ensure DOM is updated
+    requestAnimationFrame(() => {
+      if (productsGridRef.current) {
+        const yOffset = -80; // Offset for sticky header
+        const y = productsGridRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+      }
+    });
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  // UPDATED: Filter change handler with scroll to top
+  // ═══════════════════════════════════════════════════════════════
+  const handleFilterChange = (newFilters: FilterState) => {
+    setFilters(newFilters);
+    setCurrentPage(1);
+    // Use setTimeout to ensure state update triggers re-render before scrolling
+    setTimeout(scrollToProducts, 150);
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  // UPDATED: Search handler with scroll to top
+  // ═══════════════════════════════════════════════════════════════
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFilters({ ...filters, search: e.target.value });
+    setCurrentPage(1);
+    // Debounce scroll to avoid excessive scrolling while typing
+    clearTimeout((handleSearchChange as any).timeout);
+    (handleSearchChange as any).timeout = setTimeout(scrollToProducts, 300);
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  // UPDATED: Sort handler with scroll to top
+  // ═══════════════════════════════════════════════════════════════
+  const handleSortChange = (value: string) => {
+    setFilters({ ...filters, sort: value });
+    setCurrentPage(1);
+    setTimeout(scrollToProducts, 150);
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  // UPDATED: Clear filters handler with scroll to top
+  // ═══════════════════════════════════════════════════════════════
+  const handleClearFilters = () => {
+    setFilters({ 
+      category: filters.category, 
+      subcategory: null,
+      brands: [], 
+      specs: {}, 
+      search: '', 
+      sort: 'latest',
+      minPrice: undefined,
+      maxPrice: undefined,
+    });
+    setCurrentPage(1);
+    setTimeout(scrollToProducts, 150);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -520,33 +588,36 @@ export function ProductsPage() {
     )
   : undefined;
 
-  
-// Also update the useEffect to handle both slug and name:
-useEffect(() => {
-  // Find category by slug or name
-  let categoryId = null;
-  if (categorySlug) {
-    const foundCategory = categories.find(c => 
-      createSlug(c.category_name) === categorySlug || 
-      c.category_name === categorySlug
-    );
-    if (foundCategory) {
-      categoryId = String(foundCategory.id);
+    
+  // Also update the useEffect to handle both slug and name:
+  useEffect(() => {
+    // Find category by slug or name
+    let categoryId = null;
+    if (categorySlug) {
+      const foundCategory = categories.find(c => 
+        createSlug(c.category_name) === categorySlug || 
+        c.category_name === categorySlug
+      );
+      if (foundCategory) {
+        categoryId = String(foundCategory.id);
+      }
     }
-  }
-  
-  setFilters((prev) => ({
-    ...prev,
-    category: categoryId,
-    subcategory: null,
-    search: searchQuery,
-    specs: {},
-    brands: [],
-    minPrice: undefined,
-    maxPrice: undefined,
-  }));
-  setCurrentPage(1);
-}, [categorySlug, searchQuery, categories]);
+    
+    setFilters((prev) => ({
+      ...prev,
+      category: categoryId,
+      subcategory: null,
+      search: searchQuery,
+      specs: {},
+      brands: [],
+      minPrice: undefined,
+      maxPrice: undefined,
+    }));
+    setCurrentPage(1);
+    // Scroll to top when category changes (navigation already handled by ScrollToTopWrapper)
+    // But we still want to scroll to products grid
+    setTimeout(scrollToProducts, 200);
+  }, [categorySlug, searchQuery, categories]);
 
   useEffect(() => {
     setLoading(true);
@@ -749,10 +820,8 @@ useEffect(() => {
 
   const paginate = (pageNumber: number) => {
     setCurrentPage(pageNumber);
-    const gridElement = document.getElementById('products-grid');
-    if (gridElement) {
-      gridElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    // Scroll to top when paginating
+    setTimeout(scrollToProducts, 100);
   };
 
   const getPageNumbers = () => {
@@ -825,7 +894,7 @@ useEffect(() => {
         <aside className="hidden lg:block w-72 shrink-0">
           <FilterPanel
             filters={filters}
-            onFilterChange={setFilters}
+            onFilterChange={handleFilterChange}
             resultCount={filteredProducts.length}
             brands={availableBrands}
             categories={transformedCategories}
@@ -845,10 +914,7 @@ useEffect(() => {
                   placeholder="Search products..."
                   className="pl-9 h-9 rounded-full border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary/20"
                   value={filters.search}
-                  onChange={(e) => {
-                    setFilters({ ...filters, search: e.target.value });
-                    setCurrentPage(1);
-                  }}
+                  onChange={handleSearchChange}
                 />
               </div>
             </div>
@@ -863,7 +929,10 @@ useEffect(() => {
                   <SheetTitle className="sr-only">Filters</SheetTitle>
                   <FilterPanel
                     filters={filters}
-                    onFilterChange={setFilters}
+                    onFilterChange={(newFilters) => {
+                      handleFilterChange(newFilters);
+                      setShowMobileFilter(false);
+                    }}
                     resultCount={filteredProducts.length}
                     brands={availableBrands}
                     categories={transformedCategories}
@@ -874,10 +943,7 @@ useEffect(() => {
                   />
                 </SheetContent>
               </Sheet>
-              <Select value={filters.sort} onValueChange={(v) => {
-                setFilters({ ...filters, sort: v });
-                setCurrentPage(1);
-              }}>
+              <Select value={filters.sort} onValueChange={handleSortChange}>
                 <SelectTrigger className="w-[140px] h-9 rounded-full border-gray-200 dark:border-gray-700">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
@@ -892,7 +958,7 @@ useEffect(() => {
             </div>
           </div>
 
-          <div id="products-grid">
+          <div id="products-grid" ref={productsGridRef}>
             {loading ? (
               <ProductGridSkeleton count={itemsPerPage} />
             ) : currentItems.length === 0 ? (
@@ -900,19 +966,7 @@ useEffect(() => {
                 icon={<Package className="w-8 h-8" />}
                 title="No products found"
                 description="Try adjusting your filters or search query to find what you're looking for."
-                action={<Button variant="outline" onClick={() => {
-                  setFilters({ 
-                    category: filters.category, 
-                    subcategory: null,
-                    brands: [], 
-                    specs: {}, 
-                    search: '', 
-                    sort: 'latest',
-                    minPrice: undefined,
-                    maxPrice: undefined,
-                  });
-                  setCurrentPage(1);
-                }}>Clear Filters</Button>}
+                action={<Button variant="outline" onClick={handleClearFilters}>Clear Filters</Button>}
               />
             ) : (
               <>

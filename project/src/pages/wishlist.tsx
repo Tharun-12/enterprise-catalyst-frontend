@@ -379,7 +379,7 @@
 
 // src/pages/wishlist.tsx - Fixed with min/max price from variants
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, ArrowRight, Trash2, Loader2, FileText, Eye, Star, BadgeCheck, Minus, Plus } from 'lucide-react';
+import { Heart, ArrowRight, Trash2, Loader2, FileText, Eye, BadgeCheck, Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -499,80 +499,77 @@ export function WishlistPage() {
     }
   }, []);
 
- // src/pages/wishlist.tsx - Updated to use selected variant
+  // Update the displayProducts useMemo to use the selected variant
+  const displayProducts = useMemo((): DisplayProduct[] => {
+    if (!wishlistProducts || wishlistProducts.length === 0) {
+      return [];
+    }
 
-// Update the displayProducts useMemo to use the selected variant:
-
-const displayProducts = useMemo((): DisplayProduct[] => {
-  if (!wishlistProducts || wishlistProducts.length === 0) {
-    return [];
-  }
-
-  const products = wishlistProducts as any[];
-  
-  return products
-    .filter(isApiProduct)
-    .map((p: ApiProduct) => {
-      // Find the selected variant (marked by backend)
-      const selectedVariant = p.variants?.find((v: any) => v.is_selected) || p.variants?.[0];
-      
-      let image = 'https://via.placeholder.com/400x400';
-      if (selectedVariant?.image_url) {
-        image = `${baseurl}${selectedVariant.image_url}`;
-      }
-      
-      const galleryImages = p.variants?.map(v => 
-        v.image_url ? `${baseurl}${v.image_url}` : null
-      ).filter((url): url is string => Boolean(url)) || [];
-      
-      const totalStock = p.variants?.reduce((sum, v) => sum + v.stock, 0) || 0;
-      
-      // Use the selected variant's prices
-      let minPrice = 0;
-      let maxPrice = 0;
-      
-      if (selectedVariant) {
-        minPrice = parseFloat(selectedVariant.min_price) || 0;
-        maxPrice = parseFloat(selectedVariant.max_price) || 0;
-      }
-      
-      // If no selected variant prices, try product-level prices
-      if (minPrice === 0 && p.min_price) {
-        minPrice = parseFloat(p.min_price) || 0;
-      }
-      if (maxPrice === 0 && p.max_price) {
-        maxPrice = parseFloat(p.max_price) || 0;
-      }
-      
-      // Use selected variant's min as fallback price
-      let fallbackPrice = minPrice > 0 ? minPrice : 0;
-      
-      return {
-        id: String(p.id),
-        name: p.product_name,
-        slug: p.product_name.toLowerCase().replace(/\s+/g, '-'),
-        brandName: p.product_brand || 'Unknown',
-        categoryName: p.category_name || 'Uncategorized',
-        shortDescription: p.product_description?.substring(0, 100) || '',
-        description: p.product_description || '',
-        price: fallbackPrice > 0 ? fallbackPrice : 0,
-        minPrice: minPrice,
-        maxPrice: maxPrice,
-        discount: parseFloat(p.discount) || 0,
-        rating: 4.5,
-        reviewCount: 0,
-        gallery: galleryImages.length > 0 ? galleryImages : [image],
-        image: image,
-        isPopular: false,
-        isNew: false,
-        createdAt: p.created_at,
-        variants: p.variants || [],
-        sku: p.product_code,
-        discountPercentage: parseFloat(p.discount) || 0,
-        stock: totalStock,
-      };
-    });
-}, [wishlistProducts]);
+    const products = wishlistProducts as any[];
+    
+    return products
+      .filter(isApiProduct)
+      .map((p: ApiProduct) => {
+        // Find the selected variant (marked by backend)
+        const selectedVariant = p.variants?.find((v: any) => v.is_selected) || p.variants?.[0];
+        
+        let image = 'https://via.placeholder.com/400x400';
+        if (selectedVariant?.image_url) {
+          image = `${baseurl}${selectedVariant.image_url}`;
+        }
+        
+        const galleryImages = p.variants?.map(v => 
+          v.image_url ? `${baseurl}${v.image_url}` : null
+        ).filter((url): url is string => Boolean(url)) || [];
+        
+        const totalStock = p.variants?.reduce((sum, v) => sum + v.stock, 0) || 0;
+        
+        // Use the selected variant's prices
+        let minPrice = 0;
+        let maxPrice = 0;
+        
+        if (selectedVariant) {
+          minPrice = parseFloat(selectedVariant.min_price) || 0;
+          maxPrice = parseFloat(selectedVariant.max_price) || 0;
+        }
+        
+        // If no selected variant prices, try product-level prices
+        if (minPrice === 0 && p.min_price) {
+          minPrice = parseFloat(p.min_price) || 0;
+        }
+        if (maxPrice === 0 && p.max_price) {
+          maxPrice = parseFloat(p.max_price) || 0;
+        }
+        
+        // Use selected variant's min as fallback price
+        let fallbackPrice = minPrice > 0 ? minPrice : 0;
+        
+        return {
+          id: String(p.id),
+          name: p.product_name,
+          slug: p.product_name.toLowerCase().replace(/\s+/g, '-'),
+          brandName: p.product_brand || 'Unknown',
+          categoryName: p.category_name || 'Uncategorized',
+          shortDescription: p.product_description?.substring(0, 100) || '',
+          description: p.product_description || '',
+          price: fallbackPrice > 0 ? fallbackPrice : 0,
+          minPrice: minPrice,
+          maxPrice: maxPrice,
+          discount: parseFloat(p.discount) || 0,
+          rating: 4.5,
+          reviewCount: 0,
+          gallery: galleryImages.length > 0 ? galleryImages : [image],
+          image: image,
+          isPopular: false,
+          isNew: false,
+          createdAt: p.created_at,
+          variants: p.variants || [],
+          sku: p.product_code,
+          discountPercentage: parseFloat(p.discount) || 0,
+          stock: totalStock,
+        };
+      });
+  }, [wishlistProducts]);
 
   // Initialize quantities for products
   useEffect(() => {
@@ -629,12 +626,18 @@ const displayProducts = useMemo((): DisplayProduct[] => {
     }
   };
 
+  // ═══════════════════════════════════════════════════════════════
+  // FIXED: handleRemove - No duplicate toast notification
+  // ═══════════════════════════════════════════════════════════════
   const handleRemove = useCallback(async (productId: string): Promise<void> => {
     if (removingId) return;
     
     setRemovingId(productId);
     try {
+      // REMOVED: toast.success('Removed from wishlist') - handled by useApp
       await removeFromWishlist(productId, userId || undefined);
+      // Toast is shown inside removeFromWishlist in useApp
+      
       if (userId) {
         await fetchWishlist(userId);
       }
@@ -643,23 +646,8 @@ const displayProducts = useMemo((): DisplayProduct[] => {
         newSet.delete(productId);
         return newSet;
       });
-      toast.success('Removed from wishlist', {
-        duration: 3000,
-        position: 'top-right',
-        style: {
-          background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-          color: '#ffffff',
-          border: 'none',
-          padding: '14px 24px',
-          borderRadius: '12px',
-          fontSize: '15px',
-          fontWeight: '600',
-          boxShadow: '0 8px 25px rgba(16, 185, 129, 0.4)',
-          marginTop: '70px',
-          letterSpacing: '0.3px',
-        },
-      });
     } catch (error) {
+      console.error('Error removing from wishlist:', error);
       toast.error('Failed to remove from wishlist', {
         duration: 3000,
         position: 'top-right',
@@ -681,6 +669,9 @@ const displayProducts = useMemo((): DisplayProduct[] => {
     }
   }, [removeFromWishlist, userId, fetchWishlist, removingId]);
 
+  // ═══════════════════════════════════════════════════════════════
+  // FIXED: handleClearAll - No duplicate toast notifications
+  // ═══════════════════════════════════════════════════════════════
   const handleClearAll = useCallback(async (): Promise<void> => {
     if (isClearing) return;
     
@@ -692,6 +683,7 @@ const displayProducts = useMemo((): DisplayProduct[] => {
     try {
       if (userId) {
         await clearWishlist(userId);
+        // Toast is shown inside clearWishlist in useApp
         await fetchWishlist(userId);
       } else {
         displayProducts.forEach(async (p) => {
@@ -699,23 +691,8 @@ const displayProducts = useMemo((): DisplayProduct[] => {
         });
       }
       setSelectedProducts(new Set());
-      toast.success('Wishlist cleared successfully', {
-        duration: 3000,
-        position: 'top-right',
-        style: {
-          background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-          color: '#ffffff',
-          border: 'none',
-          padding: '14px 24px',
-          borderRadius: '12px',
-          fontSize: '15px',
-          fontWeight: '600',
-          boxShadow: '0 8px 25px rgba(16, 185, 129, 0.4)',
-          marginTop: '70px',
-          letterSpacing: '0.3px',
-        },
-      });
     } catch (error) {
+      console.error('Error clearing wishlist:', error);
       toast.error('Failed to clear wishlist', {
         duration: 3000,
         position: 'top-right',
@@ -805,7 +782,7 @@ const displayProducts = useMemo((): DisplayProduct[] => {
 
       if (response.data.success) {
         toast.success(`Quotation generated for ${selectedProductsData.length} product(s)!`, {
-          duration: 3000,
+          duration: 800,
           position: 'top-right',
           style: {
             background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
@@ -1209,27 +1186,6 @@ const displayProducts = useMemo((): DisplayProduct[] => {
                 <p className="text-xs text-muted-foreground line-clamp-2 mb-3 flex-1">
                   {product.shortDescription}
                 </p>
-
-                {/* Rating & Stock */}
-                <div className="flex items-center gap-1.5 mb-3">
-                  <div className="flex items-center">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Star
-                        key={star}
-                        className={cn(
-                          'w-3.5 h-3.5',
-                          star <= Math.floor(product.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300 dark:text-gray-600'
-                        )}
-                      />
-                    ))}
-                  </div>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">({product.reviewCount})</span>
-                  {product.stock > 0 && (
-                    <span className="text-xs text-green-600 dark:text-green-400 ml-auto">
-                      {product.stock > 10 ? 'In Stock' : `Only ${product.stock} left`}
-                    </span>
-                  )}
-                </div>
 
                 {/* Quantity Selector */}
                 <div className="flex items-center gap-2 mb-3">

@@ -1516,6 +1516,9 @@ export function ComparePage() {
     };
   };
 
+  // ═══════════════════════════════════════════════════════════════
+  // FIXED: handleWishlistToggle - No duplicate notifications
+  // ═══════════════════════════════════════════════════════════════
   const handleWishlistToggle = async (product: ApiProduct, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1572,28 +1575,43 @@ export function ComparePage() {
 
       if (isWishlisted) {
         await removeFromWishlist(productId, userId);
-        toast.success('Removed from wishlist');
       } else {
         const selectedVariant = product.variants?.find(v => v.is_selected);
         const variantId = selectedVariant?.id;
         await addToWishlist(productId, userId, variantId);
-        toast.success('Added to wishlist');
       }
     } catch (error) {
       console.error('Wishlist error:', error);
-      toast.error('Failed to update wishlist');
+      toast.error('Failed to update wishlist', {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+      });
     } finally {
       setWishlistLoading(null);
     }
   };
 
+  // ═══════════════════════════════════════════════════════════════
+  // FIXED: handleSingleQuotation - Styled toast notifications
+  // ═══════════════════════════════════════════════════════════════
   const handleSingleQuotation = async (product: ApiProduct, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
     if (!isUserLoggedIn) {
       toast.error('Please login to request a quotation', {
-        duration: 3000,
+        duration: 800,
         position: 'top-right',
         style: {
           background: '#EF4444',
@@ -1692,14 +1710,59 @@ export function ComparePage() {
       const response = await axios.post(`${baseurl}/api/quotations/single`, payload);
 
       if (response.data.success) {
-        toast.success(`Quotation #${response.data.quotation_no} generated successfully!`);
+        toast.success(`Quotation generated successfully!`, {
+          duration: 800,
+          position: 'top-right',
+          style: {
+            background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+            color: '#ffffff',
+            border: 'none',
+            padding: '14px 24px',
+            borderRadius: '12px',
+            fontSize: '15px',
+            fontWeight: '600',
+            boxShadow: '0 8px 25px rgba(16, 185, 129, 0.4)',
+            marginTop: '70px',
+            letterSpacing: '0.3px',
+          },
+        });
         navigate('/my-quotations');
       } else {
-        toast.error(response.data.message || 'Failed to submit quotation request');
+        toast.error(response.data.message || 'Failed to submit quotation request', {
+          duration: 3000,
+          position: 'top-right',
+          style: {
+            background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+            color: '#ffffff',
+            border: 'none',
+            padding: '14px 24px',
+            borderRadius: '12px',
+            fontSize: '15px',
+            fontWeight: '600',
+            boxShadow: '0 8px 25px rgba(239, 68, 68, 0.4)',
+            marginTop: '70px',
+            letterSpacing: '0.3px',
+          },
+        });
       }
     } catch (error: any) {
       console.error('Error submitting quotation:', error);
-      toast.error(error.response?.data?.message || 'Failed to submit quotation request. Please try again.');
+      toast.error(error.response?.data?.message || 'Failed to submit quotation request. Please try again.', {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+          color: '#ffffff',
+          border: 'none',
+          padding: '14px 24px',
+          borderRadius: '12px',
+          fontSize: '15px',
+          fontWeight: '600',
+          boxShadow: '0 8px 25px rgba(239, 68, 68, 0.4)',
+          marginTop: '70px',
+          letterSpacing: '0.3px',
+        },
+      });
     } finally {
       setQuotationLoading(null);
     }

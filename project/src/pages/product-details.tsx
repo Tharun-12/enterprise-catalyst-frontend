@@ -298,8 +298,8 @@ const transformProduct = (
     status: 'active',
     isPopular: false,
     isNew: false,
-    rating: 4.5,
-    reviewCount: 0,
+    // rating: 4.5,
+    // reviewCount: 0,
     downloads: hasPdf ? [{ name: 'Product Details', type: 'pdf' as const, size: 'PDF', url: product.product_details_pdf }] : [],
     createdAt: product.created_at,
     warranty: product.warranty || 'Standard warranty',
@@ -910,14 +910,14 @@ export function ProductDetailsPage() {
           <h1 className="text-2xl lg:text-3xl font-bold mb-3">{product.name}</h1>
 
           <div className="flex items-center gap-4 mb-5">
-            <div className="flex items-center gap-1.5">
+            {/* <div className="flex items-center gap-1.5">
               {[1, 2, 3, 4, 5].map((s) => (
                 <Star key={s} className={cn('w-4 h-4', s <= Math.floor(product.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30')} />
               ))}
               <span className="text-sm font-medium ml-1">{product.rating.toFixed(1)}</span>
             </div>
-            <span className="text-sm text-muted-foreground">{product.reviewCount} reviews</span>
-            <Separator orientation="vertical" className="h-4" />
+            <span className="text-sm text-muted-foreground">{product.reviewCount} reviews</span> */}
+            {/* <Separator orientation="vertical" className="h-4" /> */}
             <span className="text-sm text-muted-foreground">SKU: {product.sku}</span>
           </div>
 

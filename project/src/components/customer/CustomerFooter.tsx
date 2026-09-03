@@ -603,6 +603,9 @@ import {
   FaArrowRight
 } from 'react-icons/fa';
 
+import { FaXTwitter } from 'react-icons/fa6';
+
+
 // Define the Category type
 interface Category {
   id: number | string;
@@ -705,12 +708,12 @@ export function CustomerFooter() {
                 </a>
                 <a
                   href={settings?.twitter || COMPANY.social.twitter}
-                  className="w-10 h-10 rounded-full bg-[#1DA1F2] flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg hover:bg-[#0d8bda] text-white"
-                  aria-label="Twitter"
+                  className="w-10 h-10 rounded-full bg-[#000000] flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg hover:bg-[#333333] text-white"
+                  aria-label="X (Twitter)"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <FaTwitter className="w-4 h-4" />
+                  <FaXTwitter className="w-4 h-4" />
                 </a>
                 <a
                   href={settings?.facebook || COMPANY.social.facebook}

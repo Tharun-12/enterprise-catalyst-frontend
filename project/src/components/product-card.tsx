@@ -27,7 +27,7 @@
 //     loadingWishlist,
 //     isLoggedIn
 //   } = useApp();
-  
+
 //   const navigate = useNavigate();
 //   const [isLoading, setIsLoading] = useState(false);
 //   const [localWishlistState, setLocalWishlistState] = useState<boolean | null>(null);
@@ -72,9 +72,9 @@
 //   const handleWishlist = async (e: React.MouseEvent) => {
 //     e.preventDefault();
 //     e.stopPropagation();
-    
+
 //     if (isLoading || loadingWishlist) return;
-    
+
 //     // Check if user is logged in
 //     if (!isLoggedIn) {
 //       toast.error('Please login to sync wishlist', {
@@ -102,9 +102,9 @@
 //       }, 1500);
 //       return;
 //     }
-    
+
 //     setIsLoading(true);
-    
+
 //     try {
 //       if (inWishlist) {
 //         await removeFromWishlist(product.id);
@@ -228,13 +228,13 @@
 //   // Checkbox: toggle and navigate to compare page
 //   const handleCompareCheckbox = async (e: React.ChangeEvent<HTMLInputElement>) => {
 //     e.stopPropagation();
-    
+
 //     // If already in compare, just navigate to compare page
 //     if (inCompare) {
 //       navigate('/compare');
 //       return;
 //     }
-    
+
 //     const added = await toggleCompare();
 //     if (added) {
 //       navigate('/compare');
@@ -277,7 +277,7 @@
 
 //     try {
 //       const user = getUserDetails();
-      
+
 //       // Get the actual price - use minPrice/maxPrice if available
 //       let actualPrice = product.price;
 //       if (product.maxPrice !== undefined && product.maxPrice !== null && product.maxPrice > 0) {
@@ -288,7 +288,7 @@
 
 //       // Get the actual discount percentage
 //       const actualDiscount = product.discountPercentage || 0;
-      
+
 //       const payload = {
 //         user_id: userId,
 //         product_id: parseInt(product.id),
@@ -390,7 +390,7 @@
 //         product.maxPrice !== undefined && product.maxPrice !== null) {
 //       const min = Number(product.minPrice);
 //       const max = Number(product.maxPrice);
-      
+
 //       if (!isNaN(min) && !isNaN(max)) {
 //         if (min === max) {
 //           return formatPrice(min);
@@ -398,29 +398,29 @@
 //         return `${formatPrice(min)} - ${formatPrice(max)}`;
 //       }
 //     }
-    
+
 //     // Fallback to variants
 //     if (product.variants && product.variants.length > 0) {
 //       const variantPrices = product.variants
 //         .map(v => parseFloat(v.price))
 //         .filter(p => !isNaN(p) && isFinite(p));
-      
+
 //       if (variantPrices.length > 0) {
 //         const minPrice = Math.min(...variantPrices);
 //         const maxPrice = Math.max(...variantPrices);
-        
+
 //         if (minPrice === maxPrice) {
 //           return formatPrice(minPrice);
 //         }
 //         return `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`;
 //       }
 //     }
-    
+
 //     // Fallback to product price
 //     if (product.price && !isNaN(product.price) && isFinite(product.price)) {
 //       return formatPrice(product.price);
 //     }
-    
+
 //     return 'Price on request';
 //   };
 
@@ -691,18 +691,18 @@ interface VariantColor {
 }
 
 export function ProductCard({ product }: ProductCardProps) {
-  const { 
-    compareList, 
-    addToWishlist, 
-    removeFromWishlist, 
-    addToCompare, 
-    removeFromCompare, 
-    isInWishlist, 
+  const {
+    compareList,
+    addToWishlist,
+    removeFromWishlist,
+    addToCompare,
+    removeFromCompare,
+    isInWishlist,
     isInCompare,
     loadingWishlist,
     isLoggedIn
   } = useApp();
-  
+
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [localWishlistState, setLocalWishlistState] = useState<boolean | null>(null);
@@ -751,121 +751,120 @@ export function ProductCard({ product }: ProductCardProps) {
   const variants = (product.variants || []) as VariantWithDetails[];
   const selectedVariant = variants.find(v => v.id === selectedVariantId) || variants[0] || null;
 
- // product-card.tsx - Updated handleWishlist to pass variant ID
+  // product-card.tsx - Updated handleWishlist to pass variant ID
 
-// Find the handleWishlist function and update it:
+  // Find the handleWishlist function and update it:
 
-const handleWishlist = async (e: React.MouseEvent) => {
-  e.preventDefault();
-  e.stopPropagation();
-  if (isLoading || loadingWishlist) return;
-  if (!isLoggedIn) {
-    toast.error('Please login to sync wishlist', {
-      duration: 3000,
-      position: 'top-right',
-      style: {
-        background: '#EF4444',
-        color: 'white',
-        border: 'none',
-        padding: '12px 24px',
-        borderRadius: '8px',
-        fontSize: '14px',
-        fontWeight: '500',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        marginTop: '70px',
-      },
-      action: {
-        label: 'Login',
-        onClick: () => window.location.href = '/login'
-      }
-    });
-    setTimeout(() => window.location.href = '/login', 1500);
-    return;
-  }
-  setIsLoading(true);
-  try {
-    // Get the selected variant ID
-    const variantId = selectedVariant?.id;
-    if (inWishlist) {
-      await removeFromWishlist(product.id);
-      setLocalWishlistState(false);
-    } else {
-      // Pass the selected variant ID when adding
-      await addToWishlist(product.id, undefined, variantId);
-      setLocalWishlistState(true);
+  const handleWishlist = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isLoading || loadingWishlist) return;
+    if (!isLoggedIn) {
+      toast.error('Please login to sync wishlist', {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+        action: {
+          label: 'Login',
+          onClick: () => window.location.href = '/login'
+        }
+      });
+      setTimeout(() => window.location.href = '/login', 1500);
+      return;
     }
-  } catch (error) {
-    console.error('Error toggling wishlist:', error);
-    setLocalWishlistState(null);
-    toast.error('Failed to update wishlist', {
-      duration: 2000,
-      position: 'top-right',
-      style: {
-        background: '#EF4444',
-        color: 'white',
-        border: 'none',
-        padding: '12px 24px',
-        borderRadius: '8px',
-        fontSize: '14px',
-        fontWeight: '500',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        marginTop: '70px',
-      },
-    });
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-
- const toggleCompare = async (): Promise<boolean> => {
-  if (isCompareLoading) return false;
-  if (!inCompare && compareFull) {
-    toast.warning('You can compare up to 4 products', {
-      duration: 3000,
-      position: 'top-right',
-      style: {
-        background: '#F59E0B',
-        color: 'white',
-        border: 'none',
-        padding: '12px 24px',
-        borderRadius: '8px',
-        fontSize: '14px',
-        fontWeight: '500',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        marginTop: '70px',
-      },
-    });
-    return false;
-  }
-  setIsCompareLoading(true);
-  const uid = getUserId();
-  try {
-    if (inCompare) {
-      await removeFromCompare(product.id, uid);
-    } else {
-      // ✅ Pass the selected variant ID when adding to compare
+    setIsLoading(true);
+    try {
+      // Get the selected variant ID
       const variantId = selectedVariant?.id;
-      await addToCompare(product.id, uid, variantId);
+      if (inWishlist) {
+        await removeFromWishlist(product.id);
+        setLocalWishlistState(false);
+      } else {
+        // Pass the selected variant ID when adding
+        await addToWishlist(product.id, undefined, variantId);
+        setLocalWishlistState(true);
+      }
+    } catch (error) {
+      console.error('Error toggling wishlist:', error);
+      setLocalWishlistState(null);
+      toast.error('Failed to update wishlist', {
+        duration: 2000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+      });
+    } finally {
+      setIsLoading(false);
     }
-    return true;
-  } catch (error) {
-    console.error('Error toggling compare:', error);
-    toast.error('Failed to update compare list');
-    return false;
-  } finally {
-    setIsCompareLoading(false);
-  }
-};
+  };
+
+
+  const toggleCompare = async (): Promise<boolean> => {
+    if (isCompareLoading) return false;
+    if (!inCompare && compareFull) {
+      toast.warning('You can compare up to 4 products', {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#F59E0B',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+      });
+      return false;
+    }
+    setIsCompareLoading(true);
+    const uid = getUserId();
+    try {
+      if (inCompare) {
+        await removeFromCompare(product.id, uid);
+      } else {
+        // ✅ Pass the selected variant ID when adding to compare
+        const variantId = selectedVariant?.id;
+        await addToCompare(product.id, uid, variantId);
+      }
+      return true;
+    } catch (error) {
+      console.error('Error toggling compare:', error);
+      toast.error('Failed to update compare list');
+      return false;
+    } finally {
+      setIsCompareLoading(false);
+    }
+  };
 
   const handleCompareCheckbox = async (e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
-    if (inCompare) {
-      navigate('/compare');
-      return;
-    }
-    const added = await toggleCompare();
-    if (added) navigate('/compare');
+    // if (inCompare) {
+    //   navigate('/compare');
+    //   return;
+    // }
+    await toggleCompare();
   };
 
   const handleQuotationRequest = async (e: React.MouseEvent) => {
@@ -874,7 +873,7 @@ const handleWishlist = async (e: React.MouseEvent) => {
 
     if (!isLoggedIn) {
       toast.error('Please login to request a quotation', {
-        duration: 3000,
+        duration: 800,
         position: 'top-right',
         style: {
           background: '#EF4444',
@@ -920,16 +919,16 @@ const handleWishlist = async (e: React.MouseEvent) => {
 
     try {
       const user = getUserDetails();
-      
+
       let actualPrice = product.price;
       let minPrice = product.minPrice;
       let maxPrice = product.maxPrice;
-      
+
       if (selectedVariant) {
         const selectedMin = Number(selectedVariant.min_price);
         const selectedMax = Number(selectedVariant.max_price);
         const selectedPrice = Number(selectedVariant.price);
-        
+
         if (Number.isFinite(selectedMax) && selectedMax > 0) {
           actualPrice = selectedMax;
         } else if (Number.isFinite(selectedMin) && selectedMin > 0) {
@@ -937,14 +936,14 @@ const handleWishlist = async (e: React.MouseEvent) => {
         } else if (Number.isFinite(selectedPrice) && selectedPrice > 0) {
           actualPrice = selectedPrice;
         }
-        
+
         minPrice = Number.isFinite(selectedMin) ? selectedMin : minPrice;
         maxPrice = Number.isFinite(selectedMax) ? selectedMax : maxPrice;
       }
 
       let variantImage = null;
       let variantDetails = null;
-      
+
       if (selectedVariant) {
         if (selectedVariant.image_url) variantImage = selectedVariant.image_url;
         variantDetails = JSON.stringify(variants.map((v: VariantWithDetails) => ({
@@ -1078,10 +1077,10 @@ const handleWishlist = async (e: React.MouseEvent) => {
     if (!variants || variants.length === 0) return [];
 
     const colorMap = new Map<string, VariantColor>();
-    
+
     variants.forEach((variant: VariantWithDetails) => {
       const color = variant.color || variant.color_name || 'Default';
-      
+
       if (!colorMap.has(color)) {
         colorMap.set(color, {
           color: color,
@@ -1099,19 +1098,19 @@ const handleWishlist = async (e: React.MouseEvent) => {
       const minPrice = Number(selectedVariant.min_price);
       const maxPrice = Number(selectedVariant.max_price);
       const price = Number(selectedVariant.price);
-      
+
       if (Number.isFinite(minPrice) && Number.isFinite(maxPrice) && minPrice > 0 && maxPrice > 0) {
         if (minPrice === maxPrice) {
           return formatPrice(minPrice);
         }
         return `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`;
       }
-      
+
       if (Number.isFinite(price) && price > 0) {
         return formatPrice(price);
       }
     }
-    
+
     if (product.minPrice !== undefined && product.maxPrice !== undefined) {
       const min = Number(product.minPrice);
       const max = Number(product.maxPrice);
@@ -1122,11 +1121,11 @@ const handleWishlist = async (e: React.MouseEvent) => {
         return `${formatPrice(min)} - ${formatPrice(max)}`;
       }
     }
-    
+
     if (product.price && Number.isFinite(product.price) && product.price > 0) {
       return formatPrice(product.price);
     }
-    
+
     return 'Price on request';
   };
 
@@ -1136,7 +1135,7 @@ const handleWishlist = async (e: React.MouseEvent) => {
   //     const min = Number(selectedVariant.min_price);
   //     const max = Number(selectedVariant.max_price);
   //     const price = Number(selectedVariant.price);
-      
+
   //     if (Number.isFinite(min) && min > 0) {
   //       return { min, max: Number.isFinite(max) && max > 0 ? max : min };
   //     }
@@ -1144,11 +1143,11 @@ const handleWishlist = async (e: React.MouseEvent) => {
   //       return { min: price, max: price };
   //     }
   //   }
-    
+
   //   if (product.minPrice && product.maxPrice) {
   //     return { min: Number(product.minPrice), max: Number(product.maxPrice) };
   //   }
-    
+
   //   return { min: product.price, max: product.price };
   // };
 
@@ -1250,11 +1249,11 @@ const handleWishlist = async (e: React.MouseEvent) => {
                 }}
                 className={cn(
                   'w-5 h-5 rounded-full border-2 transition-all duration-200',
-                  selectedVariant?.id === vc.variantId 
-                    ? 'ring-2 ring-primary ring-offset-1 border-primary' 
+                  selectedVariant?.id === vc.variantId
+                    ? 'ring-2 ring-primary ring-offset-1 border-primary'
                     : 'hover:scale-110 hover:shadow-md'
                 )}
-                style={{ 
+                style={{
                   backgroundColor: getColorHex(vc.color),
                   borderColor: vc.color.toLowerCase() === 'white' ? '#E5E7EB' : 'rgba(0,0,0,0.1)'
                 }}
@@ -1289,7 +1288,7 @@ const handleWishlist = async (e: React.MouseEvent) => {
           {product.shortDescription}
         </p>
 
-        <div className="flex items-center gap-1.5 mb-3">
+        {/* <div className="flex items-center gap-1.5 mb-3">
           <div className="flex items-center">
             {[1, 2, 3, 4, 5].map((star) => (
               <Star
@@ -1307,7 +1306,7 @@ const handleWishlist = async (e: React.MouseEvent) => {
               {stock > 10 ? 'In Stock' : `Only ${stock} left`}
             </span>
           )}
-        </div>
+        </div> */}
 
         {/* Quantity - Fixed to 1, just showing it's for 1 item */}
         {/* <div className="flex items-center gap-2 mb-3">

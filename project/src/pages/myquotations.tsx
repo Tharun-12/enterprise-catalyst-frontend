@@ -199,7 +199,22 @@ export function MyQuotations() {
       const result = await response.json();
 
       if (result.success) {
-        toast.success('Quantity updated successfully!');
+       toast.success(`Quantity updated successfully!`, {
+          duration: 800, // Increased from default to 3000ms (3 seconds)
+          position: 'top-right',
+          style: {
+            background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+            color: '#ffffff',
+            border: 'none',
+            padding: '14px 24px',
+            borderRadius: '12px',
+            fontSize: '15px',
+            fontWeight: '600',
+            boxShadow: '0 8px 25px rgba(16, 185, 129, 0.4)',
+            marginTop: '70px', // Add this line for spacing from top
+            letterSpacing: '0.3px',
+          },
+        });
         // Refresh quotations
         await fetchQuotations();
       } else {
