@@ -75,9 +75,11 @@ export function CustomerHeader() {
     localStorage.removeItem('rememberMe');
     setUser(null);
     window.dispatchEvent(new Event('authChange'));
-    toast.success('Logged out successfully');
+    toast.success('Logged out successfully', {
+      duration: 800, // 1 second - you can adjust this value
+    });
     navigate('/');
-  };
+};
 
   const searchResults = searchQuery
     ? products

@@ -1,10 +1,11 @@
 // product-details.tsx - Fixed with variant pricing and color selection
+// product-details.tsx - Updated with Datasheet link after Specifications
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Heart, Star, ChevronRight,
   ZoomIn, Share2, ShieldCheck, Package, ArrowLeft,
-  BadgeCheck, Truck, Wrench, FileSpreadsheet
+  BadgeCheck, Truck, Wrench, FileSpreadsheet, FileText, ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -91,7 +92,7 @@ interface ApiProduct {
   weight?: string;
   discount: string;
   product_description: string;
-  extra_information?: string;  // ✅ Added this field
+  extra_information?: string;
   warranty: string;
   product_series?: string;
   product_type?: string;
@@ -361,6 +362,17 @@ export function ProductDetailsPage() {
     return Array.from(colorMap.values());
   }, [detailVariants]);
 
+  // Get datasheet URL from selected variant or first variant
+  const datasheetUrl = useMemo(() => {
+    if (selectedVariant?.datasheet_url) {
+      return selectedVariant.datasheet_url;
+    }
+    if (detailVariants.length > 0 && detailVariants[0]?.datasheet_url) {
+      return detailVariants[0].datasheet_url;
+    }
+    return null;
+  }, [selectedVariant, detailVariants]);
+
   const handleVariantSelect = (variantId: number) => {
     setSelectedVariantId(variantId);
     const variant = detailVariants.find(v => v.id === variantId);
@@ -441,14 +453,13 @@ export function ProductDetailsPage() {
     }
   }, [slug]);
 
-  // ✅ FIXED: Related products based on subcategory_name with null checks
+  // Related products based on subcategory_name with null checks
   const relatedProducts = useMemo(() => {
     if (!productData || allProducts.length === 0) return [];
 
     const currentSubCategoryName = productData.subcategory_name;
     const currentCategoryId = productData.product_category_id;
     
-    // If no subcategory, fallback to category
     if (!currentSubCategoryName) {
       const sameCategoryProducts = allProducts.filter(p => {
         if (currentCategoryId === null || p.product_category_id === null) return false;
@@ -462,7 +473,6 @@ export function ProductDetailsPage() {
       return topRelated.map(p => transformProduct(p, categories, brands));
     }
 
-    // Find products with the same subcategory_name (case-insensitive)
     const sameSubCategoryProducts = allProducts.filter(p =>
       p.subcategory_name &&
       p.subcategory_name.toLowerCase() === currentSubCategoryName.toLowerCase() &&
@@ -747,6 +757,10 @@ export function ProductDetailsPage() {
     }
   };
 
+  const handleDatasheetClick = (url: string) => {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -780,7 +794,6 @@ export function ProductDetailsPage() {
   }
 
   const inWishlist = isInWishlist(product.id);
-
   const extendedProduct = product as ExtendedProduct;
 
   // Get display price with min/max
@@ -910,7 +923,7 @@ export function ProductDetailsPage() {
 
           <p className="text-muted-foreground leading-relaxed mb-6">{product.shortDescription}</p>
 
-          {/* Variant Color Selector - Show color dots only */}
+          {/* Variant Color Selector */}
           {variantColors.length > 0 && (
             <div className="mb-4">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-3">Colors:</span>
@@ -936,7 +949,7 @@ export function ProductDetailsPage() {
             </div>
           )}
 
-          {/* Price - Show Min and Max from selected variant */}
+          {/* Price */}
           <div className="mb-6">
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-3xl font-bold text-primary">{getDisplayPrice()}</span>
@@ -1023,11 +1036,14 @@ export function ProductDetailsPage() {
         </div>
       </div>
 
-      {/* Tabs - Removed Spec Comparison and Downloads */}
+      {/* Tabs - Added Datasheet tab */}
       <Tabs defaultValue="description" className="mb-12">
         <TabsList className="w-full justify-start flex-wrap h-auto p-1 gap-1">
           <TabsTrigger value="description">Description</TabsTrigger>
           <TabsTrigger value="specifications">Specifications</TabsTrigger>
+          {datasheetUrl && (
+            <TabsTrigger value="datasheet">Datasheet</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="description" className="mt-6">
@@ -1035,7 +1051,6 @@ export function ProductDetailsPage() {
             <h2 className="text-xl font-bold mb-4">Product Description</h2>
             <p className="text-muted-foreground leading-relaxed mb-4">{product.description}</p>
             
-            {/* Extra Information */}
             {productData?.extra_information && (
               <div className="mt-4 p-4 bg-muted/30 rounded-lg">
                 <h3 className="text-sm font-semibold mb-2">Additional Information</h3>
@@ -1064,9 +1079,51 @@ export function ProductDetailsPage() {
             )}
           </Card>
         </TabsContent>
+
+        {/* Datasheet Tab */}
+        {datasheetUrl && (
+          <TabsContent value="datasheet" className="mt-6">
+            <Card className="p-8 text-center">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+                  <FileText className="w-10 h-10 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold">Product Datasheet</h3>
+                <p className="text-muted-foreground max-w-md">
+                  View the complete technical datasheet for {product.name}.
+                  {selectedVariant?.variant_name && ` (Variant: ${selectedVariant.variant_name})`}
+                </p>
+                <div className="flex gap-3 mt-2">
+                  <Button 
+                    size="lg" 
+                    onClick={() => handleDatasheetClick(datasheetUrl)}
+                    className="gap-2"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Open Datasheet
+                  </Button>
+                  {selectedVariant?.part_code && (
+                    <div className="text-sm text-muted-foreground flex items-center gap-2">
+                      <span className="font-medium">Part Code:</span>
+                      <span>{selectedVariant.part_code}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="text-xs text-muted-foreground mt-2">
+                  {selectedVariant?.availability && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="inline-block w-2 h-2 rounded-full bg-green-500"></span>
+                      Availability: {selectedVariant.availability}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
 
-      {/* Related Products - Now based on subcategory_name */}
+      {/* Related Products */}
       {relatedProducts.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-5">

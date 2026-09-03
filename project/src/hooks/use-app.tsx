@@ -1532,7 +1532,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setWishlist((prev) => (prev.includes(productId) ? prev : [...prev, productId]));
         await fetchWishlistFromAPI(uid);
         toast.success('Added to Wishlist', {
-          duration: 3000,
+          duration: 800,
           position: 'top-right',
           style: {
             background: '#10B981',
@@ -1628,7 +1628,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setWishlist((prev) => prev.filter((id) => id !== productId));
         setWishlistProducts((prev) => prev.filter((p) => String(p.id) !== productId));
         toast.success('Remove from Wishlist', {
-          duration: 3000,
+          duration: 800,
           position: 'top-right',
           style: {
             background: '#EF4444',
@@ -1719,87 +1719,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ========================================
   // use-app.tsx - Updated addToCompare to accept variant_id
 
-const addToCompare = useCallback(async (productId: string, userId?: number, variantId?: number) => {
-  const uid = userId || currentUserId;
+  const addToCompare = useCallback(async (productId: string, userId?: number, variantId?: number) => {
+    const uid = userId || currentUserId;
 
-  // Check if already in compare list
-  if (compareList.includes(productId)) {
-    toast.info('Already in compare list');
-    return;
-  }
-
-  if (compareList.length >= 4) {
-    toast.warning('You can compare up to 4 products', {
-      duration: 3000,
-      position: 'top-right',
-      style: {
-        background: '#F59E0B',
-        color: 'white',
-        border: 'none',
-        padding: '12px 24px',
-        borderRadius: '8px',
-        fontSize: '14px',
-        fontWeight: '500',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        marginTop: '70px',
-      },
-    });
-    return;
-  }
-
-  // If no userId, store in localStorage only (no login required)
-  if (!uid) {
-    setCompareList((prev) => [...prev, productId]);
-    // Also store variantId in localStorage for this product
-    try {
-      const compareData = JSON.parse(localStorage.getItem('compareData') || '{}');
-      compareData[productId] = { variantId };
-      localStorage.setItem('compareData', JSON.stringify(compareData));
-    } catch (e) {
-      console.error('Error saving compare data:', e);
+    // Check if already in compare list
+    if (compareList.includes(productId)) {
+      toast.info('Already in compare list');
+      return;
     }
-    toast.success('Added to compare', {
-      duration: 2000,
-      position: 'top-right',
-      style: {
-        background: '#10B981',
-        color: 'white',
-        border: 'none',
-        padding: '12px 24px',
-        borderRadius: '8px',
-        fontSize: '14px',
-        fontWeight: '500',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        marginTop: '70px',
-      },
-    });
-    return;
-  }
 
-  // User is logged in - store in database
-  try {
-    console.log('Adding to compare - userId:', uid, 'productId:', productId, 'variantId:', variantId);
-    const response = await fetch(`${API_BASE}/compare`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        user_id: uid,
-        product_id: parseInt(productId),
-        variant_id: variantId || null,
-      }),
-    });
+    if (compareList.length >= 4) {
+      toast.warning('You can compare up to 4 products', {
+        duration: 3000,
+        position: 'top-right',
+        style: {
+          background: '#F59E0B',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          marginTop: '70px',
+        },
+      });
+      return;
+    }
 
-    const result = await response.json();
-    console.log('Add to compare response:', result);
-
-    if (result.success) {
+    // If no userId, store in localStorage only (no login required)
+    if (!uid) {
       setCompareList((prev) => [...prev, productId]);
-      // Refresh compare list from API to ensure sync
-      await fetchCompareFromAPI(uid);
-      toast.success(result.message || 'Added to compare', {
-        duration: 2000,
+      // Also store variantId in localStorage for this product
+      try {
+        const compareData = JSON.parse(localStorage.getItem('compareData') || '{}');
+        compareData[productId] = { variantId };
+        localStorage.setItem('compareData', JSON.stringify(compareData));
+      } catch (e) {
+        console.error('Error saving compare data:', e);
+      }
+      toast.success('Added to compare', {
+        duration: 1000,
         position: 'top-right',
         style: {
           background: '#10B981',
@@ -1813,8 +1773,66 @@ const addToCompare = useCallback(async (productId: string, userId?: number, vari
           marginTop: '70px',
         },
       });
-    } else {
-      toast.error(result.message || 'Failed to add to compare', {
+      return;
+    }
+
+    // User is logged in - store in database
+    try {
+      console.log('Adding to compare - userId:', uid, 'productId:', productId, 'variantId:', variantId);
+      const response = await fetch(`${API_BASE}/compare`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: uid,
+          product_id: parseInt(productId),
+          variant_id: variantId || null,
+        }),
+      });
+
+      const result = await response.json();
+      console.log('Add to compare response:', result);
+
+      if (result.success) {
+        setCompareList((prev) => [...prev, productId]);
+        // Refresh compare list from API to ensure sync
+        await fetchCompareFromAPI(uid);
+        toast.success(result.message || 'Added to compare', {
+          duration: 800,
+          position: 'top-right',
+          style: {
+            background: '#10B981',
+            color: 'white',
+            border: 'none',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            marginTop: '70px',
+          },
+        });
+      } else {
+        toast.error(result.message || 'Failed to add to compare', {
+          duration: 3000,
+          position: 'top-right',
+          style: {
+            background: '#EF4444',
+            color: 'white',
+            border: 'none',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            marginTop: '70px',
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Error adding to compare:', error);
+      toast.error('Failed to add to compare', {
         duration: 3000,
         position: 'top-right',
         style: {
@@ -1830,25 +1848,7 @@ const addToCompare = useCallback(async (productId: string, userId?: number, vari
         },
       });
     }
-  } catch (error) {
-    console.error('Error adding to compare:', error);
-    toast.error('Failed to add to compare', {
-      duration: 3000,
-      position: 'top-right',
-      style: {
-        background: '#EF4444',
-        color: 'white',
-        border: 'none',
-        padding: '12px 24px',
-        borderRadius: '8px',
-        fontSize: '14px',
-        fontWeight: '500',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        marginTop: '70px',
-      },
-    });
-  }
-}, [currentUserId, compareList, fetchCompareFromAPI]);
+  }, [currentUserId, compareList, fetchCompareFromAPI]);
 
   const removeFromCompare = useCallback(async (productId: string, userId?: number) => {
     const uid = userId || currentUserId;
@@ -1857,7 +1857,7 @@ const addToCompare = useCallback(async (productId: string, userId?: number, vari
     if (!uid) {
       setCompareList((prev) => prev.filter((id) => id !== productId));
       toast.success('Removed from compare', {
-        duration: 2000,
+        duration: 1000,
         position: 'top-right',
         style: {
           background: '#EF4444',
@@ -1892,7 +1892,7 @@ const addToCompare = useCallback(async (productId: string, userId?: number, vari
         // Refresh compare list from API to ensure sync
         await fetchCompareFromAPI(uid);
         toast.success(result.message || 'Removed from compare', {
-          duration: 2000,
+          duration: 800,
           position: 'top-right',
           style: {
             background: '#EF4444',

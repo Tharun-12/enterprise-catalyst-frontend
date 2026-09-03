@@ -324,7 +324,7 @@ export function LoginPage() {
                 // toast.success(`Welcome back, ${response.data.user.name}!`);
                 // Show welcome toast at top-right with consistent styling
                 toast.success(`Welcome back, ${response.data.user.name}!`, {
-                    duration: 3000,
+                    duration: 800,
                     position: 'top-right',
                     style: {
                         background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',

@@ -1,4 +1,4 @@
-// products.tsx - Fixed version without variantPriceRanges
+// products.tsx - Fixed version with proper brand filtering
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -13,7 +13,7 @@ import { EmptyState, ProductGridSkeleton } from '@/components/shared';
 import { Package } from 'lucide-react';
 import { PageBreadcrumb as Breadcrumb } from '@/layouts/customer-layout-wrapper';
 import { baseurl } from '@/Baseurl/baseurl';
-import type { Product, Category, Brand } from '@/types';
+import type { Product, Category} from '@/types';
 
 // ---- Raw API response shapes ----
 interface ApiCategory {
@@ -34,16 +34,10 @@ interface ApiSubcategory {
 interface ApiBrand {
   id: number;
   brand_name: string;
-  description: string;
-  product_series: string;
-  conductor_type: string;
-  cable_od: string;
-  jacket_material: string;
-  bandwidth: string;
-  operating_temperature: string;
-  poe_support: string;
   category_id: number;
   category_name: string;
+  sub_category_id: number;
+  sub_category_name: string;
   created_at: string;
   updated_at: string;
 }
@@ -295,6 +289,18 @@ export function ProductsPage() {
     return name.toLowerCase().replace(/\s+/g, '-');
   };
 
+  // Initialize filters state FIRST
+  const [filters, setFilters] = useState<FilterState>({
+    category: categorySlug,
+    subcategory: null,
+    brands: [],
+    specs: {},
+    search: searchQuery,
+    sort: 'latest',
+    minPrice: undefined,
+    maxPrice: undefined,
+  });
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -330,29 +336,17 @@ export function ProductsPage() {
     fetchData();
   }, []);
 
-  // Extract unique variant options from products
+  // Extract unique variant options from products - ONLY COLORS
   const variantOptions = useMemo(() => {
     const options: Record<string, string[]> = {
-      spec_type: [],
       color: [],
-      size: [],
-      part_code: [],
     };
     
     products.forEach(product => {
       if (product.variants) {
         product.variants.forEach(variant => {
-          if (variant.spec_type && !options.spec_type.includes(variant.spec_type)) {
-            options.spec_type.push(variant.spec_type);
-          }
           if (variant.color && !options.color.includes(variant.color)) {
             options.color.push(variant.color);
-          }
-          if (variant.size && !options.size.includes(variant.size)) {
-            options.size.push(variant.size);
-          }
-          if (variant.part_code && !options.part_code.includes(variant.part_code)) {
-            options.part_code.push(variant.part_code);
           }
         });
       }
@@ -449,19 +443,6 @@ export function ProductsPage() {
     };
   }, [products]);
 
-  // Transform API brands to the format expected by FilterPanel and types
-  const transformedBrands = useMemo((): Brand[] => {
-    return brands.map(b => ({
-      id: String(b.id),
-      name: b.brand_name,
-      slug: createSlug(b.brand_name),
-      logoText: b.brand_name.charAt(0),
-      country: '',
-      description: b.description || '',
-      website: '',
-    }));
-  }, [brands]);
-
   // Transform API categories to the format expected by FilterPanel and types
   const transformedCategories = useMemo((): Category[] => {
     return categories.map(c => ({
@@ -496,38 +477,76 @@ export function ProductsPage() {
     return mapping;
   }, [categories]);
 
+  // Get available brands based on selected category and subcategory
+  const availableBrands = useMemo(() => {
+    let filteredBrands = brands;
+
+    // Filter by category
+    if (filters.category) {
+      const categoryId = parseInt(filters.category);
+      filteredBrands = filteredBrands.filter(b => b.category_id === categoryId);
+    }
+
+    // Filter by subcategory
+    if (filters.subcategory) {
+      const subcategoryId = parseInt(filters.subcategory);
+      filteredBrands = filteredBrands.filter(b => b.sub_category_id === subcategoryId);
+    }
+
+    // Transform to Brand type
+    return filteredBrands.map(b => ({
+      id: String(b.id),
+      name: b.brand_name,
+      slug: createSlug(b.brand_name),
+      logoText: b.brand_name.charAt(0),
+      country: '',
+      description: '',
+      website: '',
+      categoryId: String(b.category_id),
+      categoryName: b.category_name,
+      subCategoryId: String(b.sub_category_id),
+      subCategoryName: b.sub_category_name,
+    }));
+  }, [brands, filters.category, filters.subcategory]);
+
   const transformedProducts = useMemo(() => {
     return products.map(p => transformProduct(p, categories, brands));
   }, [products, categories, brands]);
 
   const currentCategory = categorySlug
-    ? categories.find((c) => createSlug(c.category_name) === categorySlug)
-    : undefined;
+  ? categories.find((c) => 
+      createSlug(c.category_name) === categorySlug || 
+      c.category_name === categorySlug
+    )
+  : undefined;
 
-  const [filters, setFilters] = useState<FilterState>({
-    category: categorySlug,
+  
+// Also update the useEffect to handle both slug and name:
+useEffect(() => {
+  // Find category by slug or name
+  let categoryId = null;
+  if (categorySlug) {
+    const foundCategory = categories.find(c => 
+      createSlug(c.category_name) === categorySlug || 
+      c.category_name === categorySlug
+    );
+    if (foundCategory) {
+      categoryId = String(foundCategory.id);
+    }
+  }
+  
+  setFilters((prev) => ({
+    ...prev,
+    category: categoryId,
     subcategory: null,
-    brands: [],
-    specs: {},
     search: searchQuery,
-    sort: 'latest',
+    specs: {},
+    brands: [],
     minPrice: undefined,
     maxPrice: undefined,
-  });
-
-  useEffect(() => {
-    setFilters((prev) => ({
-      ...prev,
-      category: categorySlug,
-      subcategory: null,
-      search: searchQuery,
-      specs: {},
-      brands: [],
-      minPrice: undefined,
-      maxPrice: undefined,
-    }));
-    setCurrentPage(1);
-  }, [categorySlug, searchQuery]);
+  }));
+  setCurrentPage(1);
+}, [categorySlug, searchQuery, categories]);
 
   useEffect(() => {
     setLoading(true);
@@ -649,10 +668,10 @@ export function ProductsPage() {
         for (const [key, values] of Object.entries(filters.specs)) {
           if (values.length === 0) continue;
           
-          if (['spec_type', 'color', 'size', 'part_code'].includes(key)) {
+          if (key === 'color') {
             const hasVariantMatch = productApi.variants?.some(variant => {
-              const variantValue = (variant as any)[key];
-              return variantValue && values.includes(variantValue);
+              const variantColor = variant.color || variant.color_name;
+              return variantColor && values.includes(variantColor);
             }) || false;
             
             if (!hasVariantMatch) {
@@ -808,7 +827,7 @@ export function ProductsPage() {
             filters={filters}
             onFilterChange={setFilters}
             resultCount={filteredProducts.length}
-            brands={transformedBrands}
+            brands={availableBrands}
             categories={transformedCategories}
             subcategories={subcategoriesMapping}
             specOptions={specOptions}
@@ -846,7 +865,7 @@ export function ProductsPage() {
                     filters={filters}
                     onFilterChange={setFilters}
                     resultCount={filteredProducts.length}
-                    brands={transformedBrands}
+                    brands={availableBrands}
                     categories={transformedCategories}
                     subcategories={subcategoriesMapping}
                     specOptions={specOptions}

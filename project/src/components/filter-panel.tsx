@@ -1,4 +1,4 @@
-// filter-panel.tsx
+// filter-panel.tsx - Fixed version with only Color in variants
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -34,22 +34,9 @@ interface FilterPanelProps {
   priceRange?: { min: number; max: number };
 }
 
-// Specification field labels and icons
-// const specLabels: Record<string, { label: string; icon?: string }> = {
-//   bandwidth: { label: 'Bandwidth', icon: '📶' },
-//   conductor_type: { label: 'Conductor Type', icon: '⚡' },
-//   cable_od: { label: 'Cable OD', icon: '📏' },
-//   jacket_material: { label: 'Jacket Material', icon: '🧵' },
-//   operating_temperature: { label: 'Operating Temperature', icon: '🌡️' },
-//   poe_support: { label: 'PoE Support', icon: '🔌' },
-// };
-
-// Variant field labels and icons
+// Variant field labels - ONLY COLOR
 const variantLabels: Record<string, { label: string; icon?: string }> = {
-  spec_type: { label: 'Spec Type', icon: '📋' },
   color: { label: 'Color', icon: '🎨' },
-  size: { label: 'Size', icon: '📐' },
-  part_code: { label: 'Part Code', icon: '🔢' },
 };
 
 export function FilterPanel({ 
@@ -59,7 +46,6 @@ export function FilterPanel({
   brands,
   categories = [],
   subcategories = {},
-  // specOptions = {},
   variantOptions = {},
   priceRange = { min: 0, max: 100000 }
 }: FilterPanelProps) {
@@ -69,17 +55,7 @@ export function FilterPanel({
     brands: true,
     price: true,
     variants: true,
-    // specifications: true, // Commented out
-    // bandwidth: false,
-    // conductor_type: false,
-    // cable_od: false,
-    // jacket_material: false,
-    // operating_temperature: false,
-    // poe_support: false,
-    spec_type: false,
     color: false,
-    size: false,
-    part_code: false,
   });
 
   const [localMinPrice, setLocalMinPrice] = useState<string>(filters.minPrice?.toString() || '');
@@ -101,12 +77,14 @@ export function FilterPanel({
         ...filters,
         category: null,
         subcategory: null, // Clear subcategory when category is deselected
+        brands: [], // Clear brands when category changes
       });
     } else {
       onFilterChange({
         ...filters,
         category: categoryId,
         subcategory: null, // Clear subcategory when category changes
+        brands: [], // Clear brands when category changes
       });
     }
   };
@@ -115,6 +93,7 @@ export function FilterPanel({
     onFilterChange({
       ...filters,
       subcategory: filters.subcategory === subcategoryId ? null : subcategoryId,
+      brands: [], // Clear brands when subcategory changes
     });
   };
 
@@ -180,8 +159,7 @@ export function FilterPanel({
     filters.category !== null ||
     filters.subcategory !== null;
 
-  // Get active spec sections (those that have options)
-  // const activeSpecSections = Object.keys(specOptions).filter(key => specOptions[key]?.length > 0); // Commented out
+  // Get active variant sections (only color)
   const activeVariantSections = Object.keys(variantOptions).filter(key => variantOptions[key]?.length > 0);
 
   const formatCurrency = (amount: number) => {
@@ -330,28 +308,41 @@ export function FilterPanel({
             </>
           )}
 
-          {/* Brands Section */}
+          {/* Brands Section - Shows only brands relevant to selected category/subcategory */}
           {brands.length > 0 && (
             <>
               <Collapsible open={openSections['brands'] ?? true} onOpenChange={() => toggleSection('brands')}>
                 <CollapsibleTrigger className="flex items-center justify-between w-full py-2 group">
-                  <span className="font-medium text-sm">Brands</span>
+                  <span className="font-medium text-sm">
+                    Brands
+                    {filters.category && (
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">
+                        ({brands.length} available)
+                      </span>
+                    )}
+                  </span>
                   <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', openSections['brands'] ?? true ? '' : 'rotate-[-90deg]')} />
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="space-y-2 pt-1 pb-3">
-                    {brands.map((brand) => (
-                      <div key={brand.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`brand-${brand.id}`}
-                          checked={filters.brands.includes(brand.id)}
-                          onCheckedChange={() => toggleBrand(brand.id)}
-                        />
-                        <Label htmlFor={`brand-${brand.id}`} className="text-sm font-normal cursor-pointer flex-1">
-                          {brand.name}
-                        </Label>
-                      </div>
-                    ))}
+                    {brands.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-2">
+                        No brands available for this category
+                      </p>
+                    ) : (
+                      brands.map((brand) => (
+                        <div key={brand.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`brand-${brand.id}`}
+                            checked={filters.brands.includes(brand.id)}
+                            onCheckedChange={() => toggleBrand(brand.id)}
+                          />
+                          <Label htmlFor={`brand-${brand.id}`} className="text-sm font-normal cursor-pointer flex-1">
+                            {brand.name}
+                          </Label>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </CollapsibleContent>
               </Collapsible>
@@ -360,7 +351,7 @@ export function FilterPanel({
             </>
           )}
 
-          {/* Variants Section */}
+          {/* Variants Section - ONLY COLOR */}
           {activeVariantSections.length > 0 && (
             <>
               <Collapsible open={openSections['variants'] ?? true} onOpenChange={() => toggleSection('variants')}>
@@ -415,75 +406,8 @@ export function FilterPanel({
                   </div>
                 </CollapsibleContent>
               </Collapsible>
-
-              <Separator />
             </>
           )}
-
-          {/* ================================================================ */}
-          {/* SPECIFICATIONS SECTION - COMMENTED OUT */}
-          {/* ================================================================ */}
-          {/* 
-          {activeSpecSections.length > 0 && (
-            <>
-              <Collapsible open={openSections['specifications'] ?? true} onOpenChange={() => toggleSection('specifications')}>
-                <CollapsibleTrigger className="flex items-center justify-between w-full py-2 group">
-                  <span className="font-medium text-sm">Specifications</span>
-                  <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', openSections['specifications'] ?? true ? '' : 'rotate-[-90deg]')} />
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="space-y-4 pt-1 pb-3">
-                    {activeSpecSections.map((key) => {
-                      const options = specOptions[key] || [];
-                      const specInfo = specLabels[key] || { label: key };
-                      const isOpen = openSections[key] ?? false;
-                      
-                      return (
-                        <Collapsible 
-                          key={key} 
-                          open={isOpen} 
-                          onOpenChange={() => toggleSection(key)}
-                        >
-                          <CollapsibleTrigger className="flex items-center justify-between w-full py-1 text-sm hover:bg-muted/50 px-2 rounded-md">
-                            <span className="text-sm font-medium">
-                              {specInfo.icon && <span className="mr-2">{specInfo.icon}</span>}
-                              {specInfo.label}
-                              {filters.specs[key]?.length > 0 && (
-                                <span className="ml-2 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
-                                  {filters.specs[key].length}
-                                </span>
-                              )}
-                            </span>
-                            <ChevronDown className={cn('w-3 h-3 text-muted-foreground transition-transform', isOpen ? '' : 'rotate-[-90deg]')} />
-                          </CollapsibleTrigger>
-                          <CollapsibleContent>
-                            <div className="space-y-1.5 pt-2 pl-2">
-                              {options.map((option) => (
-                                <div key={option} className="flex items-center space-x-2">
-                                  <Checkbox
-                                    id={`spec-${key}-${option}`}
-                                    checked={(filters.specs[key] || []).includes(option)}
-                                    onCheckedChange={() => toggleSpec(key, option)}
-                                  />
-                                  <Label htmlFor={`spec-${key}-${option}`} className="text-sm font-normal cursor-pointer">
-                                    {option}
-                                  </Label>
-                                </div>
-                              ))}
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      );
-                    })}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            </>
-          )}
-          */}
-          {/* ================================================================ */}
-          {/* END OF COMMENTED SPECIFICATIONS SECTION */}
-          {/* ================================================================ */}
         </div>
       </ScrollArea>
     </div>

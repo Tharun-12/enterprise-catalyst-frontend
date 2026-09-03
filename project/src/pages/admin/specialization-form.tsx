@@ -60,15 +60,6 @@ interface Category {
   subcategories: SubCategory[];
 }
 
-interface Brand {
-  id: number;
-  brand_name: string;
-  category_id?: number;
-  sub_category_id?: number;
-  category_name?: string;
-  sub_category_name?: string;
-}
-
 interface ProductSpecification {
   id: string;
   spec_name: string;
@@ -78,21 +69,23 @@ interface ProductSpecification {
 interface SpecificationData {
   category_id: string;
   sub_category_id: string;
-  brand_id: string;
   spec_name: string;
   product_specifications: ProductSpecification[];
 }
 
 interface SpecificationApiData {
   id?: number | string;
+
   category_id?: number | string;
   category_name?: string;
+
   sub_category_id?: number | string | null;
   subcategory_name?: string;
-  brand_id?: number | string | null;
-  brand_name?: string;
+
   spec_name?: string;
+
   product_specifications?: ProductSpecification[];
+
   created_at?: string;
   updated_at?: string;
 }
@@ -106,12 +99,6 @@ interface SpecificationResponse {
 interface CategoriesResponse {
   success: boolean;
   data: Category[];
-  message?: string;
-}
-
-interface BrandsResponse {
-  success: boolean;
-  data: Brand[];
   message?: string;
 }
 
@@ -138,18 +125,13 @@ export function SpecificationsForm() {
 
   const [categories, setCategories] = useState<Category[]>([]);
 
-  const [brands, setBrands] = useState<Brand[]>([]);
-
   const [isLoadingCategories, setIsLoadingCategories] =
     useState(false);
-
-  const [isLoadingBrands, setIsLoadingBrands] = useState(false);
 
   const [formData, setFormData] =
     useState<SpecificationData>({
       category_id: '',
       sub_category_id: '',
-      brand_id: '',
       spec_name: '',
       product_specifications: [],
     });
@@ -177,16 +159,6 @@ export function SpecificationsForm() {
     selectedCategory?.subcategories || [];
 
   /* =======================================================
-     FILTERED BRANDS
-  ======================================================= */
-
-  const filteredBrands = brands.filter(
-    (brand) =>
-      brand.category_id === Number(formData.category_id) &&
-      brand.sub_category_id === Number(formData.sub_category_id)
-  );
-
-  /* =======================================================
      DEBUG
   ======================================================= */
 
@@ -204,11 +176,6 @@ export function SpecificationsForm() {
     );
 
     console.log(
-      'Form Brand ID:',
-      formData.brand_id
-    );
-
-    console.log(
       'Selected Category:',
       selectedCategory
     );
@@ -219,8 +186,12 @@ export function SpecificationsForm() {
     );
 
     console.log(
-      'Filtered Brands:',
-      filteredBrands
+      'Sub Category Exists:',
+      filteredSubCategories.some(
+        (sub) =>
+          String(sub.id) ===
+          formData.sub_category_id
+      )
     );
 
     console.log(
@@ -229,9 +200,7 @@ export function SpecificationsForm() {
   }, [
     formData.category_id,
     formData.sub_category_id,
-    formData.brand_id,
     categories,
-    filteredBrands,
   ]);
 
   /* =======================================================
@@ -239,10 +208,9 @@ export function SpecificationsForm() {
      
      IMPORTANT:
      1. Load categories.
-     2. Load brands.
-     3. Then load specification.
-     4. Convert BOTH IDs to strings.
-     5. Set form data.
+     2. Then load specification.
+     3. Convert BOTH IDs to strings.
+     4. Set form data.
   ======================================================= */
 
   useEffect(() => {
@@ -251,7 +219,6 @@ export function SpecificationsForm() {
     const loadData = async () => {
       try {
         setIsLoadingCategories(true);
-        setIsLoadingBrands(true);
 
         if (id) {
           setIsLoading(true);
@@ -286,35 +253,7 @@ export function SpecificationsForm() {
         setCategories(categoryData);
 
         /* -----------------------------------------------
-           STEP 2: GET BRANDS
-        ------------------------------------------------ */
-
-        const brandsResponse =
-          await axios.get<BrandsResponse>(
-            `${API_URL}/brands/`
-          );
-
-        if (cancelled) return;
-
-        if (!brandsResponse.data.success) {
-          throw new Error(
-            brandsResponse.data.message ||
-              'Failed to load brands'
-          );
-        }
-
-        const brandData =
-          brandsResponse.data.data || [];
-
-        console.log(
-          'BRANDS API:',
-          brandData
-        );
-
-        setBrands(brandData);
-
-        /* -----------------------------------------------
-           STEP 3: ADD MODE
+           STEP 2: ADD MODE
         ------------------------------------------------ */
 
         if (!id) {
@@ -323,7 +262,6 @@ export function SpecificationsForm() {
           setFormData({
             category_id: '',
             sub_category_id: '',
-            brand_id: '',
             spec_name: '',
             product_specifications: [],
           });
@@ -332,7 +270,7 @@ export function SpecificationsForm() {
         }
 
         /* -----------------------------------------------
-           STEP 4: EDIT MODE - GET SPECIFICATION
+           STEP 3: EDIT MODE - GET SPECIFICATION
         ------------------------------------------------ */
 
         const specificationResponse =
@@ -366,12 +304,10 @@ export function SpecificationsForm() {
            API:
              category_id = 21
              sub_category_id = 6
-             brand_id = 1
 
            Convert:
              "21"
              "6"
-             "1"
 
            Radix Select values MUST be strings.
         ------------------------------------------------ */
@@ -388,12 +324,6 @@ export function SpecificationsForm() {
             ? String(spec.sub_category_id)
             : '';
 
-        const brandId =
-          spec.brand_id !== undefined &&
-          spec.brand_id !== null
-            ? String(spec.brand_id)
-            : '';
-
         console.log(
           'API Category ID:',
           spec.category_id
@@ -405,11 +335,6 @@ export function SpecificationsForm() {
         );
 
         console.log(
-          'API Brand ID:',
-          spec.brand_id
-        );
-
-        console.log(
           'Converted Category ID:',
           categoryId
         );
@@ -417,11 +342,6 @@ export function SpecificationsForm() {
         console.log(
           'Converted Sub Category ID:',
           subCategoryId
-        );
-
-        console.log(
-          'Converted Brand ID:',
-          brandId
         );
 
         /* -----------------------------------------------
@@ -454,23 +374,6 @@ export function SpecificationsForm() {
           matchingSubCategory
         );
 
-        /* -----------------------------------------------
-           VERIFY BRAND
-        ------------------------------------------------ */
-
-        const matchingBrand =
-          brandData.find(
-            (brand) =>
-              String(brand.id) === brandId &&
-              brand.category_id === Number(categoryId) &&
-              brand.sub_category_id === Number(subCategoryId)
-          );
-
-        console.log(
-          'MATCHING BRAND:',
-          matchingBrand
-        );
-
         if (!matchingCategory) {
           console.error(
             `Category ${categoryId} was not found in categories API`
@@ -486,17 +389,8 @@ export function SpecificationsForm() {
           );
         }
 
-        if (
-          brandId &&
-          !matchingBrand
-        ) {
-          console.error(
-            `Brand ${brandId} was not found for Category ${categoryId} and Sub Category ${subCategoryId}`
-          );
-        }
-
         /* -----------------------------------------------
-           STEP 5: SET COMPLETE FORM DATA
+           STEP 4: SET COMPLETE FORM DATA
         ------------------------------------------------ */
 
         setIsEditing(true);
@@ -507,11 +401,6 @@ export function SpecificationsForm() {
           sub_category_id:
             matchingSubCategory
               ? subCategoryId
-              : '',
-
-          brand_id:
-            matchingBrand
-              ? brandId
               : '',
 
           spec_name:
@@ -546,7 +435,7 @@ export function SpecificationsForm() {
         toast.error(
           id
             ? 'Failed to load specification data'
-            : 'Failed to load categories or brands'
+            : 'Failed to load categories'
         );
 
         if (id) {
@@ -556,7 +445,6 @@ export function SpecificationsForm() {
         if (!cancelled) {
           setIsLoading(false);
           setIsLoadingCategories(false);
-          setIsLoadingBrands(false);
         }
       }
     };
@@ -600,9 +488,8 @@ export function SpecificationsForm() {
 
       category_id: value,
 
-      // Reset subcategory and brand when category changes
+      // Reset subcategory when category changes
       sub_category_id: '',
-      brand_id: '',
     }));
   };
 
@@ -622,28 +509,6 @@ export function SpecificationsForm() {
       ...prev,
 
       sub_category_id: value,
-
-      // Reset brand when subcategory changes
-      brand_id: '',
-    }));
-  };
-
-  /* =======================================================
-     BRAND CHANGE
-  ======================================================= */
-
-  const handleBrandChange = (
-    value: string
-  ): void => {
-    console.log(
-      'Brand changed:',
-      value
-    );
-
-    setFormData((prev) => ({
-      ...prev,
-
-      brand_id: value,
     }));
   };
 
@@ -768,14 +633,6 @@ export function SpecificationsForm() {
       return;
     }
 
-    if (!formData.brand_id) {
-      toast.error(
-        'Please select a brand'
-      );
-
-      return;
-    }
-
     if (!formData.spec_name.trim()) {
       toast.error(
         'Specification name is required'
@@ -818,9 +675,6 @@ export function SpecificationsForm() {
 
         sub_category_id:
           Number(formData.sub_category_id),
-
-        brand_id:
-          Number(formData.brand_id),
 
         spec_name:
           formData.spec_name.trim(),
@@ -962,7 +816,7 @@ export function SpecificationsForm() {
               Basic Information
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
               {/* =================================================
                   CATEGORY
@@ -1103,84 +957,19 @@ export function SpecificationsForm() {
 
                 </Select>
 
-              </div>
-
-            </div>
-
-            {/* =================================================
-                BRAND - New Row
-            ================================================= */}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-              <div className="space-y-2">
-
-                <Label
-                  htmlFor="brand_id"
-                  className="text-sm font-medium text-gray-700"
-                >
-                  Brand{' '}
-                  <span className="text-red-500">
-                    *
-                  </span>
-                </Label>
-
-                <Select
-                  key={`${formData.category_id}-${formData.sub_category_id}-${formData.brand_id}-${filteredBrands.length}`}
-                  value={formData.brand_id}
-                  onValueChange={handleBrandChange}
-                  disabled={
-                    isLoading ||
-                    isLoadingBrands ||
-                    !formData.category_id ||
-                    !formData.sub_category_id ||
-                    filteredBrands.length === 0
-                  }
-                >
-
-                  <SelectTrigger
-                    id="brand_id"
-                    className="w-full h-10 bg-white border-gray-200"
-                  >
-
-                    <SelectValue
-                      placeholder={
-                        !formData.category_id
-                          ? 'Select a category first'
-                          : !formData.sub_category_id
-                            ? 'Select a subcategory first'
-                            : filteredBrands.length === 0
-                              ? 'No brands available for this selection'
-                              : 'Select a brand'
-                      }
-                    />
-
-                  </SelectTrigger>
-
-                  <SelectContent>
-
-                    {filteredBrands.map(
-                      (brand) => (
-                        <SelectItem
-                          key={brand.id}
-                          value={String(
-                            brand.id
-                          )}
-                        >
-                          {brand.brand_name}
-                        </SelectItem>
-                      )
-                    )}
-
-                  </SelectContent>
-
-                </Select>
-
-                {formData.category_id && formData.sub_category_id && filteredBrands.length === 0 && (
-                  <p className="text-xs text-amber-600">
-                    No brands found for this category and subcategory. Please add brands first.
-                  </p>
-                )}
+                {/* DEBUG INFORMATION */}
+                {/* {isEditing && (
+                  <div className="text-xs text-gray-400">
+                    Category ID:{' '}
+                    {formData.category_id || 'none'}
+                    {' | '}
+                    Sub Category ID:{' '}
+                    {
+                      formData.sub_category_id ||
+                      'none'
+                    }
+                  </div>
+                )} */}
 
               </div>
 

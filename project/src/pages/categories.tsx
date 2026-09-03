@@ -261,7 +261,7 @@ export function CategoriesPage() {
                   )}
 
                   {/* Browse Products Button */}
-                  <Link to= "/products" className="w-full mt-auto">
+                  <Link to={`/products?category=${encodeURIComponent(categoryName)}`} className="w-full mt-auto">
                     <Button
                       className="w-full group-hover:shadow-lg transition-all duration-300"
                       style={{

@@ -79,6 +79,16 @@ interface Variant {
     brand_name?: string;
 }
 
+// COMMENTED OUT - Spec Comparison not needed
+// interface SpecComparison {
+//     id?: number;
+//     spec_type: string;
+//     bandwidth: string;
+//     max_data_rate: string;
+//     internal_design: string;
+//     typical_applications: string;
+// }
+
 const ProductForm = () => {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>();
@@ -119,18 +129,29 @@ const ProductForm = () => {
     });
     const [editingVariantIndex, setEditingVariantIndex] = useState<number | null>(null);
 
+    // COMMENTED OUT - Spec Comparison state not needed
+    // const [specComparisons, setSpecComparisons] = useState<SpecComparison[]>([]);
+    // const [currentSpecComparison, setCurrentSpecComparison] = useState<SpecComparison>({
+    //     spec_type: '',
+    //     bandwidth: '',
+    //     max_data_rate: '',
+    //     internal_design: '',
+    //     typical_applications: ''
+    // });
+
     const [categories, setCategories] = useState<Category[]>([]);
     const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
     const [brands, setBrands] = useState<Brand[]>([]);
     const [filteredBrands, setFilteredBrands] = useState<Brand[]>([]);
-    const [brandsLoaded, setBrandsLoaded] = useState<boolean>(false);
-    const [_specTypes, setSpecTypes] = useState<string[]>([]);
+    const [specTypes, setSpecTypes] = useState<string[]>([]);
     const [selectedSpecifications, setSelectedSpecifications] = useState<Specification[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
     const [loadingSpecs, setLoadingSpecs] = useState<boolean>(false);
     const [error, setError] = useState<string>('');
     const [success, setSuccess] = useState<string>('');
     const [selectedFileNames, setSelectedFileNames] = useState<string>('');
+    // COMMENTED OUT - Not needed
+    // const [showSpecComparison, setShowSpecComparison] = useState<boolean>(false);
     const [showVariantForm, setShowVariantForm] = useState<boolean>(false);
     const [hasSpecifications, setHasSpecifications] = useState<boolean>(false);
 
@@ -142,6 +163,8 @@ const ProductForm = () => {
         fetchBrands();
         if (isEditMode) {
             fetchProductData();
+            // COMMENTED OUT - Not needed
+            // fetchSpecComparisons();
         }
     }, [id]);
 
@@ -159,31 +182,21 @@ const ProductForm = () => {
         }
     }, [formData.category_id, categories]);
 
-    // Filter brands when category or subcategory changes
+    // Fetch specifications when sub_category changes (and both category and subcategory are selected)
     useEffect(() => {
-        filterBrands();
-    }, [formData.category_id, formData.sub_category_id, brands]);
-
-    // Fetch specifications when category, sub_category, AND brand are all selected
-    useEffect(() => {
-        // Wait until brands have loaded at least once, so brand-id lookup is reliable
-        if (!brandsLoaded) return;
-
-        const brandId = getSelectedBrandId();
-
-        if (formData.category_id && formData.sub_category_id && brandId) {
-            fetchSpecificationsByCategorySubCategoryAndBrand(
-                formData.category_id,
-                formData.sub_category_id,
-                brandId
-            );
+        if (formData.category_id && formData.sub_category_id) {
+            fetchSpecificationsByCategoryAndSubCategory(formData.category_id, formData.sub_category_id);
         } else {
             setSelectedSpecifications([]);
             setSpecTypes([]);
             setLoadingSpecs(false);
             setHasSpecifications(false);
         }
-    }, [formData.category_id, formData.sub_category_id, formData.product_brand, filteredBrands, brandsLoaded]);
+    }, [formData.sub_category_id, formData.category_id]);
+
+    useEffect(() => {
+        filterBrands();
+    }, [formData.category_id, formData.sub_category_id]);
 
     const fetchCategories = async (): Promise<void> => {
         try {
@@ -204,49 +217,42 @@ const ProductForm = () => {
             }
         } catch (error) {
             console.error('Error fetching brands:', error);
-        } finally {
-            setBrandsLoaded(true);
         }
     };
 
-    // Fetch specifications by category, subcategory, AND brand
-    const fetchSpecificationsByCategorySubCategoryAndBrand = async (
-        categoryId: string,
-        subCategoryId: string,
-        brandId: string
-    ) => {
+    const fetchSpecificationsByCategoryAndSubCategory = async (categoryId: string, subCategoryId: string) => {
         try {
-            if (!categoryId || !subCategoryId || !brandId) {
+            if (!categoryId || !subCategoryId) {
                 setSelectedSpecifications([]);
                 setSpecTypes([]);
                 setLoadingSpecs(false);
                 setHasSpecifications(false);
                 return;
             }
-
+            
             setLoadingSpecs(true);
             const response = await axios.get(
-                `${API_URL}/api/products/specifications/category/${categoryId}/subcategory/${subCategoryId}/brand/${brandId}`
+                `${API_URL}/api/products/specifications/category/${categoryId}/subcategory/${subCategoryId}`
             );
-
-            if (response.data.success && response.data.data) {
-                const specsData = response.data.data;
-
-                // Check if we have product_specifications
-                if (specsData.product_specifications && specsData.product_specifications.length > 0) {
-                    setSelectedSpecifications(specsData.product_specifications);
+            
+            if (response.data.success && response.data.data && response.data.data.product_specifications) {
+                const specs = response.data.data;
+                const productSpecs = specs.product_specifications;
+                
+                if (productSpecs && productSpecs.length > 0) {
+                    setSelectedSpecifications(productSpecs);
                     setHasSpecifications(true);
-
-                    if (specsData.spec_name) {
-                        setSpecTypes([specsData.spec_name]);
+                    
+                    if (specs.spec_name) {
+                        setSpecTypes([specs.spec_name]);
                     } else {
                         setSpecTypes([]);
                     }
-
-                    // Set default values if not in edit mode or specifications are empty
+                    
+                    // Only set default values if we're not in edit mode or if specifications are empty
                     if (!isEditMode || Object.keys(formData.specifications).length === 0) {
                         const defaultSpecs: ProductSpecifications = {};
-                        specsData.product_specifications.forEach((spec: Specification) => {
+                        productSpecs.forEach((spec: Specification) => {
                             defaultSpecs[spec.spec_name] = spec.value || '';
                         });
                         setFormData(prev => ({
@@ -285,16 +291,6 @@ const ProductForm = () => {
         setFilteredBrands(filtered);
     };
 
-    // Resolve the currently selected brand NAME to its numeric brand id
-    const getSelectedBrandId = (): string | null => {
-        if (!formData.product_brand) return null;
-        // Look in filteredBrands first, fall back to full brands list
-        const brand =
-            filteredBrands.find(b => b.brand_name === formData.product_brand) ||
-            brands.find(b => b.brand_name === formData.product_brand);
-        return brand ? String(brand.id) : null;
-    };
-
     const fetchProductData = async () => {
         try {
             setLoading(true);
@@ -302,7 +298,7 @@ const ProductForm = () => {
             const productData = response.data;
 
             const specs = productData.specifications || {};
-
+            
             setFormData({
                 product_name: productData.product_name || '',
                 product_code: productData.product_code || '',
@@ -319,9 +315,12 @@ const ProductForm = () => {
                 specifications: specs
             });
 
-            // NOTE: Specifications fetch is now handled by the useEffect that watches
-            // category_id / sub_category_id / product_brand, once brandsLoaded is true.
-            // We don't need to manually trigger it here anymore.
+            if (productData.category_id && productData.sub_category_id) {
+                await fetchSpecificationsByCategoryAndSubCategory(
+                    String(productData.category_id), 
+                    String(productData.sub_category_id)
+                );
+            }
 
             if (productData.variants && Array.isArray(productData.variants)) {
                 const formattedVariants = productData.variants.map((v: any) => ({
@@ -354,6 +353,82 @@ const ProductForm = () => {
         }
     };
 
+    // COMMENTED OUT - Not needed
+    // const fetchSpecComparisons = async () => {
+    //     try {
+    //         const response = await axios.get(`${API_URL}/api/products/spec-comparison/${id}`);
+    //         const data = response.data;
+    //         const comparisons = [];
+    //         if (data) {
+    //             if (Array.isArray(data)) {
+    //                 comparisons.push(...data);
+    //             } else {
+    //                 Object.keys(data).forEach(key => {
+    //                     comparisons.push({ ...data[key], spec_type: key });
+    //                 });
+    //             }
+    //         }
+    //         setSpecComparisons(comparisons);
+    //     } catch (error) {
+    //         console.error('Error fetching spec comparisons:', error);
+    //     }
+    // };
+
+    // ============================================
+    // SPEC COMPARISON HANDLERS - COMMENTED OUT
+    // ============================================
+    // const handleSpecComparisonChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    //     const { name, value } = e.target;
+    //     setCurrentSpecComparison(prev => ({ ...prev, [name]: value }));
+    // };
+
+    // const handleAddSpecComparison = () => {
+    //     if (!currentSpecComparison.spec_type) {
+    //         setError('Please enter a spec type');
+    //         return;
+    //     }
+
+    //     const exists = specComparisons.some(s => s.spec_type === currentSpecComparison.spec_type);
+    //     if (exists) {
+    //         setError(`Spec comparison for ${currentSpecComparison.spec_type} already exists. Please edit it instead.`);
+    //         return;
+    //     }
+
+    //     setSpecComparisons(prev => [...prev, { ...currentSpecComparison }]);
+    //     setCurrentSpecComparison({
+    //         spec_type: '',
+    //         bandwidth: '',
+    //         max_data_rate: '',
+    //         internal_design: '',
+    //         typical_applications: ''
+    //     });
+    //     setSuccess('Spec comparison added successfully');
+    //     setTimeout(() => setSuccess(''), 3000);
+    // };
+
+    // const handleEditSpecComparison = (index: number) => {
+    //     setCurrentSpecComparison({ ...specComparisons[index] });
+    //     const updated = specComparisons.filter((_, i) => i !== index);
+    //     setSpecComparisons(updated);
+    // };
+
+    // const handleRemoveSpecComparison = (index: number) => {
+    //     const spec = specComparisons[index];
+    //     if (spec.id && id) {
+    //         axios.delete(`${API_URL}/api/products/spec-comparison/${id}/${spec.spec_type}`)
+    //             .then(() => {
+    //                 const updated = specComparisons.filter((_, i) => i !== index);
+    //                 setSpecComparisons(updated);
+    //                 setSuccess('Spec comparison removed');
+    //                 setTimeout(() => setSuccess(''), 3000);
+    //             })
+    //             .catch(err => console.error('Error deleting spec comparison:', err));
+    //     } else {
+    //         const updated = specComparisons.filter((_, i) => i !== index);
+    //         setSpecComparisons(updated);
+    //     }
+    // };
+
     // ============================================
     // SPECIFICATION HANDLERS
     // ============================================
@@ -372,24 +447,7 @@ const ProductForm = () => {
     // ============================================
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>): void => {
         const { name, value } = e.target;
-
-        setFormData(prev => {
-            const updated = { ...prev, [name]: value };
-
-            // Reset dependent fields when a parent selection changes
-            if (name === 'category_id') {
-                updated.sub_category_id = '';
-                updated.product_brand = '';
-                updated.specifications = {};
-            } else if (name === 'sub_category_id') {
-                updated.product_brand = '';
-                updated.specifications = {};
-            } else if (name === 'product_brand') {
-                updated.specifications = {};
-            }
-
-            return updated;
-        });
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
@@ -431,8 +489,8 @@ const ProductForm = () => {
             setEditingVariantIndex(null);
             setSuccess('Variant updated successfully');
         } else {
-            setVariants(prev => [...prev, {
-                ...currentVariant,
+            setVariants(prev => [...prev, { 
+                ...currentVariant, 
                 _isNew: true,
                 category_name: getCategoryNameById(formData.category_id),
                 sub_category_name: getSubCategoryNameById(formData.sub_category_id),
@@ -568,7 +626,7 @@ const ProductForm = () => {
 
             if (isEditMode) {
                 const productFormData = new FormData();
-
+                
                 const formFields = {
                     product_name: formData.product_name,
                     product_code: formData.product_code,
@@ -582,13 +640,13 @@ const ProductForm = () => {
                     discount: formData.discount,
                     specifications: JSON.stringify(formData.specifications)
                 };
-
+                
                 Object.entries(formFields).forEach(([key, value]) => {
                     if (value !== null && value !== "") {
                         productFormData.append(key, String(value));
                     }
                 });
-
+                
                 if (formData.product_details_pdf) {
                     productFormData.append("product_details_pdf", formData.product_details_pdf);
                 } else if (formData.existing_pdf) {
@@ -618,7 +676,7 @@ const ProductForm = () => {
 
                 for (const variant of variants) {
                     const variantData = new FormData();
-
+                    
                     variantData.append('product_id', String(productId));
                     variantData.append('variant_name', variant.variant_name || '');
                     variantData.append('part_code', variant.part_code || '');
@@ -658,10 +716,24 @@ const ProductForm = () => {
                     }
                 }
 
+                // COMMENTED OUT - Spec Comparison deletion not needed
+                // await axios.delete(`${API_URL}/api/products/spec-comparison/${productId}/all`);
+                
+                // for (const spec of specComparisons) {
+                //     await axios.post(`${API_URL}/api/products/spec-comparison`, {
+                //         product_id: productId,
+                //         spec_type: spec.spec_type,
+                //         bandwidth: spec.bandwidth || '',
+                //         max_data_rate: spec.max_data_rate || '',
+                //         internal_design: spec.internal_design || '',
+                //         typical_applications: spec.typical_applications || ''
+                //     });
+                // }
+
             } else {
                 // Create new product
                 const productFormData = new FormData();
-
+                
                 const formFields = {
                     product_name: formData.product_name,
                     product_code: formData.product_code,
@@ -675,7 +747,7 @@ const ProductForm = () => {
                     discount: formData.discount,
                     specifications: JSON.stringify(formData.specifications)
                 };
-
+                
                 Object.entries(formFields).forEach(([key, value]) => {
                     if (value !== null && value !== "") {
                         productFormData.append(key, String(value));
@@ -696,7 +768,7 @@ const ProductForm = () => {
 
                 for (const variant of variants) {
                     const variantData = new FormData();
-
+                    
                     variantData.append('product_id', String(productId));
                     variantData.append('variant_name', variant.variant_name || '');
                     variantData.append('part_code', variant.part_code || '');
@@ -726,6 +798,18 @@ const ProductForm = () => {
                         { headers: { "Content-Type": "multipart/form-data" } }
                     );
                 }
+
+                // COMMENTED OUT - Spec Comparison creation not needed
+                // for (const spec of specComparisons) {
+                //     await axios.post(`${API_URL}/api/products/spec-comparison`, {
+                //         product_id: productId,
+                //         spec_type: spec.spec_type,
+                //         bandwidth: spec.bandwidth || '',
+                //         max_data_rate: spec.max_data_rate || '',
+                //         internal_design: spec.internal_design || '',
+                //         typical_applications: spec.typical_applications || ''
+                //     });
+                // }
             }
 
             setSuccess(`${isEditMode ? 'Product updated' : 'Product added'} successfully!`);
@@ -946,15 +1030,27 @@ const ProductForm = () => {
                 </div>
 
                 {/* ============================================
-                    PRODUCT SPECIFICATIONS SECTION
+                    PRODUCT SPECIFICATIONS SECTION - DYNAMIC
                     ============================================ */}
                 <div className="form-section">
                     <h3>Product Specifications</h3>
                     <div className="form-grid">
-                        {(!formData.category_id || !formData.sub_category_id || !formData.product_brand) ? (
+                        {/* <div className="form-group">
+                            <label htmlFor="product_series">Product Series</label>
+                            <input
+                                type="text"
+                                id="product_series"
+                                name="product_series"
+                                value={formData.product_series}
+                                onChange={handleInputChange}
+                                placeholder="e.g., GigaSPEED X10D, NETCONNECT"
+                            />
+                        </div> */}
+
+                        {(!formData.category_id || !formData.sub_category_id) ? (
                             <div className="form-group full-width">
                                 <p className="text-muted" style={{ margin: '10px 0', color: '#666' }}>
-                                    Select a category, sub category, and brand to see available specifications.
+                                    Select a category and sub category to see available specifications.
                                 </p>
                             </div>
                         ) : loadingSpecs ? (
@@ -988,6 +1084,151 @@ const ProductForm = () => {
                         )}
                     </div>
                 </div>
+
+                {/* ============================================
+                    SPEC COMPARISON SECTION - COMMENTED OUT
+                    ============================================ */}
+                {/* <div className="form-section">
+                    <button
+                        type="button"
+                        className="section-toggle"
+                        onClick={() => setShowSpecComparison(!showSpecComparison)}
+                    >
+                        <span>📊 Comparison of Specifications</span>
+                        {showSpecComparison ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                    </button>
+
+                    {showSpecComparison && (
+                        <div className="comparison-container">
+                            <div className="comparison-form">
+                                <h4>Add Spec Comparison</h4>
+                                <div className="form-grid comparison-grid">
+                                    <div className="form-group">
+                                        <label>Spec Type *</label>
+                                        <div className="spec-type-wrapper">
+                                            <input
+                                                type="text"
+                                                name="spec_type"
+                                                value={currentSpecComparison.spec_type}
+                                                onChange={handleSpecComparisonChange}
+                                                placeholder="Enter spec type (e.g., CAT 6)"
+                                                list="spec-type-options"
+                                                className="spec-type-input"
+                                            />
+                                            {specTypes.length > 0 && (
+                                                <datalist id="spec-type-options">
+                                                    {specTypes.map((type) => (
+                                                        <option key={type} value={type} />
+                                                    ))}
+                                                </datalist>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label>Bandwidth</label>
+                                        <input
+                                            type="text"
+                                            name="bandwidth"
+                                            value={currentSpecComparison.bandwidth}
+                                            onChange={handleSpecComparisonChange}
+                                            placeholder="e.g., 250 MHz"
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label>Max Data Rate</label>
+                                        <input
+                                            type="text"
+                                            name="max_data_rate"
+                                            value={currentSpecComparison.max_data_rate}
+                                            onChange={handleSpecComparisonChange}
+                                            placeholder="e.g., 1 Gbps (100 m)"
+                                        />
+                                    </div>
+
+                                    <div className="form-group full-width">
+                                        <label>Internal Design</label>
+                                        <input
+                                            type="text"
+                                            name="internal_design"
+                                            value={currentSpecComparison.internal_design}
+                                            onChange={handleSpecComparisonChange}
+                                            placeholder="e.g., Standard pair separation"
+                                        />
+                                    </div>
+
+                                    <div className="form-group full-width">
+                                        <label>Typical Applications</label>
+                                        <input
+                                            type="text"
+                                            name="typical_applications"
+                                            value={currentSpecComparison.typical_applications}
+                                            onChange={handleSpecComparisonChange}
+                                            placeholder="e.g., Offices, LAN, CCTV"
+                                        />
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={handleAddSpecComparison}
+                                    className="btn btn-secondary"
+                                    style={{marginTop:"10px"}}
+                                >
+                                    <Plus className="icon-sm" /> Add Spec Comparison
+                                </button>
+                            </div>
+
+                            {specComparisons.length > 0 && (
+                                <div className="comparison-list">
+                                    <h4>Spec Comparisons ({specComparisons.length})</h4>
+                                    <table className="comparison-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Spec Type</th>
+                                                <th>Bandwidth</th>
+                                                <th>Max Data Rate</th>
+                                                <th>Internal Design</th>
+                                                <th>Typical Applications</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {specComparisons.map((spec, index) => (
+                                                <tr key={index}>
+                                                    <td><strong>{spec.spec_type}</strong></td>
+                                                    <td>{spec.bandwidth || '-'}</td>
+                                                    <td>{spec.max_data_rate || '-'}</td>
+                                                    <td>{spec.internal_design || '-'}</td>
+                                                    <td>{spec.typical_applications || '-'}</td>
+                                                    <td>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleEditSpecComparison(index)}
+                                                            className="btn btn-edit btn-sm"
+                                                            title="Edit"
+                                                        >
+                                                            <Pencil size={14} />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleRemoveSpecComparison(index)}
+                                                            className="btn btn-danger btn-sm"
+                                                            title="Remove"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div> */}
 
                 {/* ============================================
                     VARIANTS SECTION
@@ -1036,8 +1277,16 @@ const ProductForm = () => {
                                         name="spec_type"
                                         value={currentVariant.spec_type}
                                         onChange={handleVariantChange}
-                                        placeholder="Enter spec type (e.g., CAT 6, CAT 6A)"
+                                        placeholder="e.g., CAT 6, CAT 6A"
+                                        list="spec-type-options-variant"
                                     />
+                                    {specTypes.length > 0 && (
+                                        <datalist id="spec-type-options-variant">
+                                            {specTypes.map((type) => (
+                                                <option key={type} value={type} />
+                                            ))}
+                                        </datalist>
+                                    )}
                                 </div>
 
                                 <div className="form-group">

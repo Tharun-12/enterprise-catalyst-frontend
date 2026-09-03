@@ -1725,7 +1725,6 @@
 //   );
 // }
 
-
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { 
@@ -1748,7 +1747,7 @@ import {
 import { NAV_LINKS } from '@/constants';
 import { useApp } from '@/hooks/use-app';
 import { cn } from '@/lib/utils';
-// import { toast } from 'sonner';
+import { toast } from 'sonner'; // Import toast from sonner
 import { useSettings } from '@/hooks/use-settings';
 
 import logo from '@/asstes/mvblogo.png';
@@ -1781,9 +1780,6 @@ export function CustomerHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showAlert, setShowAlert] = useState(false);
-  const [alertMessage, setAlertMessage] = useState('');
-  const [alertType, setAlertType] = useState<'success' | 'error' | 'info'>('success');
   const [user, setUser] = useState<UserSession | null>(null);
   const { wishlist, compareList } = useApp();
   const navigate = useNavigate();
@@ -1824,17 +1820,26 @@ export function CustomerHeader() {
     localStorage.removeItem('rememberMe');
     setUser(null);
     window.dispatchEvent(new Event('authChange'));
-    showAutoDismissAlert('Logged out successfully', 'success');
+    
+    // Use toast instead of showAutoDismissAlert
+    toast.success('Logged out successfully', {
+      duration: 1000, // 1.5 seconds - quick dismissal
+      position: 'top-right',
+      style: {
+        background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+        color: '#ffffff',
+        border: 'none',
+        padding: '14px 24px',
+        borderRadius: '12px',
+        fontSize: '15px',
+        fontWeight: '600',
+        boxShadow: '0 8px 25px rgba(239, 68, 68, 0.4)',
+        marginTop: '70px',
+        letterSpacing: '0.3px',
+      },
+    });
+    
     navigate('/');
-  };
-
-  const showAutoDismissAlert = (message: string, type: 'success' | 'error' | 'info' = 'success', duration: number = 3000) => {
-    setAlertMessage(message);
-    setAlertType(type);
-    setShowAlert(true);
-    setTimeout(() => {
-      setShowAlert(false);
-    }, duration);
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -1851,41 +1856,6 @@ export function CustomerHeader() {
     }
     return location.pathname.startsWith(path);
   };
-
-  const getAlertStyles = () => {
-    switch(alertType) {
-      case 'success':
-        return {
-          bg: 'bg-green-100',
-          icon: 'text-green-600',
-          border: 'border-green-200',
-          progress: 'bg-green-500'
-        };
-      case 'error':
-        return {
-          bg: 'bg-red-100',
-          icon: 'text-red-600',
-          border: 'border-red-200',
-          progress: 'bg-red-500'
-        };
-      case 'info':
-        return {
-          bg: 'bg-blue-100',
-          icon: 'text-blue-600',
-          border: 'border-blue-200',
-          progress: 'bg-blue-500'
-        };
-      default:
-        return {
-          bg: 'bg-green-100',
-          icon: 'text-green-600',
-          border: 'border-green-200',
-          progress: 'bg-green-500'
-        };
-    }
-  };
-
-  const alertStyles = getAlertStyles();
 
   return (
     <>
@@ -1925,7 +1895,7 @@ export function CustomerHeader() {
               </div>
             </Link>
 
-            {/* Navigation Links - Desktop - FIXED */}
+            {/* Navigation Links - Desktop */}
             <nav className="hidden lg:flex items-center gap-1">
               {NAV_LINKS.map((link) => {
                 const active = isActive(link.path);
@@ -1938,7 +1908,6 @@ export function CustomerHeader() {
                       active ? "bg-gray-50/50" : "hover:bg-gray-50"
                     )}
                   >
-                    {/* Icon - Fixed active state */}
                     <span className={cn(
                       "flex-shrink-0 transition-all duration-300",
                       active 
@@ -1948,7 +1917,6 @@ export function CustomerHeader() {
                       {navIcons[link.path] || <LayoutGrid className="w-4 h-4 flex-shrink-0" />}
                     </span>
                     
-                    {/* Text - Fixed active state */}
                     <span className={cn(
                       "transition-all duration-300",
                       active 
@@ -2016,7 +1984,6 @@ export function CustomerHeader() {
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     
-                    {/* My Profile */}
                     <DropdownMenuItem 
                       onClick={() => navigate('/profile')} 
                       className="cursor-pointer hover:bg-pink-50 hover:text-gray-800 focus:bg-pink-50 focus:text-gray-800 text-gray-700"
@@ -2025,7 +1992,6 @@ export function CustomerHeader() {
                       <span>My Profile</span>
                     </DropdownMenuItem>
                     
-                    {/* My Quotations */}
                     <DropdownMenuItem 
                       onClick={() => navigate('/my-quotations')} 
                       className="cursor-pointer hover:bg-pink-50 hover:text-gray-800 focus:bg-pink-50 focus:text-gray-800 text-gray-700"
@@ -2036,7 +2002,6 @@ export function CustomerHeader() {
                     
                     <DropdownMenuSeparator />
                     
-                    {/* Logout */}
                     <DropdownMenuItem 
                       onClick={handleLogout} 
                       className="cursor-pointer text-red-600 hover:bg-red-50 hover:text-red-700 focus:bg-red-50 focus:text-red-700"
@@ -2047,55 +2012,15 @@ export function CustomerHeader() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <div className="relative">
-                  <Link to="/register">
-                    <Button
-                      size="default"
-                      className="hidden md:inline-flex items-center gap-2 bg-gradient-to-r from-pink-500 via-orange-500 to-blue-600 hover:from-pink-600 hover:via-orange-600 hover:to-blue-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-300 rounded-full px-6 py-2.5"
-                    >
-                      <User className="w-4 h-4" />
-                      <span>Register / Login</span>
-                    </Button>
-                  </Link>
-                  
-                  {showAlert && (
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-max min-w-[280px] z-[100] animate-in slide-in-from-top-2 duration-300">
-                      <div className={`bg-white rounded-lg shadow-2xl border ${alertStyles.border} p-3 flex items-center gap-2.5`}>
-                        <div className={`flex-shrink-0 w-8 h-8 rounded-full ${alertStyles.bg} flex items-center justify-center`}>
-                          {alertType === 'success' && (
-                            <svg className={`w-5 h-5 ${alertStyles.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                          )}
-                          {alertType === 'error' && (
-                            <svg className={`w-5 h-5 ${alertStyles.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                          )}
-                          {alertType === 'info' && (
-                            <svg className={`w-5 h-5 ${alertStyles.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">{alertMessage}</p>
-                        </div>
-                        <button 
-                          onClick={() => setShowAlert(false)}
-                          className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                          </svg>
-                        </button>
-                      </div>
-                      <div className="mt-1 h-1 bg-gray-200 rounded-full overflow-hidden">
-                        <div className={`h-full ${alertStyles.progress} rounded-full animate-progress`} style={{ animationDuration: '3s' }}></div>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <Link to="/register">
+                  <Button
+                    size="default"
+                    className="hidden md:inline-flex items-center gap-2 bg-gradient-to-r from-pink-500 via-orange-500 to-blue-600 hover:from-pink-600 hover:via-orange-600 hover:to-blue-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-300 rounded-full px-6 py-2.5"
+                  >
+                    <User className="w-4 h-4" />
+                    <span>Register / Login</span>
+                  </Button>
+                </Link>
               )}
 
               <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -2179,7 +2104,6 @@ export function CustomerHeader() {
                     </div>
                   </form>
                   
-                  {/* Mobile Navigation - FIXED */}
                   <nav className="flex flex-col gap-1">
                     {NAV_LINKS.map((link) => {
                       const active = isActive(link.path);
@@ -2230,26 +2154,6 @@ export function CustomerHeader() {
       </header>
 
       <style>{`
-        @keyframes progress {
-          from { width: 100%; }
-          to { width: 0%; }
-        }
-        .animate-progress {
-          animation: progress 3s linear forwards;
-        }
-        .animate-in {
-          animation: slideIn 0.3s ease-out;
-        }
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateY(-5px) translateX(-50%);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) translateX(-50%);
-          }
-        }
         /* Fix for dropdown menu items to prevent white text on hover */
         [data-radix-dropdown-menu-content] [role="menuitem"]:hover {
           color: inherit !important;

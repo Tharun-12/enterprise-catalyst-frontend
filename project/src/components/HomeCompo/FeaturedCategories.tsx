@@ -92,15 +92,17 @@ const FeaturedCategories: React.FC = () => {
     navigate('/categories');
   };
 
-  const handleCategoryClick = () => {
-    // Navigate to products without any query parameters
-    navigate('/products');
-  };
+  // Update the handleCategoryClick function
+const handleCategoryClick = (categoryName: string) => {
+  // Navigate to products with category parameter
+  navigate(`/products?category=${encodeURIComponent(categoryName)}`);
+};
 
-  const handleSubcategoryClick = () => {
-    // Navigate to products without any query parameters
-    navigate('/products');
-  };
+// Update the handleSubcategoryClick function
+const handleSubcategoryClick = (categoryName: string, _subcategoryName: string) => {
+  // Navigate to products with category parameter (you could also add subcategory)
+  navigate(`/products?category=${encodeURIComponent(categoryName)}`);
+};
 
   // const toggleSubcategories = (categoryId: number, e: React.MouseEvent) => {
   //   e.stopPropagation(); // Prevent triggering the category click
@@ -197,7 +199,7 @@ const FeaturedCategories: React.FC = () => {
                 {/* Main Category Card */}
                 <div 
                   className="p-8 flex flex-col items-center text-center cursor-pointer hover:-translate-y-1 transition-transform duration-300"
-                  onClick={handleCategoryClick}
+                  onClick={() => handleCategoryClick(category.category_name)}
                 >
                   {/* Gradient Icon Background */}
                   <div className={`mb-5 p-4 rounded-2xl bg-gradient-to-br ${color} shadow-lg group-hover:shadow-xl transition-all duration-300`}>
@@ -240,13 +242,13 @@ const FeaturedCategories: React.FC = () => {
                   <div className="border-t border-gray-200 bg-gray-50 px-6 py-4">
                     <div className="flex flex-wrap gap-2 justify-center">
                       {category.subcategories.map((sub) => (
-                        <span
-                          key={sub.id}
-                          className="px-3 py-1 bg-white rounded-full text-sm text-gray-700 border border-gray-200 hover:border-blue-400 hover:text-blue-600 transition-colors cursor-pointer"
-                          onClick={handleSubcategoryClick}
-                        >
-                          {sub.subcategory_name}
-                        </span>
+                       <span
+                            key={sub.id}
+                            className="px-3 py-1 bg-white rounded-full text-sm text-gray-700 border border-gray-200 hover:border-blue-400 hover:text-blue-600 transition-colors cursor-pointer"
+                            onClick={() => handleSubcategoryClick(category.category_name, sub.subcategory_name)}
+                          >
+                            {sub.subcategory_name}
+                          </span>
                       ))}
                     </div>
                   </div>
