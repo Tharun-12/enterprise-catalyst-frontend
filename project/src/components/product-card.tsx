@@ -648,6 +648,9 @@
 // product-card.tsx
 
 // product-card.tsx
+// product-card.tsx - Updated with compare subcategory fix
+
+// product-card.tsx
 import { Link, useNavigate } from 'react-router-dom';
 import { Heart, Eye, BadgeCheck, FileSpreadsheet } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -751,10 +754,6 @@ export function ProductCard({ product }: ProductCardProps) {
   const variants = (product.variants || []) as VariantWithDetails[];
   const selectedVariant = variants.find(v => v.id === selectedVariantId) || variants[0] || null;
 
-  // product-card.tsx - Updated handleWishlist to pass variant ID
-
-  // Find the handleWishlist function and update it:
-
   const handleWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -784,13 +783,11 @@ export function ProductCard({ product }: ProductCardProps) {
     }
     setIsLoading(true);
     try {
-      // Get the selected variant ID
       const variantId = selectedVariant?.id;
       if (inWishlist) {
         await removeFromWishlist(product.id);
         setLocalWishlistState(false);
       } else {
-        // Pass the selected variant ID when adding
         await addToWishlist(product.id, undefined, variantId);
         setLocalWishlistState(true);
       }
@@ -817,7 +814,9 @@ export function ProductCard({ product }: ProductCardProps) {
     }
   };
 
-
+  // ═══════════════════════════════════════════════════════════════
+  // FIXED: toggleCompare - Now passes subcategoryName for guest validation
+  // ═══════════════════════════════════════════════════════════════
   const toggleCompare = async (): Promise<boolean> => {
     if (isCompareLoading) return false;
     if (!inCompare && compareFull) {
@@ -844,9 +843,11 @@ export function ProductCard({ product }: ProductCardProps) {
       if (inCompare) {
         await removeFromCompare(product.id, uid);
       } else {
-        // ✅ Pass the selected variant ID when adding to compare
         const variantId = selectedVariant?.id;
-        await addToCompare(product.id, uid, variantId);
+        // IMPORTANT: Pass subcategory name for guest validation
+        // Use subcategoryName if available, otherwise fallback to categoryName
+        const subCategoryName = (product as any).subcategoryName || product.categoryName || undefined;
+        await addToCompare(product.id, uid, variantId, subCategoryName);
       }
       return true;
     } catch (error) {
@@ -860,10 +861,6 @@ export function ProductCard({ product }: ProductCardProps) {
 
   const handleCompareCheckbox = async (e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
-    // if (inCompare) {
-    //   navigate('/compare');
-    //   return;
-    // }
     await toggleCompare();
   };
 
@@ -970,7 +967,7 @@ export function ProductCard({ product }: ProductCardProps) {
         min_price: minPrice,
         max_price: maxPrice,
         discount: actualDiscount,
-        quantity: quantity, // Always 1
+        quantity: quantity,
         remarks: `Quotation requested for ${product.name} (Qty: ${quantity})`,
         customer_name: user?.name || '',
         customer_mobile: user?.mobile || '',
@@ -1129,30 +1126,7 @@ export function ProductCard({ product }: ProductCardProps) {
     return 'Price on request';
   };
 
-  // Get min/max for discount
-  // const getMinMaxForDiscount = (): { min: number; max: number } => {
-  //   if (selectedVariant) {
-  //     const min = Number(selectedVariant.min_price);
-  //     const max = Number(selectedVariant.max_price);
-  //     const price = Number(selectedVariant.price);
-
-  //     if (Number.isFinite(min) && min > 0) {
-  //       return { min, max: Number.isFinite(max) && max > 0 ? max : min };
-  //     }
-  //     if (Number.isFinite(price) && price > 0) {
-  //       return { min: price, max: price };
-  //     }
-  //   }
-
-  //   if (product.minPrice && product.maxPrice) {
-  //     return { min: Number(product.minPrice), max: Number(product.maxPrice) };
-  //   }
-
-  //   return { min: product.price, max: product.price };
-  // };
-
   const hasDiscount = (product.discountPercentage ?? 0) > 0;
-  // const stock = product.stock ?? 0;
   const hasMultipleVariants = variantColors.length > 1;
 
   // Handle variant selection
@@ -1267,10 +1241,7 @@ export function ProductCard({ product }: ProductCardProps) {
         <div className="mb-2 mt-1">
           {hasDiscount ? (
             <div className="flex flex-wrap items-center gap-2">
-              {/* <span className="text-lg font-bold text-primary">
-                {formatPrice(getMinMaxForDiscount().min * (1 - (product.discountPercentage ?? 0) / 100))}
-              </span> */}
-              <span className="text-sm text-gray-400">
+              <span className="text-lg font-bold text-primary">
                 {getDisplayPrice()}
               </span>
             </div>
@@ -1287,33 +1258,6 @@ export function ProductCard({ product }: ProductCardProps) {
         <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3 flex-1">
           {product.shortDescription}
         </p>
-
-        {/* <div className="flex items-center gap-1.5 mb-3">
-          <div className="flex items-center">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <Star
-                key={star}
-                className={cn(
-                  'w-3.5 h-3.5',
-                  star <= Math.floor(product.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300 dark:text-gray-600'
-                )}
-              />
-            ))}
-          </div>
-          <span className="text-xs text-gray-500 dark:text-gray-400">({product.reviewCount})</span>
-          {stock > 0 && (
-            <span className="text-xs text-green-600 dark:text-green-400 ml-auto">
-              {stock > 10 ? 'In Stock' : `Only ${stock} left`}
-            </span>
-          )}
-        </div> */}
-
-        {/* Quantity - Fixed to 1, just showing it's for 1 item */}
-        {/* <div className="flex items-center gap-2 mb-3">
-          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Qty:</span>
-          <span className="text-sm font-semibold text-gray-900 dark:text-white">1</span>
-          <span className="text-[10px] text-gray-400 ml-1">(Fixed quantity for quotation)</span>
-        </div> */}
 
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">

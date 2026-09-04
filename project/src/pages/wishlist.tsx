@@ -504,7 +504,7 @@ function isApiProduct(item: any): item is ApiProduct {
 
 export function WishlistPage() {
   const navigate = useNavigate();
-  const { wishlistProducts, removeFromWishlist, clearWishlist, fetchWishlist, addToCompare, removeFromCompare, isInCompare, compareList } = useApp();
+  const { wishlistProducts, removeFromWishlist, clearWishlist, fetchWishlist} = useApp();
   const [userId, setUserId] = useState<number | null>(null);
   const [initialLoad, setInitialLoad] = useState(true);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -512,7 +512,7 @@ export function WishlistPage() {
   const [isGeneratingQuotation, setIsGeneratingQuotation] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [quantities, setQuantities] = useState<Record<string, number>>({});
-  const [isCompareLoading, setIsCompareLoading] = useState<Record<string, boolean>>({});
+  const [_isCompareLoading, _setIsCompareLoading] = useState<Record<string, boolean>>({});
   const [_isQuotationLoading, _setIsQuotationLoading] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -866,34 +866,34 @@ export function WishlistPage() {
     }
   }, [selectedProducts, displayProducts, quantities, userId, fetchWishlist, navigate]);
 
-  const handleCompareToggle = async (productId: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  // const _handleCompareToggle = async (productId: string, e: React.MouseEvent) => {
+  //   e.preventDefault();
+  //   e.stopPropagation();
 
-    setIsCompareLoading(prev => ({ ...prev, [productId]: true }));
+  //   setIsCompareLoading(prev => ({ ...prev, [productId]: true }));
     
-    try {
-      const inCompare = isInCompare(productId);
-      if (inCompare) {
-        await removeFromCompare(productId, userId || undefined);
-        toast.success('Removed from compare');
-      } else {
-        if (compareList.length >= 4) {
-          toast.warning('You can compare up to 4 products');
-          setIsCompareLoading(prev => ({ ...prev, [productId]: false }));
-          return;
-        }
-        await addToCompare(productId, userId || undefined);
-        toast.success('Added to compare');
-        navigate('/compare');
-      }
-    } catch (error) {
-      console.error('Error toggling compare:', error);
-      toast.error('Failed to update compare list');
-    } finally {
-      setIsCompareLoading(prev => ({ ...prev, [productId]: false }));
-    }
-  };
+  //   try {
+  //     const inCompare = isInCompare(productId);
+  //     if (inCompare) {
+  //       await removeFromCompare(productId, userId || undefined);
+  //       toast.success('Removed from compare');
+  //     } else {
+  //       if (compareList.length >= 4) {
+  //         toast.warning('You can compare up to 4 products');
+  //         setIsCompareLoading(prev => ({ ...prev, [productId]: false }));
+  //         return;
+  //       }
+  //       await addToCompare(productId, userId || undefined);
+  //       toast.success('Added to compare');
+  //       navigate('/compare');
+  //     }
+  //   } catch (error) {
+  //     console.error('Error toggling compare:', error);
+  //     toast.error('Failed to update compare list');
+  //   } finally {
+  //     setIsCompareLoading(prev => ({ ...prev, [productId]: false }));
+  //   }
+  // };
 
   // Format price
   const formatPrice = (price: number) => {
@@ -1014,7 +1014,7 @@ export function WishlistPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
         {displayProducts.map((product: DisplayProduct) => {
           const isSelected = selectedProducts.has(product.id);
-          const inCompare = isInCompare(product.id);
+          // const inCompare = isInCompare(product.id);
           const maxStock = product.stock || 10;
           const quantity = quantities[product.id] || 1;
           const discount = hasDiscount(product);
@@ -1174,7 +1174,7 @@ export function WishlistPage() {
                 {/* Actions */}
                 <div className="flex flex-col gap-2">
                   {/* Add to Compare */}
-                  <button
+                  {/* <button
                     className={cn(
                       'flex items-center gap-2 mt-1 select-none text-xs font-medium',
                       isCompareLoading[product.id] ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
@@ -1199,7 +1199,7 @@ export function WishlistPage() {
                     {isCompareLoading[product.id] && (
                       <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin text-primary" />
                     )}
-                  </button>
+                  </button> */}
                 </div>
               </div>
             </Card>

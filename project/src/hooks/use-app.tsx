@@ -1251,6 +1251,8 @@
 
 // use-app.tsx - Updated with variant_id support
 
+// use-app.tsx - Updated with variant_id support + guest subcategory validation
+
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { WishlistLead, Inquiry, Product } from '@/types';
 import { toast } from 'sonner';
@@ -1267,7 +1269,7 @@ interface AppContextValue {
   addToWishlist: (productId: string, userId?: number, variantId?: number) => Promise<void>;
   removeFromWishlist: (productId: string, userId?: number) => Promise<void>;
   isInWishlist: (productId: string) => boolean;
-  addToCompare: (productId: string, userId?: number, variantId?: number) => Promise<void>;
+  addToCompare: (productId: string, userId?: number, variantId?: number, subCategoryName?: string) => Promise<void>;
   removeFromCompare: (productId: string, userId?: number) => Promise<void>;
   isInCompare: (productId: string) => boolean;
   clearCompare: (userId?: number) => Promise<void>;
@@ -1295,6 +1297,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
+  // NEW: tracks the subcategory the guest's (non-logged-in) compare list is currently locked to.
+  // Mirrors what the backend does server-side with sub_category_id for logged-in users.
+  const [compareSubCategoryName, setCompareSubCategoryName] = useState<string | null>(null);
+
   // Load wishlist and compare from localStorage on mount
   useEffect(() => {
     // Load wishlist from localStorage
@@ -1320,6 +1326,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } else {
       // Initialize empty compareList in localStorage if not exists
       localStorage.setItem('compareList', JSON.stringify([]));
+    }
+
+    // NEW: Load the guest compare subcategory lock from localStorage
+    const savedSubCat = localStorage.getItem('compareSubCategoryName');
+    if (savedSubCat) {
+      setCompareSubCategoryName(savedSubCat);
     }
 
     // Load user session
@@ -1424,6 +1436,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setCompareList(productIds);
         // Update localStorage
         localStorage.setItem('compareList', JSON.stringify(productIds));
+
+        // NEW: sync the subcategory lock from the server data too, so switching
+        // between logged-in/guest states stays consistent
+        if (result.data.length > 0) {
+          const subCatName = result.data[0].subcategory_name || null;
+          setCompareSubCategoryName(subCatName);
+          if (subCatName) {
+            localStorage.setItem('compareSubCategoryName', subCatName);
+          } else {
+            localStorage.removeItem('compareSubCategoryName');
+          }
+        } else {
+          setCompareSubCategoryName(null);
+          localStorage.removeItem('compareSubCategoryName');
+        }
       } else {
         console.error('Failed to fetch compare list:', result);
       }
@@ -1481,6 +1508,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         console.error('Error syncing compareList from localStorage:', e);
       }
     }
+
+    // NEW: also resync the subcategory lock
+    const savedSubCat = localStorage.getItem('compareSubCategoryName');
+    setCompareSubCategoryName(savedSubCat || null);
   }, []);
 
   // Updated addToWishlist to accept variantId
@@ -1717,9 +1748,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ========================================
   // COMPARE FUNCTIONS - NO LOGIN REQUIRED
   // ========================================
-  // use-app.tsx - Updated addToCompare to accept variant_id
 
-  const addToCompare = useCallback(async (productId: string, userId?: number, variantId?: number) => {
+  const addToCompare = useCallback(async (
+    productId: string,
+    userId?: number,
+    variantId?: number,
+    subCategoryName?: string // NEW: caller passes the product's subcategory_name
+  ) => {
     const uid = userId || currentUserId;
 
     // Check if already in compare list
@@ -1749,7 +1784,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     // If no userId, store in localStorage only (no login required)
     if (!uid) {
+      // NEW: guest-side subcategory guard — mirrors the backend's DB check,
+      // but now fires for guests too, no matter which button triggered addToCompare.
+      if (
+        compareList.length > 0 &&
+        subCategoryName &&
+        compareSubCategoryName &&
+        compareSubCategoryName !== subCategoryName
+      ) {
+        toast.error(
+          `Cannot compare different subcategories. Existing: ${compareSubCategoryName}, New: ${subCategoryName}`,
+          {
+            duration: 3000,
+            position: 'top-right',
+            style: {
+              background: '#EF4444',
+              color: 'white',
+              border: 'none',
+              padding: '12px 24px',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '500',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+              marginTop: '70px',
+            },
+          }
+        );
+        return;
+      }
+
       setCompareList((prev) => [...prev, productId]);
+
+      // NEW: lock the guest compare list to this subcategory once the first
+      // product is added, so later additions from ANY entry point get validated.
+      if (compareList.length === 0 && subCategoryName) {
+        setCompareSubCategoryName(subCategoryName);
+        localStorage.setItem('compareSubCategoryName', subCategoryName);
+      }
+
       // Also store variantId in localStorage for this product
       try {
         const compareData = JSON.parse(localStorage.getItem('compareData') || '{}');
@@ -1848,14 +1920,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         },
       });
     }
-  }, [currentUserId, compareList, fetchCompareFromAPI]);
+  }, [currentUserId, compareList, compareSubCategoryName, fetchCompareFromAPI]);
 
   const removeFromCompare = useCallback(async (productId: string, userId?: number) => {
     const uid = userId || currentUserId;
 
     // If no userId, remove from localStorage only
     if (!uid) {
-      setCompareList((prev) => prev.filter((id) => id !== productId));
+      setCompareList((prev) => {
+        const next = prev.filter((id) => id !== productId);
+        // NEW: unlock the subcategory guard once the guest list is empty again
+        if (next.length === 0) {
+          setCompareSubCategoryName(null);
+          localStorage.removeItem('compareSubCategoryName');
+        }
+        return next;
+      });
       toast.success('Removed from compare', {
         duration: 1000,
         position: 'top-right',
@@ -1951,6 +2031,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // If no userId, clear localStorage only
     if (!uid) {
       setCompareList([]);
+      // NEW: reset the guest subcategory lock
+      setCompareSubCategoryName(null);
+      localStorage.removeItem('compareSubCategoryName');
       toast.success('Compare list cleared', {
         duration: 2000,
         position: 'top-right',
@@ -1979,6 +2062,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       if (result.success) {
         setCompareList([]);
+        // NEW: reset subcategory lock on server-side clear too
+        setCompareSubCategoryName(null);
+        localStorage.removeItem('compareSubCategoryName');
         toast.success(result.message || 'Compare list cleared', {
           duration: 3000,
           position: 'top-right',

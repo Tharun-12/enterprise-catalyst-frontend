@@ -1939,7 +1939,7 @@ export function CustomerHeader() {
               <Link to="/compare">
                 <Button variant="ghost" size="sm" className="relative hover:bg-pink-50 transition-all duration-300">
                   <GitCompare className="w-5 h-5 text-gray-600" />
-                  {user && compareList.length > 0 && (
+                  {compareList.length > 0 && (
                     <Badge className="absolute -top-1 -right-1 h-4 min-w-5 px-1 flex items-center justify-center text-[10px] bg-gradient-to-r from-pink-500 via-orange-500 to-blue-600 text-white border-0">
                       {compareList.length}
                     </Badge>

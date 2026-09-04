@@ -1209,7 +1209,12 @@ export function ComparePage() {
 
     try {
       const userId = getUserId();
-      await addToCompare(productId, userId || undefined);
+        await addToCompare(
+            productId,
+            userId || undefined,
+            undefined,
+            selectedProduct.subcategory_name // NEW: feeds the guest/guard subcategory check
+          );
     } catch (error: any) {
       console.error('Error adding to compare:', error);
       if (error?.response?.data?.message?.includes('different subcategories')) {
