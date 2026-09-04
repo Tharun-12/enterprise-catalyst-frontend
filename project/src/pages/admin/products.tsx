@@ -11,39 +11,41 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { toast } from 'sonner';
 import { baseurl } from '@/Baseurl/baseurl';
 
-// Updated interface to match API response
+// Updated Product interface with proper variant structure
 interface Product {
   id: number;
   product_name: string;
   product_code: string;
-  product_category_id: number;
+  product_category_id: number | null;
   product_brand: string;
   product_description: string;
-  price: string;
-  min_price: string;
-  max_price: string;
+  min_price: string | null;
+  max_price: string | null;
   warranty: string;
   created_at: string;
   updated_at: string;
   category_name: string;
-  subcategory_name: string; // Added subcategory_name
+  subcategory_name: string;
   product_details_pdf: string;
-  dimensions: string;
-  specifications: string;
-  weight: string;
   discount: string;
+  specifications: any;
   variants?: Array<{
     id: number;
     product_id: number;
-    color_name: string;
-    color_hex: string;
-    price: string;
+    variant_name: string;
+    part_code: string;
+    color: string;
+    size: string;
+    availability: string;
+    image_url: string; // Can be JSON string or direct URL
     stock: number;
-    image_url: string;
+    min_price: string;
+    max_price: string;
+    category_id: number;
+    sub_category_id: number;
   }>;
 }
 
-// Updated Category interface to match API response
 interface Category {
   id: number;
   category_name: string;
@@ -51,7 +53,6 @@ interface Category {
   updated_at: string;
 }
 
-// API Response types
 interface ProductsResponse {
   success: boolean;
   data: Product[];
@@ -73,7 +74,6 @@ interface DeleteResponse {
   message?: string;
 }
 
-// Sort types
 type SortField = 'name' | 'createdAt';
 type SortDirection = 'asc' | 'desc';
 
@@ -95,8 +95,8 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
   const [pageSize, setPageSize] = useState<number>(10);
   const [totalProducts, setTotalProducts] = useState<number>(0);
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
-  // Fetch products and categories
   useEffect(() => {
     fetchProducts();
     fetchCategories();
@@ -152,11 +152,9 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
     }
   };
 
-  // Filter, sort, and paginate products
   const filteredAndSortedProducts = useMemo((): Product[] => {
     let result = [...products];
     
-    // Apply search filter
     if (search && products.length > 0) {
       const q = search.toLowerCase();
       result = result.filter((p) => 
@@ -166,14 +164,12 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
       );
     }
     
-    // Apply category filter
     if (categoryFilter !== 'all') {
       result = result.filter((p) => 
         p.product_category_id === parseInt(categoryFilter)
       );
     }
     
-    // Apply sorting
     result.sort((a, b) => {
       let cmp = 0;
       if (sortField === 'name') {
@@ -214,22 +210,74 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
     }
   };
 
-  const getProductImage = (product: Product): string => {
-    if (product.variants && product.variants.length > 0) {
-      return product.variants[0].image_url;
-    }
-    return '/placeholder-image.jpg';
-  };
-
-  const getImageUrl = (imageUrl: string): string => {
-    if (!imageUrl || imageUrl === '/placeholder-image.jpg') {
+  /**
+   * Extract the first variant image URL from a product
+   * Handles both JSON array format and direct string format
+   */
+  const getFirstVariantImage = (product: Product): string => {
+    if (!product.variants || product.variants.length === 0) {
       return '/placeholder-image.jpg';
     }
-    if (imageUrl.startsWith('http')) {
+
+    const firstVariant = product.variants[0];
+    const imageUrl = firstVariant.image_url;
+    
+    if (!imageUrl) {
+      return '/placeholder-image.jpg';
+    }
+
+    try {
+      // Try to parse as JSON array (format: "[\"/uploads/products/image.jpg\"]")
+      const parsed = JSON.parse(imageUrl);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed[0]; // Return first image from array
+      }
+      return imageUrl; // If parsed but not an array, return as is
+    } catch {
+      // If not JSON, treat as direct URL string
       return imageUrl;
     }
-    const normalizedUrl = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
-    return `${baseurl}${normalizedUrl}`;
+  };
+
+  /**
+   * Get the full image URL with base URL
+   */
+  const getImageUrl = (imagePath: string): string => {
+    if (!imagePath || imagePath === '/placeholder-image.jpg') {
+      return '/placeholder-image.jpg';
+    }
+    
+    // If it's already a full URL, return as is
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+    
+    // Ensure path starts with '/'
+    const normalizedPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+    return `${baseurl}${normalizedPath}`;
+  };
+
+  /**
+   * Get product display image with error handling
+   */
+  const getProductDisplayImage = (product: Product): string => {
+    const imageKey = `product-${product.id}`;
+    
+    // If we already had an error loading this image, use placeholder
+    if (imageErrors[imageKey]) {
+      return '/placeholder-image.jpg';
+    }
+
+    const firstVariantImage = getFirstVariantImage(product);
+    return getImageUrl(firstVariantImage);
+  };
+
+  /**
+   * Handle image load errors
+   */
+  const handleImageError = (productId: number): void => {
+    const imageKey = `product-${productId}`;
+    setImageErrors(prev => ({ ...prev, [imageKey]: true }));
   };
 
   const handleEditClick = (productId: number): void => {
@@ -248,7 +296,6 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
     }
   };
 
-  // Handle page size change
   const handlePageSizeChange = (value: string): void => {
     setPageSize(Number(value));
     setPage(1);
@@ -309,7 +356,6 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
               ))}
             </SelectContent>
           </Select>
-          {/* Add Sort Controls */}
           <Select value={sortField} onValueChange={(value: SortField) => setSortField(value)}>
             <SelectTrigger className="w-[140px] h-9">
               <SelectValue placeholder="Sort by" />
@@ -356,74 +402,90 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
                   </td>
                 </tr>
               ) : (
-                paginated.map((product, index) => (
-                  <tr key={product.id} className="border-b hover:bg-muted/30 transition-colors">
-                    <td className="p-3 text-sm">
-                      {(page - 1) * pageSize + index + 1}
-                    </td>
-                    <td className="p-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden shrink-0">
-                          <img 
-                            src={getImageUrl(getProductImage(product))} 
-                            alt={product.product_name} 
-                            className="w-full h-full object-cover"
-                            onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                              (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
-                            }}
-                          />
+                paginated.map((product, index) => {
+                  const displayImage = getProductDisplayImage(product);
+                  const imageKey = `product-${product.id}`;
+                  const hasError = imageErrors[imageKey] || false;
+                  
+                  return (
+                    <tr key={product.id} className="border-b hover:bg-muted/30 transition-colors">
+                      <td className="p-3 text-sm">
+                        {(page - 1) * pageSize + index + 1}
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden shrink-0">
+                            {!hasError ? (
+                              <img 
+                                src={displayImage}
+                                alt={product.product_name}
+                                className="w-full h-full object-cover"
+                                onError={() => handleImageError(product.id)}
+                                loading="lazy"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400 text-xs">
+                                No Image
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-medium text-sm truncate max-w-[200px]">{product.product_name}</div>
+                            <div className="text-xs text-muted-foreground">{product.product_code || 'No SKU'}</div>
+                            {product.variants && product.variants.length > 0 && (
+                              <div className="text-xs text-muted-foreground">
+                                {product.variants.length} variant{product.variants.length > 1 ? 's' : ''}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <div className="font-medium text-sm truncate max-w-[200px]">{product.product_name}</div>
-                          <div className="text-xs text-muted-foreground">{product.product_code || 'No SKU'}</div>
+                      </td>
+                      <td className="p-3 hidden md:table-cell">
+                        <Badge variant="outline" className="text-xs">{product.category_name || 'N/A'}</Badge>
+                      </td>
+                      <td className="p-3 hidden md:table-cell">
+                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                          {product.subcategory_name || 'N/A'}
+                        </Badge>
+                      </td>
+                      <td className="p-3 hidden lg:table-cell text-sm">{product.product_brand || 'N/A'}</td>
+                      <td className="p-3 hidden lg:table-cell text-sm text-muted-foreground">
+                        {new Date(product.created_at).toLocaleDateString('en-IN')}
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8" 
+                            onClick={() => handleViewClick(product.id)}
+                            title="View Product Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8" 
+                            onClick={() => handleEditClick(product.id)}
+                            title="Edit Product"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-destructive hover:text-destructive" 
+                            onClick={() => setDeleteTarget(product)}
+                            title="Delete Product"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
-                      </div>
-                    </td>
-                    <td className="p-3 hidden md:table-cell">
-                      <Badge variant="outline" className="text-xs">{product.category_name || 'N/A'}</Badge>
-                    </td>
-                    <td className="p-3 hidden md:table-cell">
-                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                        {product.subcategory_name || 'N/A'}
-                      </Badge>
-                    </td>
-                    <td className="p-3 hidden lg:table-cell text-sm">{product.product_brand || 'N/A'}</td>
-                    <td className="p-3 hidden lg:table-cell text-sm text-muted-foreground">
-                      {new Date(product.created_at).toLocaleDateString('en-IN')}
-                    </td>
-                    <td className="p-3">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8" 
-                          onClick={() => handleViewClick(product.id)}
-                          title="View Product Details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8" 
-                          onClick={() => handleEditClick(product.id)}
-                          title="Edit Product"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 text-destructive hover:text-destructive" 
-                          onClick={() => setDeleteTarget(product)}
-                          title="Delete Product"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

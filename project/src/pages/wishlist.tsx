@@ -377,7 +377,7 @@
 
 // src/pages/wishlist.tsx - Fixed with proper min/max price calculation from variants
 
-// src/pages/wishlist.tsx - Fixed with min/max price from variants
+// src/pages/wishlist.tsx - Fixed with proper image handling
 import { Link, useNavigate } from 'react-router-dom';
 import { Heart, ArrowRight, Trash2, Loader2, FileText, Eye, BadgeCheck, Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -460,6 +460,44 @@ interface DisplayProduct {
   stock: number;
 }
 
+/**
+ * Helper function to extract image URL from variant image_url field
+ * Handles both JSON array format and direct string format
+ */
+const extractImageUrl = (imageUrl: string | undefined | null): string | null => {
+  if (!imageUrl) return null;
+  
+  try {
+    // Try to parse as JSON array (format: "[\"/uploads/products/image.jpg\"]")
+    const parsed = JSON.parse(imageUrl);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed[0];
+    }
+    return imageUrl;
+  } catch {
+    // If not JSON, treat as direct URL string
+    return imageUrl;
+  }
+};
+
+/**
+ * Helper function to get full image URL with base URL
+ */
+const getFullImageUrl = (imagePath: string | null): string => {
+  if (!imagePath) {
+    return 'https://via.placeholder.com/400x400?text=No+Image';
+  }
+  
+  // If it's already a full URL, return as is
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+  
+  // Ensure path starts with '/'
+  const normalizedPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+  return `${baseurl}${normalizedPath}`;
+};
+
 function isApiProduct(item: any): item is ApiProduct {
   return item && typeof item === 'object' && 'product_name' in item && 'product_code' in item;
 }
@@ -499,7 +537,7 @@ export function WishlistPage() {
     }
   }, []);
 
-  // Update the displayProducts useMemo to use the selected variant
+  // Update the displayProducts useMemo to use the selected variant with proper image handling
   const displayProducts = useMemo((): DisplayProduct[] => {
     if (!wishlistProducts || wishlistProducts.length === 0) {
       return [];
@@ -510,17 +548,26 @@ export function WishlistPage() {
     return products
       .filter(isApiProduct)
       .map((p: ApiProduct) => {
-        // Find the selected variant (marked by backend)
+        // Find the selected variant (marked by backend) or use first variant
         const selectedVariant = p.variants?.find((v: any) => v.is_selected) || p.variants?.[0];
         
-        let image = 'https://via.placeholder.com/400x400';
+        // Extract image URL from variant - handles both JSON array and string formats
+        let image = 'https://via.placeholder.com/400x400?text=No+Image';
         if (selectedVariant?.image_url) {
-          image = `${baseurl}${selectedVariant.image_url}`;
+          const extracted = extractImageUrl(selectedVariant.image_url);
+          if (extracted) {
+            image = getFullImageUrl(extracted);
+          }
         }
         
-        const galleryImages = p.variants?.map(v => 
-          v.image_url ? `${baseurl}${v.image_url}` : null
-        ).filter((url): url is string => Boolean(url)) || [];
+        // Build gallery images from all variants with proper image extraction
+        const galleryImages = p.variants?.map(v => {
+          const extracted = extractImageUrl(v.image_url);
+          return extracted ? getFullImageUrl(extracted) : null;
+        }).filter((url): url is string => Boolean(url)) || [];
+        
+        // If no gallery images, use the main image
+        const finalGallery = galleryImages.length > 0 ? galleryImages : [image];
         
         const totalStock = p.variants?.reduce((sum, v) => sum + v.stock, 0) || 0;
         
@@ -558,7 +605,7 @@ export function WishlistPage() {
           discount: parseFloat(p.discount) || 0,
           rating: 4.5,
           reviewCount: 0,
-          gallery: galleryImages.length > 0 ? galleryImages : [image],
+          gallery: finalGallery,
           image: image,
           isPopular: false,
           isNew: false,
@@ -626,17 +673,12 @@ export function WishlistPage() {
     }
   };
 
-  // ═══════════════════════════════════════════════════════════════
-  // FIXED: handleRemove - No duplicate toast notification
-  // ═══════════════════════════════════════════════════════════════
   const handleRemove = useCallback(async (productId: string): Promise<void> => {
     if (removingId) return;
     
     setRemovingId(productId);
     try {
-      // REMOVED: toast.success('Removed from wishlist') - handled by useApp
       await removeFromWishlist(productId, userId || undefined);
-      // Toast is shown inside removeFromWishlist in useApp
       
       if (userId) {
         await fetchWishlist(userId);
@@ -669,9 +711,6 @@ export function WishlistPage() {
     }
   }, [removeFromWishlist, userId, fetchWishlist, removingId]);
 
-  // ═══════════════════════════════════════════════════════════════
-  // FIXED: handleClearAll - No duplicate toast notifications
-  // ═══════════════════════════════════════════════════════════════
   const handleClearAll = useCallback(async (): Promise<void> => {
     if (isClearing) return;
     
@@ -683,7 +722,6 @@ export function WishlistPage() {
     try {
       if (userId) {
         await clearWishlist(userId);
-        // Toast is shown inside clearWishlist in useApp
         await fetchWishlist(userId);
       } else {
         displayProducts.forEach(async (p) => {
@@ -827,101 +865,6 @@ export function WishlistPage() {
       setIsGeneratingQuotation(false);
     }
   }, [selectedProducts, displayProducts, quantities, userId, fetchWishlist, navigate]);
-
-  // const handleIndividualQuotation = async (productId: string, e: React.MouseEvent) => {
-  //   e.preventDefault();
-  //   e.stopPropagation();
-
-  //   const session = localStorage.getItem('userSession');
-  //   if (!session) {
-  //     toast.error('Please login to request a quotation', {
-  //       duration: 3000,
-  //       position: 'top-right',
-  //       style: {
-  //         background: '#EF4444',
-  //         color: 'white',
-  //         border: 'none',
-  //         padding: '12px 24px',
-  //         borderRadius: '8px',
-  //         fontSize: '14px',
-  //         fontWeight: '500',
-  //         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-  //         marginTop: '70px',
-  //       },
-  //       action: {
-  //         label: 'Login',
-  //         onClick: () => window.location.href = '/login'
-  //       }
-  //     });
-  //     setTimeout(() => {
-  //       window.location.href = '/login';
-  //     }, 1500);
-  //     return;
-  //   }
-
-  //   setIsQuotationLoading(prev => ({ ...prev, [productId]: true }));
-
-  //   try {
-  //     const product = displayProducts.find(p => p.id === productId);
-  //     if (!product) throw new Error('Product not found');
-
-  //     const quantity = quantities[productId] || 1;
-      
-  //     const payload = {
-  //       user_id: userId,
-  //       product_id: parseInt(productId),
-  //       product_name: product.name,
-  //       product_code: product.sku,
-  //       product_brand: product.brandName,
-  //       price: product.price,
-  //       min_price: product.minPrice || null,
-  //       max_price: product.maxPrice || null,
-  //       discount: product.discountPercentage || 0,
-  //       quantity: quantity,
-  //       remarks: `Quotation requested for ${product.name} (Qty: ${quantity})`,
-  //     };
-
-  //     const response = await axios.post(`${baseurl}/api/quotations/single`, payload);
-
-  //     if (response.data.success) {
-  //       toast.success(`Quotation requested for ${quantity} item(s)!`, {
-  //         duration: 3000,
-  //         position: 'top-right',
-  //         style: {
-  //           background: '#10B981',
-  //           color: 'white',
-  //           border: 'none',
-  //           padding: '12px 24px',
-  //           borderRadius: '8px',
-  //           fontSize: '14px',
-  //           fontWeight: '500',
-  //           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-  //           marginTop: '70px',
-  //         },
-  //       });
-  //       navigate('/my-quotations');
-  //     }
-  //   } catch (error) {
-  //     console.error('Error submitting quotation:', error);
-  //     toast.error('Failed to submit quotation request. Please try again.', {
-  //       duration: 3000,
-  //       position: 'top-right',
-  //       style: {
-  //         background: '#EF4444',
-  //         color: 'white',
-  //         border: 'none',
-  //         padding: '12px 24px',
-  //         borderRadius: '8px',
-  //         fontSize: '14px',
-  //         fontWeight: '500',
-  //         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-  //         marginTop: '70px',
-  //       },
-  //     });
-  //   } finally {
-  //     setIsQuotationLoading(prev => ({ ...prev, [productId]: false }));
-  //   }
-  // };
 
   const handleCompareToggle = async (productId: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -1139,7 +1082,7 @@ export function WishlistPage() {
                   loading="lazy"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x400';
+                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x400?text=No+Image';
                   }}
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
@@ -1230,39 +1173,6 @@ export function WishlistPage() {
 
                 {/* Actions */}
                 <div className="flex flex-col gap-2">
-                  {/* <div className="flex items-center gap-2">
-                    <Button 
-                      asChild 
-                      size="sm" 
-                      className="flex-1 h-9 text-xs rounded-full bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl transition-all"
-                    >
-                      <Link to={`/products/${product.slug}`}>
-                        View Details
-                      </Link>
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className={cn(
-                        'flex-1 h-9 text-xs rounded-full border-primary/30 text-primary hover:bg-primary hover:text-white transition-all duration-200',
-                        isQuotationLoading[product.id] && 'opacity-50 cursor-not-allowed'
-                      )}
-                      onClick={(e) => handleIndividualQuotation(product.id, e)}
-                      disabled={isQuotationLoading[product.id]}
-                      title="Request for Quotation"
-                    >
-                      {isQuotationLoading[product.id] ? (
-                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mx-auto" />
-                      ) : (
-                        <>
-                          <FileSpreadsheet className="w-4 h-4 mr-1.5" />
-                          <span>Quote</span>
-                        </>
-                      )}
-                    </Button>
-                  </div> */}
-
                   {/* Add to Compare */}
                   <button
                     className={cn(

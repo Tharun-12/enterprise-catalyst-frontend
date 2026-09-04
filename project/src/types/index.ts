@@ -38,18 +38,17 @@ export interface SpecGroup {
   fields: { key: string; label: string; value: string }[];
 }
 
-// src/types/index.ts
 export interface Variant {
   id: number;
   color_name: string;
-  color: string; // Add this for color name
+  color: string;
   color_hex: string;
-  price?: string; // Make optional
-  min_price?: string; // Add this
-  max_price?: string; // Add this
+  price?: string | number;
+  min_price?: string | number;
+  max_price?: string | number;
   stock: number;
   image_url: string;
-  // Additional fields
+  full_image_url?: string;
   variant_name?: string;
   part_code?: string;
   category?: string;
@@ -62,10 +61,9 @@ export interface Variant {
   datasheet_url?: string;
 }
 
-
 export interface DownloadResource {
   name: string;
-  type: 'pdf' | 'datasheet' | 'manual' | 'brochure';
+  type: 'pdf' | 'datasheet' | 'manual' | 'brochure' | 'zip' | 'file';
   size: string;
   url: string;
 }
@@ -79,7 +77,6 @@ export interface ProductVariant {
   image_url: string;
 }
 
-// src/types/index.ts - Update Product interface
 export interface Product {
   id: string;
   name: string;
@@ -89,8 +86,8 @@ export interface Product {
   brandName: string;
   categoryId: string;
   categoryName: string;
-  subcategoryId?: string; 
-  subcategoryName?: string; 
+  subcategoryId?: string;
+  subcategoryName?: string;
   shortDescription: string;
   description: string;
   gallery: string[];
@@ -107,14 +104,16 @@ export interface Product {
   status: 'active' | 'inactive' | 'draft';
   isPopular: boolean;
   isNew: boolean;
-  rating: number;
-  reviewCount: number;
-  downloads: { name: string; type: 'pdf' | 'zip' | 'file'; size: string; url: string }[];
+  rating?: number; // Made optional
+  reviewCount?: number; // Made optional
+  downloads: DownloadResource[];
   createdAt: string;
   warranty: string;
   variants?: Variant[];
   hasVariants: boolean;
   stock: number;
+  // Additional fields from API
+  productType?: string;
 }
 
 export interface WishlistLead {

@@ -1,5 +1,4 @@
-// products.tsx - Fixed version with proper brand filtering
-// products.tsx - Fixed version with proper brand filtering and scroll to top on filter change
+// products.tsx - Fixed version with proper image handling
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -110,6 +109,44 @@ const validNumber = (value: unknown): number | undefined => {
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
+/**
+ * Helper function to extract image URL from variant image_url field
+ * Handles both JSON array format and direct string format
+ */
+const extractImageUrl = (imageUrl: string | undefined | null): string | null => {
+  if (!imageUrl) return null;
+  
+  try {
+    // Try to parse as JSON array (format: "[\"/uploads/products/image.jpg\"]")
+    const parsed = JSON.parse(imageUrl);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed[0];
+    }
+    return imageUrl;
+  } catch {
+    // If not JSON, treat as direct URL string
+    return imageUrl;
+  }
+};
+
+/**
+ * Helper function to get full image URL with base URL
+ */
+const getFullImageUrl = (imagePath: string | null): string => {
+  if (!imagePath) {
+    return 'https://via.placeholder.com/400x400?text=No+Image';
+  }
+  
+  // If it's already a full URL, return as is
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+  
+  // Ensure path starts with '/'
+  const normalizedPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+  return `${baseurl}${normalizedPath}`;
+};
+
 // ---- Transform API product into the app-wide `Product` type ----
 const transformProduct = (
   product: ApiProduct,
@@ -119,11 +156,14 @@ const transformProduct = (
   const category = categories.find(c => c.id === product.category_id || c.id === product.product_category_id);
   const brand = brands.find(b => b.brand_name === product.product_brand);
 
-  const galleryImages = product.variants?.map(v =>
-    v.image_url ? `${baseurl}${v.image_url}` : null
-  ).filter(Boolean) as string[] || [];
+  // Extract images from variants - handle both JSON array and string formats
+  const galleryImages = product.variants?.map(v => {
+    const extracted = extractImageUrl(v.image_url);
+    return extracted ? getFullImageUrl(extracted) : null;
+  }).filter(Boolean) as string[] || [];
 
-  const defaultImage = 'https://via.placeholder.com/400x400';
+  // If no gallery images, use placeholder
+  const defaultImage = 'https://via.placeholder.com/400x400?text=No+Image';
   const gallery = galleryImages.length > 0 ? galleryImages : [defaultImage];
 
   const discountNum = parseFloat(product.discount || '0');
@@ -244,27 +284,31 @@ const transformProduct = (
       : [],
     createdAt: product.created_at,
     warranty: product.warranty || 'Standard warranty',
-    variants: product.variants?.map(v => ({
-      id: v.id,
-      color_name: v.color_name || v.color || 'Default',
-      color: v.color || v.color_name || 'Default',
-      color_hex: v.color_hex || '#CCCCCC',
-      price: v.price ?? undefined,
-      min_price: v.min_price ?? undefined,
-      max_price: v.max_price ?? undefined,
-      stock: v.stock || 0,
-      image_url: v.image_url || '',
-      variant_name: v.variant_name,
-      part_code: v.part_code,
-      category: v.category,
-      sub_category: v.sub_category,
-      brand: v.brand,
-      description: v.description,
-      spec_type: v.spec_type,
-      size: v.size,
-      availability: v.availability,
-      datasheet_url: v.datasheet_url,
-    })),
+    variants: product.variants?.map(v => {
+      const extractedImage = extractImageUrl(v.image_url);
+      return {
+        id: v.id,
+        color_name: v.color_name || v.color || 'Default',
+        color: v.color || v.color_name || 'Default',
+        color_hex: v.color_hex || '#CCCCCC',
+        price: v.price ?? undefined,
+        min_price: v.min_price ?? undefined,
+        max_price: v.max_price ?? undefined,
+        stock: v.stock || 0,
+        image_url: extractedImage || '',
+        full_image_url: extractedImage ? getFullImageUrl(extractedImage) : '',
+        variant_name: v.variant_name,
+        part_code: v.part_code,
+        category: v.category,
+        sub_category: v.sub_category,
+        brand: v.brand,
+        description: v.description,
+        spec_type: v.spec_type,
+        size: v.size,
+        availability: v.availability,
+        datasheet_url: v.datasheet_url,
+      };
+    }),
     hasVariants: (product.variants?.length || 0) > 0,
     stock: product.variants?.reduce((sum, v) => sum + v.stock, 0) || 0,
   };
@@ -282,9 +326,7 @@ export function ProductsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(9);
 
-  // ═══════════════════════════════════════════════════════════════
   // Ref for scrolling to products grid
-  // ═══════════════════════════════════════════════════════════════
   const productsGridRef = useRef<HTMLDivElement>(null);
 
   const categorySlug = searchParams.get('category');
@@ -295,7 +337,7 @@ export function ProductsPage() {
     return name.toLowerCase().replace(/\s+/g, '-');
   };
 
-  // Initialize filters state FIRST
+  // Initialize filters state
   const [filters, setFilters] = useState<FilterState>({
     category: categorySlug,
     subcategory: null,
@@ -307,53 +349,37 @@ export function ProductsPage() {
     maxPrice: undefined,
   });
 
-  // ═══════════════════════════════════════════════════════════════
-  // SCROLL TO TOP FUNCTION - scrolls to products grid
-  // ═══════════════════════════════════════════════════════════════
+  // Scroll to products function
   const scrollToProducts = () => {
-    // Use requestAnimationFrame to ensure DOM is updated
     requestAnimationFrame(() => {
       if (productsGridRef.current) {
-        const yOffset = -80; // Offset for sticky header
+        const yOffset = -80;
         const y = productsGridRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
         window.scrollTo({ top: y, behavior: 'smooth' });
       }
     });
   };
 
-  // ═══════════════════════════════════════════════════════════════
-  // UPDATED: Filter change handler with scroll to top
-  // ═══════════════════════════════════════════════════════════════
+  // Filter change handler with scroll to top
   const handleFilterChange = (newFilters: FilterState) => {
     setFilters(newFilters);
     setCurrentPage(1);
-    // Use setTimeout to ensure state update triggers re-render before scrolling
     setTimeout(scrollToProducts, 150);
   };
 
-  // ═══════════════════════════════════════════════════════════════
-  // UPDATED: Search handler with scroll to top
-  // ═══════════════════════════════════════════════════════════════
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFilters({ ...filters, search: e.target.value });
     setCurrentPage(1);
-    // Debounce scroll to avoid excessive scrolling while typing
     clearTimeout((handleSearchChange as any).timeout);
     (handleSearchChange as any).timeout = setTimeout(scrollToProducts, 300);
   };
 
-  // ═══════════════════════════════════════════════════════════════
-  // UPDATED: Sort handler with scroll to top
-  // ═══════════════════════════════════════════════════════════════
   const handleSortChange = (value: string) => {
     setFilters({ ...filters, sort: value });
     setCurrentPage(1);
     setTimeout(scrollToProducts, 150);
   };
 
-  // ═══════════════════════════════════════════════════════════════
-  // UPDATED: Clear filters handler with scroll to top
-  // ═══════════════════════════════════════════════════════════════
   const handleClearFilters = () => {
     setFilters({ 
       category: filters.category, 
@@ -472,13 +498,12 @@ export function ProductsPage() {
     return options;
   }, [products]);
 
-  // Calculate global price range - FIXED to include all variant prices
+  // Calculate global price range
   const priceRange = useMemo(() => {
     let min = Infinity;
     let max = -Infinity;
 
     products.forEach((product) => {
-      // Check all variants for their individual prices
       if (product.variants && product.variants.length > 0) {
         product.variants.forEach((variant) => {
           const variantMin = validNumber(variant.min_price) ?? validNumber(variant.price);
@@ -492,7 +517,6 @@ export function ProductsPage() {
           }
         });
       } else {
-        // Fallback to product-level prices if no variants
         const prodMin = validNumber(product.min_price) ?? validNumber(product.price);
         const prodMax = validNumber(product.max_price) ?? validNumber(product.price);
         
@@ -549,19 +573,16 @@ export function ProductsPage() {
   const availableBrands = useMemo(() => {
     let filteredBrands = brands;
 
-    // Filter by category
     if (filters.category) {
       const categoryId = parseInt(filters.category);
       filteredBrands = filteredBrands.filter(b => b.category_id === categoryId);
     }
 
-    // Filter by subcategory
     if (filters.subcategory) {
       const subcategoryId = parseInt(filters.subcategory);
       filteredBrands = filteredBrands.filter(b => b.sub_category_id === subcategoryId);
     }
 
-    // Transform to Brand type
     return filteredBrands.map(b => ({
       id: String(b.id),
       name: b.brand_name,
@@ -582,16 +603,13 @@ export function ProductsPage() {
   }, [products, categories, brands]);
 
   const currentCategory = categorySlug
-  ? categories.find((c) => 
-      createSlug(c.category_name) === categorySlug || 
-      c.category_name === categorySlug
-    )
-  : undefined;
+    ? categories.find((c) => 
+        createSlug(c.category_name) === categorySlug || 
+        c.category_name === categorySlug
+      )
+    : undefined;
 
-    
-  // Also update the useEffect to handle both slug and name:
   useEffect(() => {
-    // Find category by slug or name
     let categoryId = null;
     if (categorySlug) {
       const foundCategory = categories.find(c => 
@@ -614,8 +632,6 @@ export function ProductsPage() {
       maxPrice: undefined,
     }));
     setCurrentPage(1);
-    // Scroll to top when category changes (navigation already handled by ScrollToTopWrapper)
-    // But we still want to scroll to products grid
     setTimeout(scrollToProducts, 200);
   }, [categorySlug, searchQuery, categories]);
 
@@ -625,185 +641,185 @@ export function ProductsPage() {
     return () => clearTimeout(timer);
   }, [filters]);
 
-  // FIXED: Filter products based on category, subcategory, and price (variant-aware)
-  const filteredProducts = useMemo(() => {
-    let result = transformedProducts.filter((p) => p.status === 'active');
+  // Filter products based on category, subcategory, and price
+ // Filter products based on category, subcategory, and price
+const filteredProducts = useMemo(() => {
+  let result = transformedProducts.filter((p) => p.status === 'active');
 
-    // Filter by category - check both category_id and category_name
-    if (filters.category) {
-      result = result.filter((p) => {
-        const categoryMatch = p.categoryId === filters.category;
-        const categoryNameMatch = p.categoryName.toLowerCase() === 
-          categories.find(c => String(c.id) === filters.category)?.category_name?.toLowerCase();
-        const productApi = products.find(api => String(api.id) === p.id);
-        const variantCategoryMatch = productApi?.variants?.some(v => 
-          String(v.category) === filters.category || 
-          v.category === categories.find(c => String(c.id) === filters.category)?.category_name
-        ) || false;
-        
-        return categoryMatch || categoryNameMatch || variantCategoryMatch;
-      });
-    }
+  // Filter by category
+  if (filters.category) {
+    result = result.filter((p) => {
+      const categoryMatch = p.categoryId === filters.category;
+      const categoryNameMatch = p.categoryName.toLowerCase() === 
+        categories.find(c => String(c.id) === filters.category)?.category_name?.toLowerCase();
+      const productApi = products.find(api => String(api.id) === p.id);
+      const variantCategoryMatch = productApi?.variants?.some(v => 
+        String(v.category) === filters.category || 
+        v.category === categories.find(c => String(c.id) === filters.category)?.category_name
+      ) || false;
+      
+      return categoryMatch || categoryNameMatch || variantCategoryMatch;
+    });
+  }
 
-    // Filter by subcategory
-    if (filters.subcategory) {
-      result = result.filter((p) => {
-        const subcategoryMatch = p.subcategoryId === filters.subcategory;
-        const subcategoryNameMatch = p.subcategoryName?.toLowerCase() === 
-          categories
-            .flatMap(c => c.subcategories || [])
-            .find(s => String(s.id) === filters.subcategory)
-            ?.subcategory_name?.toLowerCase();
-        const productApi = products.find(api => String(api.id) === p.id);
-        const variantSubcategoryMatch = productApi?.variants?.some(v => 
-          String(v.sub_category) === filters.subcategory ||
-          v.sub_category === categories
-            .flatMap(c => c.subcategories || [])
-            .find(s => String(s.id) === filters.subcategory)
-            ?.subcategory_name
-        ) || false;
-        
-        return subcategoryMatch || subcategoryNameMatch || variantSubcategoryMatch;
-      });
-    }
+  // Filter by subcategory
+  if (filters.subcategory) {
+    result = result.filter((p) => {
+      const subcategoryMatch = p.subcategoryId === filters.subcategory;
+      const subcategoryNameMatch = p.subcategoryName?.toLowerCase() === 
+        categories
+          .flatMap(c => c.subcategories || [])
+          .find(s => String(s.id) === filters.subcategory)
+          ?.subcategory_name?.toLowerCase();
+      const productApi = products.find(api => String(api.id) === p.id);
+      const variantSubcategoryMatch = productApi?.variants?.some(v => 
+        String(v.sub_category) === filters.subcategory ||
+        v.sub_category === categories
+          .flatMap(c => c.subcategories || [])
+          .find(s => String(s.id) === filters.subcategory)
+          ?.subcategory_name
+      ) || false;
+      
+      return subcategoryMatch || subcategoryNameMatch || variantSubcategoryMatch;
+    });
+  }
 
-    // Filter by brands
-    if (filters.brands.length > 0) {
-      result = result.filter((p) => filters.brands.includes(p.brandId));
-    }
+  // Filter by brands
+  if (filters.brands.length > 0) {
+    result = result.filter((p) => filters.brands.includes(p.brandId));
+  }
 
-    // FIXED: Filter by price - Check if ANY variant falls within the price range
-    if (filters.minPrice !== undefined && filters.minPrice > 0) {
-      result = result.filter((p) => {
-        const productApi = products.find(api => String(api.id) === p.id);
-        if (!productApi) return false;
-        
-        // Check if any variant has a price >= minPrice
-        if (productApi.variants && productApi.variants.length > 0) {
-          return productApi.variants.some(variant => {
-            const variantMin = validNumber(variant.min_price) ?? validNumber(variant.price);
-            const variantMax = validNumber(variant.max_price) ?? validNumber(variant.price);
-            
-            // Check if variant's price range overlaps with the filter range
-            if (variantMin !== undefined && variantMax !== undefined) {
-              return variantMax >= (filters.minPrice || 0);
-            }
-            if (variantMin !== undefined) {
-              return variantMin >= (filters.minPrice || 0);
-            }
-            return false;
-          });
-        }
-        
-        // Fallback to product-level price
-        const price = p.maxPrice ?? p.price;
-        return price >= (filters.minPrice || 0);
-      });
-    }
-    
-    if (filters.maxPrice !== undefined && filters.maxPrice > 0) {
-      result = result.filter((p) => {
-        const productApi = products.find(api => String(api.id) === p.id);
-        if (!productApi) return false;
-        
-        // Check if any variant has a price <= maxPrice
-        if (productApi.variants && productApi.variants.length > 0) {
-          return productApi.variants.some(variant => {
-            const variantMin = validNumber(variant.min_price) ?? validNumber(variant.price);
-            const variantMax = validNumber(variant.max_price) ?? validNumber(variant.price);
-            
-            // Check if variant's price range overlaps with the filter range
-            if (variantMin !== undefined && variantMax !== undefined) {
-              return variantMin <= (filters.maxPrice || Infinity);
-            }
-            if (variantMax !== undefined) {
-              return variantMax <= (filters.maxPrice || Infinity);
-            }
-            return false;
-          });
-        }
-        
-        // Fallback to product-level price
-        const price = p.minPrice ?? p.price;
-        return price <= (filters.maxPrice || Infinity);
-      });
-    }
-
-    // Filter by specifications
-    if (Object.keys(filters.specs).length > 0) {
-      result = result.filter((p) => {
-        const productApi = products.find(api => String(api.id) === p.id);
-        if (!productApi) return true;
-
-        let matchesAll = true;
-        for (const [key, values] of Object.entries(filters.specs)) {
-          if (values.length === 0) continue;
+  // Filter by price
+  if (filters.minPrice !== undefined && filters.minPrice > 0) {
+    result = result.filter((p) => {
+      const productApi = products.find(api => String(api.id) === p.id);
+      if (!productApi) return false;
+      
+      if (productApi.variants && productApi.variants.length > 0) {
+        return productApi.variants.some(variant => {
+          const variantMin = validNumber(variant.min_price) ?? validNumber(variant.price);
+          const variantMax = validNumber(variant.max_price) ?? validNumber(variant.price);
           
-          if (key === 'color') {
-            const hasVariantMatch = productApi.variants?.some(variant => {
-              const variantColor = variant.color || variant.color_name;
-              return variantColor && values.includes(variantColor);
-            }) || false;
-            
-            if (!hasVariantMatch) {
-              matchesAll = false;
-              break;
-            }
-          } else {
-            let productValue = (productApi as any)[key];
-            
-            if (!productValue && productApi.specifications && typeof productApi.specifications === 'object') {
-              const specObj = productApi.specifications as Record<string, string>;
-              const matchingKey = Object.keys(specObj).find(
-                k => k.toLowerCase().replace(/\s+/g, '_') === key
-              );
-              if (matchingKey) {
-                productValue = specObj[matchingKey];
-              }
-            }
-            
-            if (!productValue || !values.includes(productValue)) {
-              matchesAll = false;
-              break;
+          if (variantMin !== undefined && variantMax !== undefined) {
+            return variantMax >= (filters.minPrice || 0);
+          }
+          if (variantMin !== undefined) {
+            return variantMin >= (filters.minPrice || 0);
+          }
+          return false;
+        });
+      }
+      
+      const price = p.maxPrice ?? p.price;
+      return price >= (filters.minPrice || 0);
+    });
+  }
+  
+  if (filters.maxPrice !== undefined && filters.maxPrice > 0) {
+    result = result.filter((p) => {
+      const productApi = products.find(api => String(api.id) === p.id);
+      if (!productApi) return false;
+      
+      if (productApi.variants && productApi.variants.length > 0) {
+        return productApi.variants.some(variant => {
+          const variantMin = validNumber(variant.min_price) ?? validNumber(variant.price);
+          const variantMax = validNumber(variant.max_price) ?? validNumber(variant.price);
+          
+          if (variantMin !== undefined && variantMax !== undefined) {
+            return variantMin <= (filters.maxPrice || Infinity);
+          }
+          if (variantMax !== undefined) {
+            return variantMax <= (filters.maxPrice || Infinity);
+          }
+          return false;
+        });
+      }
+      
+      const price = p.minPrice ?? p.price;
+      return price <= (filters.maxPrice || Infinity);
+    });
+  }
+
+  // Filter by specifications
+  if (Object.keys(filters.specs).length > 0) {
+    result = result.filter((p) => {
+      const productApi = products.find(api => String(api.id) === p.id);
+      if (!productApi) return true;
+
+      let matchesAll = true;
+      for (const [key, values] of Object.entries(filters.specs)) {
+        if (values.length === 0) continue;
+        
+        if (key === 'color') {
+          const hasVariantMatch = productApi.variants?.some(variant => {
+            const variantColor = variant.color || variant.color_name;
+            return variantColor && values.includes(variantColor);
+          }) || false;
+          
+          if (!hasVariantMatch) {
+            matchesAll = false;
+            break;
+          }
+        } else {
+          let productValue = (productApi as any)[key];
+          
+          if (!productValue && productApi.specifications && typeof productApi.specifications === 'object') {
+            const specObj = productApi.specifications as Record<string, string>;
+            const matchingKey = Object.keys(specObj).find(
+              k => k.toLowerCase().replace(/\s+/g, '_') === key
+            );
+            if (matchingKey) {
+              productValue = specObj[matchingKey];
             }
           }
+          
+          if (!productValue || !values.includes(productValue)) {
+            matchesAll = false;
+            break;
+          }
         }
-        return matchesAll;
+      }
+      return matchesAll;
+    });
+  }
+
+  // Search filter
+  if (filters.search) {
+    const q = filters.search.toLowerCase();
+    result = result.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.brandName.toLowerCase().includes(q) ||
+        p.shortDescription.toLowerCase().includes(q) ||
+        p.categoryName.toLowerCase().includes(q)
+    );
+  }
+
+  // Sorting - FIXED: Handle possibly undefined reviewCount
+  switch (filters.sort) {
+    case 'popular':
+      result = [...result].sort((a, b) => {
+        // Handle possibly undefined reviewCount
+        const aReviews = a.reviewCount || 0;
+        const bReviews = b.reviewCount || 0;
+        return Number(b.isPopular) - Number(a.isPopular) || bReviews - aReviews;
       });
-    }
+      break;
+    case 'az':
+      result = [...result].sort((a, b) => a.name.localeCompare(b.name));
+      break;
+    case 'price-low':
+      result = [...result].sort((a, b) => (a.minPrice ?? a.price) - (b.minPrice ?? b.price));
+      break;
+    case 'price-high':
+      result = [...result].sort((a, b) => (b.maxPrice ?? b.price) - (a.maxPrice ?? a.price));
+      break;
+    default:
+      result = [...result].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
 
-    // Search filter
-    if (filters.search) {
-      const q = filters.search.toLowerCase();
-      result = result.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.brandName.toLowerCase().includes(q) ||
-          p.shortDescription.toLowerCase().includes(q) ||
-          p.categoryName.toLowerCase().includes(q)
-      );
-    }
-
-    // Sorting
-    switch (filters.sort) {
-      case 'popular':
-        result = [...result].sort((a, b) => Number(b.isPopular) - Number(a.isPopular) || b.reviewCount - a.reviewCount);
-        break;
-      case 'az':
-        result = [...result].sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case 'price-low':
-        result = [...result].sort((a, b) => (a.minPrice ?? a.price) - (b.minPrice ?? b.price));
-        break;
-      case 'price-high':
-        result = [...result].sort((a, b) => (b.maxPrice ?? b.price) - (a.maxPrice ?? a.price));
-        break;
-      default:
-        result = [...result].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    }
-
-    return result;
-  }, [filters, transformedProducts, categories, products]);
+  return result;
+}, [filters, transformedProducts, categories, products]);
 
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -820,7 +836,6 @@ export function ProductsPage() {
 
   const paginate = (pageNumber: number) => {
     setCurrentPage(pageNumber);
-    // Scroll to top when paginating
     setTimeout(scrollToProducts, 100);
   };
 

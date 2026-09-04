@@ -747,7 +747,7 @@
 
 // ComparePage.tsx - Fixed with subcategory-based comparison + DYNAMIC specifications
 
-// ComparePage.tsx - Fixed with subcategory-based comparison + DYNAMIC specifications
+// ComparePage.tsx - Fixed with proper image handling
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { X, GitCompare, Plus, ArrowRight, AlertCircle, Loader2, Heart } from 'lucide-react';
@@ -836,6 +836,44 @@ interface Brand {
 }
 
 type Product = AppProduct;
+
+/**
+ * Helper function to extract image URL from variant image_url field
+ * Handles both JSON array format and direct string format
+ */
+const extractImageUrl = (imageUrl: string | undefined | null): string | null => {
+  if (!imageUrl) return null;
+  
+  try {
+    // Try to parse as JSON array (format: "[\"/uploads/products/image.jpg\"]")
+    const parsed = JSON.parse(imageUrl);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed[0];
+    }
+    return imageUrl;
+  } catch {
+    // If not JSON, treat as direct URL string
+    return imageUrl;
+  }
+};
+
+/**
+ * Helper function to get full image URL with base URL
+ */
+const getFullImageUrl = (imagePath: string | null): string => {
+  if (!imagePath) {
+    return 'https://via.placeholder.com/400x400?text=No+Image';
+  }
+  
+  // If it's already a full URL, return as is
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+  
+  // Ensure path starts with '/'
+  const normalizedPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+  return `${baseurl}${normalizedPath}`;
+};
 
 export function ComparePage() {
   const navigate = useNavigate();
@@ -1188,17 +1226,30 @@ export function ComparePage() {
     }
   };
 
+  /**
+   * Get product image with proper URL handling
+   * Handles both JSON array and string image URLs
+   */
   const getProductImage = (product: ApiProduct): string => {
     let selectedVariant = product.variants?.find(v => v.is_selected);
     if (!selectedVariant && product.variants && product.variants.length > 0) {
       selectedVariant = product.variants[0];
     }
+    
     if (selectedVariant && selectedVariant.image_url) {
-      return `${baseurl}${selectedVariant.image_url}`;
+      const extracted = extractImageUrl(selectedVariant.image_url);
+      if (extracted) {
+        return getFullImageUrl(extracted);
+      }
     }
+    
     if (product.variants && product.variants.length > 0 && product.variants[0].image_url) {
-      return `${baseurl}${product.variants[0].image_url}`;
+      const extracted = extractImageUrl(product.variants[0].image_url);
+      if (extracted) {
+        return getFullImageUrl(extracted);
+      }
     }
+    
     return 'https://via.placeholder.com/400x400?text=No+Image';
   };
 
@@ -1399,9 +1450,11 @@ export function ComparePage() {
   // ─────────────────────────────────────────────────────────────
 
   const transformForProductCard = (product: ApiProduct): Product => {
-    const gallery = product.variants?.map(v =>
-      v.image_url ? `${baseurl}${v.image_url}` : null
-    ).filter(Boolean) as string[] || ['https://via.placeholder.com/400x400'];
+    // Build gallery with proper image extraction
+    const gallery = product.variants?.map(v => {
+      const extracted = extractImageUrl(v.image_url);
+      return extracted ? getFullImageUrl(extracted) : null;
+    }).filter(Boolean) as string[] || ['https://via.placeholder.com/400x400?text=No+Image'];
 
     const specFields: { key: string; label: string; value: string }[] = [];
 
@@ -1666,7 +1719,8 @@ export function ComparePage() {
 
       let variantImage = null;
       if (variant?.image_url) {
-        variantImage = variant.image_url;
+        const extracted = extractImageUrl(variant.image_url);
+        variantImage = extracted || variant.image_url;
       }
 
       let variantDetails = null;
@@ -1935,6 +1989,7 @@ export function ComparePage() {
               const isWishlistLoading = wishlistLoading === productId;
               const isQuotationLoading = quotationLoading === productId;
               const { minPrice, maxPrice } = getMinMaxPrice(product);
+              const productImage = getProductImage(product);
 
               return (
                 <Card
@@ -1982,7 +2037,7 @@ export function ComparePage() {
 
                   <Link to={`/products/${getProductSlug(product.product_name)}`} className="block relative aspect-square overflow-hidden bg-muted/30">
                     <img
-                      src={getProductImage(product)}
+                      src={productImage}
                       alt={product.product_name}
                       loading="lazy"
                       className="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500"

@@ -649,7 +649,7 @@
 
 // product-card.tsx
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, Eye, Star, BadgeCheck, FileSpreadsheet } from 'lucide-react';
+import { Heart, Eye, BadgeCheck, FileSpreadsheet } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -1152,7 +1152,7 @@ export function ProductCard({ product }: ProductCardProps) {
   // };
 
   const hasDiscount = (product.discountPercentage ?? 0) > 0;
-  const stock = product.stock ?? 0;
+  // const stock = product.stock ?? 0;
   const hasMultipleVariants = variantColors.length > 1;
 
   // Handle variant selection

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
-import { Pencil, Trash2, X, Plus, FileText, ExternalLink} from 'lucide-react';
+import { Pencil, Trash2, X, Plus, FileText, ExternalLink } from 'lucide-react';
 import './product-form.css';
 import { baseurl } from '@/Baseurl/baseurl';
 
@@ -72,22 +72,49 @@ interface Variant {
     stock: string;
     images: File[];
     existingImages?: string[];
+    pendingImagePreviews?: string[];
     _isNew?: boolean;
-    // These will be populated from product data
     category_name?: string;
     sub_category_name?: string;
     brand_name?: string;
 }
 
-// COMMENTED OUT - Spec Comparison not needed
-// interface SpecComparison {
-//     id?: number;
-//     spec_type: string;
-//     bandwidth: string;
-//     max_data_rate: string;
-//     internal_design: string;
-//     typical_applications: string;
-// }
+// Field-level errors for the variant sub-form
+interface VariantFieldErrors {
+    variant_name?: string;
+    part_code?: string;
+    min_price?: string;
+    max_price?: string;
+}
+
+const EMPTY_VARIANT: Variant = {
+    variant_name: '',
+    part_code: '',
+    description: '',
+    spec_type: '',
+    color: '',
+    size: '',
+    min_price: '',
+    max_price: '',
+    availability: '',
+    datasheet_url: '',
+    stock: '100',
+    images: [],
+    existingImages: []
+};
+
+// Parses image_url which may be: null, a single legacy path string,
+// or a JSON-encoded array of paths (new multi-image format).
+const parseImageUrls = (raw?: string | null): string[] => {
+    if (!raw) return [];
+    try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed.filter(Boolean);
+        return [raw];
+    } catch {
+        return [raw];
+    }
+};
 
 const ProductForm = () => {
     const navigate = useNavigate();
@@ -112,50 +139,40 @@ const ProductForm = () => {
 
     // Variants State
     const [variants, setVariants] = useState<Variant[]>([]);
-    const [currentVariant, setCurrentVariant] = useState<Variant>({
-        variant_name: '',
-        part_code: '',
-        description: '',
-        spec_type: '',
-        color: '',
-        size: '',
-        min_price: '',
-        max_price: '',
-        availability: '',
-        datasheet_url: '',
-        stock: '100',
-        images: [],
-        existingImages: []
-    });
+    const [currentVariant, setCurrentVariant] = useState<Variant>({ ...EMPTY_VARIANT });
     const [editingVariantIndex, setEditingVariantIndex] = useState<number | null>(null);
-
-    // COMMENTED OUT - Spec Comparison state not needed
-    // const [specComparisons, setSpecComparisons] = useState<SpecComparison[]>([]);
-    // const [currentSpecComparison, setCurrentSpecComparison] = useState<SpecComparison>({
-    //     spec_type: '',
-    //     bandwidth: '',
-    //     max_data_rate: '',
-    //     internal_design: '',
-    //     typical_applications: ''
-    // });
+    const [variantFieldErrors, setVariantFieldErrors] = useState<VariantFieldErrors>({});
 
     const [categories, setCategories] = useState<Category[]>([]);
     const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
     const [brands, setBrands] = useState<Brand[]>([]);
     const [filteredBrands, setFilteredBrands] = useState<Brand[]>([]);
-    const [specTypes, setSpecTypes] = useState<string[]>([]);
+    const [_specTypes, setSpecTypes] = useState<string[]>([]);
     const [selectedSpecifications, setSelectedSpecifications] = useState<Specification[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
     const [loadingSpecs, setLoadingSpecs] = useState<boolean>(false);
     const [error, setError] = useState<string>('');
     const [success, setSuccess] = useState<string>('');
     const [selectedFileNames, setSelectedFileNames] = useState<string>('');
-    // COMMENTED OUT - Not needed
-    // const [showSpecComparison, setShowSpecComparison] = useState<boolean>(false);
     const [showVariantForm, setShowVariantForm] = useState<boolean>(false);
     const [hasSpecifications, setHasSpecifications] = useState<boolean>(false);
 
+    // Local object-URL previews for images picked but not yet uploaded
+    const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
+
+    // "Add New Brand" modal state
+    const [showBrandModal, setShowBrandModal] = useState<boolean>(false);
+    const [newBrandName, setNewBrandName] = useState<string>('');
+    const [brandSubmitting, setBrandSubmitting] = useState<boolean>(false);
+    const [brandError, setBrandError] = useState<string>('');
+
     const isSubmittingRef = useRef<boolean>(false);
+    const errorAlertRef = useRef<HTMLDivElement | null>(null);
+    const variantsRef = useRef<Variant[]>(variants);
+    
+    useEffect(() => {
+        variantsRef.current = variants;
+    }, [variants]);
 
     // Fetch data on load
     useEffect(() => {
@@ -163,10 +180,35 @@ const ProductForm = () => {
         fetchBrands();
         if (isEditMode) {
             fetchProductData();
-            // COMMENTED OUT - Not needed
-            // fetchSpecComparisons();
         }
     }, [id]);
+
+    // Revoke object URLs on unmount to avoid memory leaks
+    useEffect(() => {
+        return () => {
+            newImagePreviews.forEach(url => URL.revokeObjectURL(url));
+            variantsRef.current.forEach(v => {
+                (v.pendingImagePreviews || []).forEach(url => URL.revokeObjectURL(url));
+            });
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Refresh lookups when window gets focus
+    useEffect(() => {
+        const refreshLookups = () => {
+            fetchCategories();
+            fetchBrands();
+        };
+        window.addEventListener('focus', refreshLookups);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') refreshLookups();
+        });
+        return () => {
+            window.removeEventListener('focus', refreshLookups);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Update sub categories when category changes
     useEffect(() => {
@@ -182,7 +224,7 @@ const ProductForm = () => {
         }
     }, [formData.category_id, categories]);
 
-    // Fetch specifications when sub_category changes (and both category and subcategory are selected)
+    // Fetch specifications when sub_category changes
     useEffect(() => {
         if (formData.category_id && formData.sub_category_id) {
             fetchSpecificationsByCategoryAndSubCategory(formData.category_id, formData.sub_category_id);
@@ -194,9 +236,10 @@ const ProductForm = () => {
         }
     }, [formData.sub_category_id, formData.category_id]);
 
+    // Filter brands when category/sub-category changes
     useEffect(() => {
         filterBrands();
-    }, [formData.category_id, formData.sub_category_id]);
+    }, [formData.category_id, formData.sub_category_id, brands]);
 
     const fetchCategories = async (): Promise<void> => {
         try {
@@ -229,27 +272,26 @@ const ProductForm = () => {
                 setHasSpecifications(false);
                 return;
             }
-            
+
             setLoadingSpecs(true);
             const response = await axios.get(
                 `${API_URL}/api/products/specifications/category/${categoryId}/subcategory/${subCategoryId}`
             );
-            
+
             if (response.data.success && response.data.data && response.data.data.product_specifications) {
                 const specs = response.data.data;
                 const productSpecs = specs.product_specifications;
-                
+
                 if (productSpecs && productSpecs.length > 0) {
                     setSelectedSpecifications(productSpecs);
                     setHasSpecifications(true);
-                    
+
                     if (specs.spec_name) {
                         setSpecTypes([specs.spec_name]);
                     } else {
                         setSpecTypes([]);
                     }
-                    
-                    // Only set default values if we're not in edit mode or if specifications are empty
+
                     if (!isEditMode || Object.keys(formData.specifications).length === 0) {
                         const defaultSpecs: ProductSpecifications = {};
                         productSpecs.forEach((spec: Specification) => {
@@ -298,7 +340,7 @@ const ProductForm = () => {
             const productData = response.data;
 
             const specs = productData.specifications || {};
-            
+
             setFormData({
                 product_name: productData.product_name || '',
                 product_code: productData.product_code || '',
@@ -317,7 +359,7 @@ const ProductForm = () => {
 
             if (productData.category_id && productData.sub_category_id) {
                 await fetchSpecificationsByCategoryAndSubCategory(
-                    String(productData.category_id), 
+                    String(productData.category_id),
                     String(productData.sub_category_id)
                 );
             }
@@ -337,7 +379,7 @@ const ProductForm = () => {
                     datasheet_url: v.datasheet_url || '',
                     stock: String(v.stock) || '100',
                     images: [],
-                    existingImages: v.image_url ? [v.image_url] : [],
+                    existingImages: parseImageUrls(v.image_url),
                     _isNew: false,
                     category_name: productData.category_name,
                     sub_category_name: productData.subcategory_name,
@@ -353,82 +395,6 @@ const ProductForm = () => {
         }
     };
 
-    // COMMENTED OUT - Not needed
-    // const fetchSpecComparisons = async () => {
-    //     try {
-    //         const response = await axios.get(`${API_URL}/api/products/spec-comparison/${id}`);
-    //         const data = response.data;
-    //         const comparisons = [];
-    //         if (data) {
-    //             if (Array.isArray(data)) {
-    //                 comparisons.push(...data);
-    //             } else {
-    //                 Object.keys(data).forEach(key => {
-    //                     comparisons.push({ ...data[key], spec_type: key });
-    //                 });
-    //             }
-    //         }
-    //         setSpecComparisons(comparisons);
-    //     } catch (error) {
-    //         console.error('Error fetching spec comparisons:', error);
-    //     }
-    // };
-
-    // ============================================
-    // SPEC COMPARISON HANDLERS - COMMENTED OUT
-    // ============================================
-    // const handleSpecComparisonChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    //     const { name, value } = e.target;
-    //     setCurrentSpecComparison(prev => ({ ...prev, [name]: value }));
-    // };
-
-    // const handleAddSpecComparison = () => {
-    //     if (!currentSpecComparison.spec_type) {
-    //         setError('Please enter a spec type');
-    //         return;
-    //     }
-
-    //     const exists = specComparisons.some(s => s.spec_type === currentSpecComparison.spec_type);
-    //     if (exists) {
-    //         setError(`Spec comparison for ${currentSpecComparison.spec_type} already exists. Please edit it instead.`);
-    //         return;
-    //     }
-
-    //     setSpecComparisons(prev => [...prev, { ...currentSpecComparison }]);
-    //     setCurrentSpecComparison({
-    //         spec_type: '',
-    //         bandwidth: '',
-    //         max_data_rate: '',
-    //         internal_design: '',
-    //         typical_applications: ''
-    //     });
-    //     setSuccess('Spec comparison added successfully');
-    //     setTimeout(() => setSuccess(''), 3000);
-    // };
-
-    // const handleEditSpecComparison = (index: number) => {
-    //     setCurrentSpecComparison({ ...specComparisons[index] });
-    //     const updated = specComparisons.filter((_, i) => i !== index);
-    //     setSpecComparisons(updated);
-    // };
-
-    // const handleRemoveSpecComparison = (index: number) => {
-    //     const spec = specComparisons[index];
-    //     if (spec.id && id) {
-    //         axios.delete(`${API_URL}/api/products/spec-comparison/${id}/${spec.spec_type}`)
-    //             .then(() => {
-    //                 const updated = specComparisons.filter((_, i) => i !== index);
-    //                 setSpecComparisons(updated);
-    //                 setSuccess('Spec comparison removed');
-    //                 setTimeout(() => setSuccess(''), 3000);
-    //             })
-    //             .catch(err => console.error('Error deleting spec comparison:', err));
-    //     } else {
-    //         const updated = specComparisons.filter((_, i) => i !== index);
-    //         setSpecComparisons(updated);
-    //     }
-    // };
-
     // ============================================
     // SPECIFICATION HANDLERS
     // ============================================
@@ -443,7 +409,7 @@ const ProductForm = () => {
     };
 
     // ============================================
-    // VARIANT HANDLERS
+    // GENERAL FORM HANDLERS
     // ============================================
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>): void => {
         const { name, value } = e.target;
@@ -457,31 +423,183 @@ const ProductForm = () => {
         }
     };
 
-    const handleVariantChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>): void => {
-        const { name, value } = e.target;
-        setCurrentVariant(prev => ({ ...prev, [name]: value }));
+    // ============================================
+    // CATEGORY / SUB CATEGORY "+" HANDLERS
+    // ============================================
+    const confirmLeaveIfDirty = (): boolean => {
+        const hasUnsavedWork =
+            formData.product_name.trim() !== '' ||
+            formData.product_code.trim() !== '' ||
+            variants.length > 0;
+        if (!hasUnsavedWork) return true;
+        return window.confirm(
+            'Leaving this page will discard any unsaved product details. Continue to add a category?'
+        );
     };
 
-    const handleVariantImages = (e: React.ChangeEvent<HTMLInputElement>): void => {
-        const files = Array.from(e.target.files || []);
-        setCurrentVariant(prev => ({ ...prev, images: files }));
-        if (files.length > 0) {
-            setSelectedFileNames(files.map(f => f.name).join(', '));
-        } else {
-            setSelectedFileNames('');
+    const handleAddCategoryClick = (): void => {
+        if (!confirmLeaveIfDirty()) return;
+        navigate('/admin/categories/add');
+    };
+
+    const handleAddSubCategoryClick = (): void => {
+        if (!formData.category_id) return;
+        if (!confirmLeaveIfDirty()) return;
+        navigate(`/admin/categories/edit/${formData.category_id}`);
+    };
+
+    // ============================================
+    // BRAND HANDLERS
+    // ============================================
+    const openBrandModal = (): void => {
+        setNewBrandName('');
+        setBrandError('');
+        setShowBrandModal(true);
+    };
+
+    const closeBrandModal = (): void => {
+        setShowBrandModal(false);
+        setNewBrandName('');
+        setBrandError('');
+    };
+
+    const handleCreateBrand = async (e: React.FormEvent): Promise<void> => {
+        e.preventDefault();
+
+        if (!formData.category_id || !formData.sub_category_id) {
+            setBrandError('Please select a category and sub category on the product form first.');
+            return;
         }
-    };
-
-    const handleAddOrUpdateVariant = (): void => {
-        if (!currentVariant.variant_name || !currentVariant.part_code || !currentVariant.min_price || !currentVariant.max_price) {
-            setError('Please fill in variant name, part code, min price, and max price');
+        if (!newBrandName.trim()) {
+            setBrandError('Brand name is required.');
             return;
         }
 
+        setBrandSubmitting(true);
+        setBrandError('');
+
+        try {
+            const response = await axios.post(`${API_URL}/api/brands`, {
+                brand_name: newBrandName.trim(),
+                category_id: parseInt(formData.category_id),
+                sub_category_id: parseInt(formData.sub_category_id)
+            });
+
+            if (response.data.success) {
+                await fetchBrands();
+                setFormData(prev => ({ ...prev, product_brand: response.data.data.brand_name }));
+                setSuccess('Brand created successfully');
+                setTimeout(() => setSuccess(''), 3000);
+                closeBrandModal();
+            }
+        } catch (err: any) {
+            if (axios.isAxiosError(err)) {
+                setBrandError(err.response?.data?.message || 'Failed to create brand');
+            } else {
+                setBrandError('Failed to create brand');
+            }
+        } finally {
+            setBrandSubmitting(false);
+        }
+    };
+
+    // ============================================
+    // VARIANT HANDLERS
+    // ============================================
+    const handleVariantChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>): void => {
+        const { name, value } = e.target;
+        setCurrentVariant(prev => ({ ...prev, [name]: value }));
+        if (variantFieldErrors[name as keyof VariantFieldErrors]) {
+            setVariantFieldErrors(prev => {
+                const updated = { ...prev };
+                delete updated[name as keyof VariantFieldErrors];
+                return updated;
+            });
+        }
+    };
+
+    // FIX #7: Build live previews for every selected file
+    const handleVariantImages = (e: React.ChangeEvent<HTMLInputElement>): void => {
+        const files = Array.from(e.target.files || []);
+
+        // Revoke previous preview URLs before creating new ones
+        newImagePreviews.forEach(url => URL.revokeObjectURL(url));
+
+        setCurrentVariant(prev => ({ ...prev, images: files }));
+
+        if (files.length > 0) {
+            setSelectedFileNames(files.map(f => f.name).join(', '));
+            const previews = files.map(f => URL.createObjectURL(f));
+            setNewImagePreviews(previews);
+        } else {
+            setSelectedFileNames('');
+            setNewImagePreviews([]);
+        }
+    };
+
+    const resetVariantForm = (): void => {
+        newImagePreviews.forEach(url => URL.revokeObjectURL(url));
+        setNewImagePreviews([]);
+        setCurrentVariant({ ...EMPTY_VARIANT });
+        setSelectedFileNames('');
+        setVariantFieldErrors({});
+    };
+
+    const validateVariant = (): VariantFieldErrors => {
+        const errors: VariantFieldErrors = {};
+
+        if (!currentVariant.variant_name.trim()) {
+            errors.variant_name = 'Variant name is required';
+        }
+        if (!currentVariant.part_code.trim()) {
+            errors.part_code = 'Part code is required';
+        }
+        if (currentVariant.min_price === '' || currentVariant.min_price === null || currentVariant.min_price === undefined) {
+            errors.min_price = 'Min price is required';
+        }
+        if (currentVariant.max_price === '' || currentVariant.max_price === null || currentVariant.max_price === undefined) {
+            errors.max_price = 'Max price is required';
+        }
+        if (
+            !errors.min_price &&
+            !errors.max_price &&
+            parseFloat(currentVariant.min_price) > parseFloat(currentVariant.max_price)
+        ) {
+            errors.max_price = 'Max price must be greater than or equal to min price';
+        }
+
+        return errors;
+    };
+
+    const handleAddOrUpdateVariant = (): void => {
+        const errors = validateVariant();
+
+        if (Object.keys(errors).length > 0) {
+            setVariantFieldErrors(errors);
+            setError('Please fix the highlighted field(s) below before adding this variant.');
+            errorAlertRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
+
+        setVariantFieldErrors({});
+
+        // Store the current preview URLs and images
+        const stagedPreviews = [...newImagePreviews];
+        const stagedImages = [...currentVariant.images];
+
         if (editingVariantIndex !== null) {
             const updatedVariants = [...variants];
+            const previousPreviews = updatedVariants[editingVariantIndex].pendingImagePreviews || [];
+
+            // Release previews that are no longer used
+            previousPreviews.forEach(url => {
+                if (!stagedPreviews.includes(url)) URL.revokeObjectURL(url);
+            });
+
             updatedVariants[editingVariantIndex] = {
                 ...currentVariant,
+                images: stagedImages,
+                pendingImagePreviews: stagedPreviews,
                 id: variants[editingVariantIndex].id,
                 _isNew: false
             };
@@ -489,8 +607,10 @@ const ProductForm = () => {
             setEditingVariantIndex(null);
             setSuccess('Variant updated successfully');
         } else {
-            setVariants(prev => [...prev, { 
-                ...currentVariant, 
+            setVariants(prev => [...prev, {
+                ...currentVariant,
+                images: stagedImages,
+                pendingImagePreviews: stagedPreviews,
                 _isNew: true,
                 category_name: getCategoryNameById(formData.category_id),
                 sub_category_name: getSubCategoryNameById(formData.sub_category_id),
@@ -499,22 +619,11 @@ const ProductForm = () => {
             setSuccess('Variant added successfully');
         }
 
-        setCurrentVariant({
-            variant_name: '',
-            part_code: '',
-            description: '',
-            spec_type: '',
-            color: '',
-            size: '',
-            min_price: '',
-            max_price: '',
-            availability: '',
-            datasheet_url: '',
-            stock: '100',
-            images: [],
-            existingImages: []
-        });
+        // Reset the sub-form but KEEP the preview URLs and images (they're now owned by the variant)
+        setCurrentVariant({ ...EMPTY_VARIANT });
         setSelectedFileNames('');
+        setVariantFieldErrors({});
+        setNewImagePreviews([]);
         setError('');
         setShowVariantForm(false);
         setTimeout(() => setSuccess(''), 3000);
@@ -522,58 +631,46 @@ const ProductForm = () => {
 
     const handleEditVariant = (index: number): void => {
         const variant = variants[index];
+        // Don't revoke previews - keep them
+        // Instead, set the current variant with the stored previews
         setCurrentVariant({
             ...variant,
-            images: [],
+            images: variant.images || [],
         });
+        setNewImagePreviews(variant.pendingImagePreviews || []);
         setEditingVariantIndex(index);
         setSelectedFileNames('');
+        setVariantFieldErrors({});
         setShowVariantForm(true);
         document.querySelector('.variant-form')?.scrollIntoView({ behavior: 'smooth' });
     };
 
     const cancelEdit = (): void => {
-        setEditingVariantIndex(null);
-        setCurrentVariant({
-            variant_name: '',
-            part_code: '',
-            description: '',
-            spec_type: '',
-            color: '',
-            size: '',
-            min_price: '',
-            max_price: '',
-            availability: '',
-            datasheet_url: '',
-            stock: '100',
-            images: [],
-            existingImages: []
+        // Only revoke previews that aren't stored in any variant
+        const original = editingVariantIndex !== null ? variants[editingVariantIndex] : null;
+        const originalPreviews = original?.pendingImagePreviews || [];
+        newImagePreviews.forEach(url => {
+            if (!originalPreviews.includes(url)) URL.revokeObjectURL(url);
         });
+
+        setEditingVariantIndex(null);
+        setCurrentVariant({ ...EMPTY_VARIANT });
         setSelectedFileNames('');
+        setVariantFieldErrors({});
+        setNewImagePreviews([]);
         setError('');
         setShowVariantForm(false);
     };
 
     const removeVariant = (index: number): void => {
+        const target = variants[index];
+        (target.pendingImagePreviews || []).forEach(url => URL.revokeObjectURL(url));
+
         const newVariants = variants.filter((_, i) => i !== index);
         setVariants(newVariants);
         if (editingVariantIndex === index) {
             setEditingVariantIndex(null);
-            setCurrentVariant({
-                variant_name: '',
-                part_code: '',
-                description: '',
-                spec_type: '',
-                color: '',
-                size: '',
-                min_price: '',
-                max_price: '',
-                availability: '',
-                datasheet_url: '',
-                stock: '100',
-                images: [],
-                existingImages: []
-            });
+            resetVariantForm();
         }
     };
 
@@ -626,7 +723,7 @@ const ProductForm = () => {
 
             if (isEditMode) {
                 const productFormData = new FormData();
-                
+
                 const formFields = {
                     product_name: formData.product_name,
                     product_code: formData.product_code,
@@ -640,13 +737,13 @@ const ProductForm = () => {
                     discount: formData.discount,
                     specifications: JSON.stringify(formData.specifications)
                 };
-                
+
                 Object.entries(formFields).forEach(([key, value]) => {
                     if (value !== null && value !== "") {
                         productFormData.append(key, String(value));
                     }
                 });
-                
+
                 if (formData.product_details_pdf) {
                     productFormData.append("product_details_pdf", formData.product_details_pdf);
                 } else if (formData.existing_pdf) {
@@ -662,7 +759,6 @@ const ProductForm = () => {
                 productId = parseInt(id!);
                 setSuccess("Product updated successfully.");
 
-                // Handle variants
                 const existingVariantsResponse = await axios.get(`${API_URL}/api/products/variants/${productId}`);
                 const existingVariants = existingVariantsResponse.data;
                 const existingIds = existingVariants.map((v: any) => v.id);
@@ -676,7 +772,7 @@ const ProductForm = () => {
 
                 for (const variant of variants) {
                     const variantData = new FormData();
-                    
+
                     variantData.append('product_id', String(productId));
                     variantData.append('variant_name', variant.variant_name || '');
                     variantData.append('part_code', variant.part_code || '');
@@ -689,11 +785,11 @@ const ProductForm = () => {
                     variantData.append('availability', variant.availability || '');
                     variantData.append('datasheet_url', variant.datasheet_url || '');
                     variantData.append('stock', variant.stock || '100');
-                    // Pass category, subcategory, brand from product
                     variantData.append('category_id', formData.category_id || '');
                     variantData.append('sub_category_id', formData.sub_category_id || '');
                     variantData.append('brand_name', formData.product_brand || '');
 
+                    // Append every selected image
                     if (variant.images && variant.images.length > 0) {
                         variant.images.forEach(img => {
                             variantData.append('images', img);
@@ -715,25 +811,9 @@ const ProductForm = () => {
                         );
                     }
                 }
-
-                // COMMENTED OUT - Spec Comparison deletion not needed
-                // await axios.delete(`${API_URL}/api/products/spec-comparison/${productId}/all`);
-                
-                // for (const spec of specComparisons) {
-                //     await axios.post(`${API_URL}/api/products/spec-comparison`, {
-                //         product_id: productId,
-                //         spec_type: spec.spec_type,
-                //         bandwidth: spec.bandwidth || '',
-                //         max_data_rate: spec.max_data_rate || '',
-                //         internal_design: spec.internal_design || '',
-                //         typical_applications: spec.typical_applications || ''
-                //     });
-                // }
-
             } else {
-                // Create new product
                 const productFormData = new FormData();
-                
+
                 const formFields = {
                     product_name: formData.product_name,
                     product_code: formData.product_code,
@@ -747,7 +827,7 @@ const ProductForm = () => {
                     discount: formData.discount,
                     specifications: JSON.stringify(formData.specifications)
                 };
-                
+
                 Object.entries(formFields).forEach(([key, value]) => {
                     if (value !== null && value !== "") {
                         productFormData.append(key, String(value));
@@ -768,7 +848,7 @@ const ProductForm = () => {
 
                 for (const variant of variants) {
                     const variantData = new FormData();
-                    
+
                     variantData.append('product_id', String(productId));
                     variantData.append('variant_name', variant.variant_name || '');
                     variantData.append('part_code', variant.part_code || '');
@@ -781,7 +861,6 @@ const ProductForm = () => {
                     variantData.append('availability', variant.availability || '');
                     variantData.append('datasheet_url', variant.datasheet_url || '');
                     variantData.append('stock', variant.stock || '100');
-                    // Pass category, subcategory, brand from product
                     variantData.append('category_id', formData.category_id || '');
                     variantData.append('sub_category_id', formData.sub_category_id || '');
                     variantData.append('brand_name', formData.product_brand || '');
@@ -798,18 +877,6 @@ const ProductForm = () => {
                         { headers: { "Content-Type": "multipart/form-data" } }
                     );
                 }
-
-                // COMMENTED OUT - Spec Comparison creation not needed
-                // for (const spec of specComparisons) {
-                //     await axios.post(`${API_URL}/api/products/spec-comparison`, {
-                //         product_id: productId,
-                //         spec_type: spec.spec_type,
-                //         bandwidth: spec.bandwidth || '',
-                //         max_data_rate: spec.max_data_rate || '',
-                //         internal_design: spec.internal_design || '',
-                //         typical_applications: spec.typical_applications || ''
-                //     });
-                // }
             }
 
             setSuccess(`${isEditMode ? 'Product updated' : 'Product added'} successfully!`);
@@ -822,6 +889,7 @@ const ProductForm = () => {
             } else {
                 setError(err.message || "An unexpected error occurred");
             }
+            errorAlertRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         } finally {
             setLoading(false);
             isSubmittingRef.current = false;
@@ -843,7 +911,7 @@ const ProductForm = () => {
         <div className="product-form-container">
             <h2>{isEditMode ? 'Edit Product' : 'Add New Product'}</h2>
 
-            {error && <div className="alert alert-error">{error}</div>}
+            {error && <div className="alert alert-error" ref={errorAlertRef}>{error}</div>}
             {success && <div className="alert alert-success">{success}</div>}
 
             <form onSubmit={handleSubmit} className="product-form">
@@ -881,39 +949,64 @@ const ProductForm = () => {
 
                         <div className="form-group">
                             <label htmlFor="category_id">Category *</label>
-                            <select
-                                id="category_id"
-                                name="category_id"
-                                value={formData.category_id}
-                                onChange={handleInputChange}
-                                required
-                            >
-                                <option value="">Select Category</option>
-                                {categories.map(category => (
-                                    <option key={category.id} value={String(category.id)}>
-                                        {category.category_name}
-                                    </option>
-                                ))}
-                            </select>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                                <select
+                                    id="category_id"
+                                    name="category_id"
+                                    value={formData.category_id}
+                                    onChange={handleInputChange}
+                                    required
+                                    style={{ flex: 1 }}
+                                >
+                                    <option value="">Select Category</option>
+                                    {categories.map(category => (
+                                        <option key={category.id} value={String(category.id)}>
+                                            {category.category_name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary btn-sm"
+                                    onClick={handleAddCategoryClick}
+                                    title="Add new category"
+                                    style={{ flexShrink: 0, padding: '8px 10px' }}
+                                >
+                                    <Plus className="icon-sm" />
+                                </button>
+                            </div>
                         </div>
 
                         <div className="form-group">
                             <label htmlFor="sub_category_id">Sub Category *</label>
-                            <select
-                                id="sub_category_id"
-                                name="sub_category_id"
-                                value={formData.sub_category_id}
-                                onChange={handleInputChange}
-                                required
-                                disabled={!formData.category_id}
-                            >
-                                <option value="">Select Sub Category</option>
-                                {subCategories.map(sub => (
-                                    <option key={sub.id} value={String(sub.id)}>
-                                        {sub.subcategory_name}
-                                    </option>
-                                ))}
-                            </select>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                                <select
+                                    id="sub_category_id"
+                                    name="sub_category_id"
+                                    value={formData.sub_category_id}
+                                    onChange={handleInputChange}
+                                    required
+                                    disabled={!formData.category_id}
+                                    style={{ flex: 1 }}
+                                >
+                                    <option value="">Select Sub Category</option>
+                                    {subCategories.map(sub => (
+                                        <option key={sub.id} value={String(sub.id)}>
+                                            {sub.subcategory_name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary btn-sm"
+                                    onClick={handleAddSubCategoryClick}
+                                    disabled={!formData.category_id}
+                                    title="Add new sub category"
+                                    style={{ flexShrink: 0, padding: '8px 10px' }}
+                                >
+                                    <Plus className="icon-sm" />
+                                </button>
+                            </div>
                             {!formData.category_id && (
                                 <small className="text-muted">Please select a category first</small>
                             )}
@@ -921,26 +1014,41 @@ const ProductForm = () => {
 
                         <div className="form-group">
                             <label htmlFor="product_brand">Brand *</label>
-                            <select
-                                id="product_brand"
-                                name="product_brand"
-                                value={formData.product_brand}
-                                onChange={handleInputChange}
-                                required
-                                disabled={!formData.category_id || !formData.sub_category_id}
-                            >
-                                <option value="">Select Brand</option>
-                                {filteredBrands.map(brand => (
-                                    <option key={brand.id} value={brand.brand_name}>
-                                        {brand.brand_name}
-                                    </option>
-                                ))}
-                            </select>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                                <select
+                                    id="product_brand"
+                                    name="product_brand"
+                                    value={formData.product_brand}
+                                    onChange={handleInputChange}
+                                    required
+                                    disabled={!formData.category_id || !formData.sub_category_id}
+                                    style={{ flex: 1 }}
+                                >
+                                    <option value="">Select Brand</option>
+                                    {filteredBrands.map(brand => (
+                                        <option key={brand.id} value={brand.brand_name}>
+                                            {brand.brand_name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary btn-sm"
+                                    onClick={openBrandModal}
+                                    disabled={!formData.category_id || !formData.sub_category_id}
+                                    title="Add new brand"
+                                    style={{ flexShrink: 0, padding: '8px 10px' }}
+                                >
+                                    <Plus className="icon-sm" />
+                                </button>
+                            </div>
                             {(!formData.category_id || !formData.sub_category_id) && (
                                 <small className="text-muted">Please select category and subcategory first</small>
                             )}
                             {filteredBrands.length === 0 && formData.category_id && formData.sub_category_id && (
-                                <small className="text-muted">No brands available for this selection</small>
+                                <small className="text-muted">
+                                    No brands available for this selection — click "+" to add one.
+                                </small>
                             )}
                         </div>
 
@@ -1035,18 +1143,6 @@ const ProductForm = () => {
                 <div className="form-section">
                     <h3>Product Specifications</h3>
                     <div className="form-grid">
-                        {/* <div className="form-group">
-                            <label htmlFor="product_series">Product Series</label>
-                            <input
-                                type="text"
-                                id="product_series"
-                                name="product_series"
-                                value={formData.product_series}
-                                onChange={handleInputChange}
-                                placeholder="e.g., GigaSPEED X10D, NETCONNECT"
-                            />
-                        </div> */}
-
                         {(!formData.category_id || !formData.sub_category_id) ? (
                             <div className="form-group full-width">
                                 <p className="text-muted" style={{ margin: '10px 0', color: '#666' }}>
@@ -1086,151 +1182,6 @@ const ProductForm = () => {
                 </div>
 
                 {/* ============================================
-                    SPEC COMPARISON SECTION - COMMENTED OUT
-                    ============================================ */}
-                {/* <div className="form-section">
-                    <button
-                        type="button"
-                        className="section-toggle"
-                        onClick={() => setShowSpecComparison(!showSpecComparison)}
-                    >
-                        <span>📊 Comparison of Specifications</span>
-                        {showSpecComparison ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                    </button>
-
-                    {showSpecComparison && (
-                        <div className="comparison-container">
-                            <div className="comparison-form">
-                                <h4>Add Spec Comparison</h4>
-                                <div className="form-grid comparison-grid">
-                                    <div className="form-group">
-                                        <label>Spec Type *</label>
-                                        <div className="spec-type-wrapper">
-                                            <input
-                                                type="text"
-                                                name="spec_type"
-                                                value={currentSpecComparison.spec_type}
-                                                onChange={handleSpecComparisonChange}
-                                                placeholder="Enter spec type (e.g., CAT 6)"
-                                                list="spec-type-options"
-                                                className="spec-type-input"
-                                            />
-                                            {specTypes.length > 0 && (
-                                                <datalist id="spec-type-options">
-                                                    {specTypes.map((type) => (
-                                                        <option key={type} value={type} />
-                                                    ))}
-                                                </datalist>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="form-group">
-                                        <label>Bandwidth</label>
-                                        <input
-                                            type="text"
-                                            name="bandwidth"
-                                            value={currentSpecComparison.bandwidth}
-                                            onChange={handleSpecComparisonChange}
-                                            placeholder="e.g., 250 MHz"
-                                        />
-                                    </div>
-
-                                    <div className="form-group">
-                                        <label>Max Data Rate</label>
-                                        <input
-                                            type="text"
-                                            name="max_data_rate"
-                                            value={currentSpecComparison.max_data_rate}
-                                            onChange={handleSpecComparisonChange}
-                                            placeholder="e.g., 1 Gbps (100 m)"
-                                        />
-                                    </div>
-
-                                    <div className="form-group full-width">
-                                        <label>Internal Design</label>
-                                        <input
-                                            type="text"
-                                            name="internal_design"
-                                            value={currentSpecComparison.internal_design}
-                                            onChange={handleSpecComparisonChange}
-                                            placeholder="e.g., Standard pair separation"
-                                        />
-                                    </div>
-
-                                    <div className="form-group full-width">
-                                        <label>Typical Applications</label>
-                                        <input
-                                            type="text"
-                                            name="typical_applications"
-                                            value={currentSpecComparison.typical_applications}
-                                            onChange={handleSpecComparisonChange}
-                                            placeholder="e.g., Offices, LAN, CCTV"
-                                        />
-                                    </div>
-                                </div>
-
-                                <button
-                                    type="button"
-                                    onClick={handleAddSpecComparison}
-                                    className="btn btn-secondary"
-                                    style={{marginTop:"10px"}}
-                                >
-                                    <Plus className="icon-sm" /> Add Spec Comparison
-                                </button>
-                            </div>
-
-                            {specComparisons.length > 0 && (
-                                <div className="comparison-list">
-                                    <h4>Spec Comparisons ({specComparisons.length})</h4>
-                                    <table className="comparison-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Spec Type</th>
-                                                <th>Bandwidth</th>
-                                                <th>Max Data Rate</th>
-                                                <th>Internal Design</th>
-                                                <th>Typical Applications</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {specComparisons.map((spec, index) => (
-                                                <tr key={index}>
-                                                    <td><strong>{spec.spec_type}</strong></td>
-                                                    <td>{spec.bandwidth || '-'}</td>
-                                                    <td>{spec.max_data_rate || '-'}</td>
-                                                    <td>{spec.internal_design || '-'}</td>
-                                                    <td>{spec.typical_applications || '-'}</td>
-                                                    <td>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleEditSpecComparison(index)}
-                                                            className="btn btn-edit btn-sm"
-                                                            title="Edit"
-                                                        >
-                                                            <Pencil size={14} />
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleRemoveSpecComparison(index)}
-                                                            className="btn btn-danger btn-sm"
-                                                            title="Remove"
-                                                        >
-                                                            <Trash2 size={14} />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div> */}
-
-                {/* ============================================
                     VARIANTS SECTION
                     ============================================ */}
                 <div className="form-section">
@@ -1256,7 +1207,13 @@ const ProductForm = () => {
                                         value={currentVariant.variant_name}
                                         onChange={handleVariantChange}
                                         placeholder="e.g., CAT6A Patch Cord 1M Black"
+                                        style={variantFieldErrors.variant_name ? { borderColor: '#dc2626' } : undefined}
                                     />
+                                    {variantFieldErrors.variant_name && (
+                                        <small style={{ color: '#dc2626', display: 'block', marginTop: '4px' }}>
+                                            {variantFieldErrors.variant_name}
+                                        </small>
+                                    )}
                                 </div>
 
                                 <div className="form-group">
@@ -1267,25 +1224,12 @@ const ProductForm = () => {
                                         value={currentVariant.part_code}
                                         onChange={handleVariantChange}
                                         placeholder="e.g., CPC3312-01M001"
+                                        style={variantFieldErrors.part_code ? { borderColor: '#dc2626' } : undefined}
                                     />
-                                </div>
-
-                                <div className="form-group">
-                                    <label>Spec Type</label>
-                                    <input
-                                        type="text"
-                                        name="spec_type"
-                                        value={currentVariant.spec_type}
-                                        onChange={handleVariantChange}
-                                        placeholder="e.g., CAT 6, CAT 6A"
-                                        list="spec-type-options-variant"
-                                    />
-                                    {specTypes.length > 0 && (
-                                        <datalist id="spec-type-options-variant">
-                                            {specTypes.map((type) => (
-                                                <option key={type} value={type} />
-                                            ))}
-                                        </datalist>
+                                    {variantFieldErrors.part_code && (
+                                        <small style={{ color: '#dc2626', display: 'block', marginTop: '4px' }}>
+                                            {variantFieldErrors.part_code}
+                                        </small>
                                     )}
                                 </div>
 
@@ -1320,8 +1264,13 @@ const ProductForm = () => {
                                         onChange={handleVariantChange}
                                         step="0.01"
                                         placeholder="0.00"
-                                        required
+                                        style={variantFieldErrors.min_price ? { borderColor: '#dc2626' } : undefined}
                                     />
+                                    {variantFieldErrors.min_price && (
+                                        <small style={{ color: '#dc2626', display: 'block', marginTop: '4px' }}>
+                                            {variantFieldErrors.min_price}
+                                        </small>
+                                    )}
                                 </div>
 
                                 <div className="form-group">
@@ -1333,8 +1282,13 @@ const ProductForm = () => {
                                         onChange={handleVariantChange}
                                         step="0.01"
                                         placeholder="0.00"
-                                        required
+                                        style={variantFieldErrors.max_price ? { borderColor: '#dc2626' } : undefined}
                                     />
+                                    {variantFieldErrors.max_price && (
+                                        <small style={{ color: '#dc2626', display: 'block', marginTop: '4px' }}>
+                                            {variantFieldErrors.max_price}
+                                        </small>
+                                    )}
                                 </div>
 
                                 <div className="form-group">
@@ -1393,6 +1347,24 @@ const ProductForm = () => {
                                     {selectedFileNames && (
                                         <small className="file-selected">{selectedFileNames}</small>
                                     )}
+
+                                    {newImagePreviews.length > 0 && (
+                                        <div className="current-images-container">
+                                            <small className="file-existing">New images to upload:</small>
+                                            <div className="current-images-grid">
+                                                {newImagePreviews.map((url, idx) => (
+                                                    <div key={idx} className="current-image-item">
+                                                        <img
+                                                            src={url}
+                                                            alt={`New selection ${idx + 1}`}
+                                                            className="current-image-thumb"
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {currentVariant.existingImages && currentVariant.existingImages.length > 0 && (
                                         <div className="current-images-container">
                                             <small className="file-existing">Current images:</small>
@@ -1456,33 +1428,53 @@ const ProductForm = () => {
                                             <span>Category: {variant.category_name || getCategoryNameById(formData.category_id)}</span>
                                             <span>Sub Category: {variant.sub_category_name || getSubCategoryNameById(formData.sub_category_id)}</span>
                                             <span>Brand: {variant.brand_name || formData.product_brand || '-'}</span>
-                                            {variant.spec_type && <span className="spec-badge">{variant.spec_type}</span>}
                                             {variant.color && <span>Color: {variant.color}</span>}
                                             {variant.size && <span>Size: {variant.size}</span>}
                                             <span>Min Price: ₹{parseFloat(variant.min_price).toLocaleString('en-IN')}</span>
                                             <span>Max Price: ₹{parseFloat(variant.max_price).toLocaleString('en-IN')}</span>
                                             <span>Stock: {variant.stock}</span>
                                             {variant.availability && <span className="availability-badge">{variant.availability}</span>}
-                                            {variant.existingImages && variant.existingImages.length > 0 && (
+                                            {variant.pendingImagePreviews && variant.pendingImagePreviews.length > 0 ? (
                                                 <div className="variant-images-preview">
-                                                    <span className="image-count">Images: {variant.existingImages.length}</span>
+                                                    <span className="image-count">
+                                                        New images: {variant.pendingImagePreviews.length} (will replace current on save)
+                                                    </span>
                                                     <div className="mini-images">
-                                                        {variant.existingImages.slice(0, 2).map((img, idx) => (
+                                                        {variant.pendingImagePreviews.slice(0, 2).map((url, idx) => (
                                                             <img
                                                                 key={idx}
-                                                                src={getImageUrl(img)}
-                                                                alt={`${variant.variant_name} ${idx + 1}`}
+                                                                src={url}
+                                                                alt={`${variant.variant_name} new ${idx + 1}`}
                                                                 className="mini-image"
-                                                                onError={(e) => {
-                                                                    (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
-                                                                }}
                                                             />
                                                         ))}
-                                                        {variant.existingImages.length > 2 && (
-                                                            <span className="more-images">+{variant.existingImages.length - 2}</span>
+                                                        {variant.pendingImagePreviews.length > 2 && (
+                                                            <span className="more-images">+{variant.pendingImagePreviews.length - 2}</span>
                                                         )}
                                                     </div>
                                                 </div>
+                                            ) : (
+                                                variant.existingImages && variant.existingImages.length > 0 && (
+                                                    <div className="variant-images-preview">
+                                                        <span className="image-count">Images: {variant.existingImages.length}</span>
+                                                        <div className="mini-images">
+                                                            {variant.existingImages.slice(0, 2).map((img, idx) => (
+                                                                <img
+                                                                    key={idx}
+                                                                    src={getImageUrl(img)}
+                                                                    alt={`${variant.variant_name} ${idx + 1}`}
+                                                                    className="mini-image"
+                                                                    onError={(e) => {
+                                                                        (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
+                                                                    }}
+                                                                />
+                                                            ))}
+                                                            {variant.existingImages.length > 2 && (
+                                                                <span className="more-images">+{variant.existingImages.length - 2}</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )
                                             )}
                                             {variant._isNew && (
                                                 <span className="badge-new">New</span>
@@ -1530,6 +1522,104 @@ const ProductForm = () => {
                     </button>
                 </div>
             </form>
+
+            {/* Add New Brand Modal */}
+            {showBrandModal && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        background: 'rgba(0,0,0,0.5)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 1000
+                    }}
+                    onClick={closeBrandModal}
+                >
+                    <div
+                        style={{
+                            background: '#fff',
+                            borderRadius: '8px',
+                            padding: '24px',
+                            width: '90%',
+                            maxWidth: '440px',
+                            boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div>
+                                <h3 style={{ margin: 0 }}>Add New Brand</h3>
+                                <p style={{ margin: '4px 0 0', color: '#666', fontSize: '14px' }}>
+                                    Create a new brand for {getCategoryNameById(formData.category_id)} / {getSubCategoryNameById(formData.sub_category_id)}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={closeBrandModal}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                                aria-label="Close"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {brandError && (
+                            <div className="alert alert-error" style={{ marginTop: '16px' }}>{brandError}</div>
+                        )}
+
+                        <form onSubmit={handleCreateBrand} style={{ marginTop: '20px' }}>
+                            <div className="form-group">
+                                <label>Category</label>
+                                <input
+                                    type="text"
+                                    value={getCategoryNameById(formData.category_id)}
+                                    disabled
+                                />
+                            </div>
+                            <div className="form-group" style={{ marginTop: '12px' }}>
+                                <label>Sub Category</label>
+                                <input
+                                    type="text"
+                                    value={getSubCategoryNameById(formData.sub_category_id)}
+                                    disabled
+                                />
+                            </div>
+                            <div className="form-group" style={{ marginTop: '12px' }}>
+                                <label>Brand Name *</label>
+                                <input
+                                    type="text"
+                                    value={newBrandName}
+                                    onChange={(e) => setNewBrandName(e.target.value)}
+                                    placeholder="e.g., Hikvision"
+                                    autoFocus
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                                <button
+                                    type="button"
+                                    className="btn btn-outline"
+                                    style={{ flex: 1 }}
+                                    onClick={closeBrandModal}
+                                    disabled={brandSubmitting}
+                                >
+                                    <X className="icon-sm" /> Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="btn btn-primary"
+                                    style={{ flex: 1 }}
+                                    disabled={brandSubmitting}
+                                >
+                                    {brandSubmitting ? 'Creating...' : 'Create Brand'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

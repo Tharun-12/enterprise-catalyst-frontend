@@ -593,7 +593,6 @@ import logo from '@/asstes/mvblogo.png';
 import { baseurl } from '../../Baseurl/baseurl';
 import { 
   FaLinkedin, 
-  FaTwitter, 
   FaFacebook, 
   FaYoutube,
   FaMapMarkerAlt,

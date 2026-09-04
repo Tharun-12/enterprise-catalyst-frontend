@@ -1,4 +1,4 @@
-// my-quotations.tsx - Updated with direct quantity editing
+// my-quotations.tsx - Fixed with proper image handling
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, Calendar, User, Mail, Phone, Package, CheckCircle, Clock, XCircle, ChevronDown, ChevronUp, Loader, Image as ImageIcon, Minus, Plus } from 'lucide-react';
@@ -48,6 +48,44 @@ interface Quotation {
   updated_at: string;
   details: QuotationDetail[];
 }
+
+/**
+ * Helper function to extract image URL from variant image field
+ * Handles both JSON array format and direct string format
+ */
+const extractImageUrl = (imageUrl: string | undefined | null): string | null => {
+  if (!imageUrl) return null;
+  
+  try {
+    // Try to parse as JSON array (format: "[\"/uploads/products/image.jpg\"]")
+    const parsed = JSON.parse(imageUrl);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed[0];
+    }
+    return imageUrl;
+  } catch {
+    // If not JSON, treat as direct URL string
+    return imageUrl;
+  }
+};
+
+/**
+ * Helper function to get full image URL with base URL
+ */
+const getFullImageUrl = (imagePath: string | null): string => {
+  if (!imagePath) {
+    return 'https://via.placeholder.com/80x80?text=No+Image';
+  }
+  
+  // If it's already a full URL, return as is
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+  
+  // Ensure path starts with '/'
+  const normalizedPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+  return `${baseurl}${normalizedPath}`;
+};
 
 export function MyQuotations() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
@@ -130,13 +168,18 @@ export function MyQuotations() {
     setExpandedQuotation(expandedQuotation === id ? null : id);
   };
 
+  /**
+   * Get image URL with proper handling of JSON array and string formats
+   */
   const getImageUrl = (imagePath: string | null) => {
     if (!imagePath) return null;
-    if (imagePath.startsWith('http')) return imagePath;
-    if (imagePath.startsWith('/')) {
-      return `${baseurl}${imagePath}`;
-    }
-    return `${baseurl}/uploads/products/${imagePath}`;
+    
+    // Extract the actual image path (handles JSON array format)
+    const extracted = extractImageUrl(imagePath);
+    if (!extracted) return null;
+    
+    // Get full URL
+    return getFullImageUrl(extracted);
   };
 
   // Calculate min and max prices for a quotation based on quantity
@@ -199,8 +242,8 @@ export function MyQuotations() {
       const result = await response.json();
 
       if (result.success) {
-       toast.success(`Quantity updated successfully!`, {
-          duration: 800, // Increased from default to 3000ms (3 seconds)
+        toast.success(`Quantity updated successfully!`, {
+          duration: 800,
           position: 'top-right',
           style: {
             background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
@@ -211,11 +254,10 @@ export function MyQuotations() {
             fontSize: '15px',
             fontWeight: '600',
             boxShadow: '0 8px 25px rgba(16, 185, 129, 0.4)',
-            marginTop: '70px', // Add this line for spacing from top
+            marginTop: '70px',
             letterSpacing: '0.3px',
           },
         });
-        // Refresh quotations
         await fetchQuotations();
       } else {
         toast.error(result.message || 'Failed to update quantity');
@@ -410,7 +452,7 @@ export function MyQuotations() {
                             return (
                               <div key={detail.id} className="bg-gradient-to-r from-muted/10 to-muted/5 rounded-xl p-4 border border-muted/20 hover:border-primary/30 transition-all hover:shadow-sm">
                                 <div className="flex flex-col md:flex-row md:items-center gap-4">
-                                  {/* Product Image */}
+                                  {/* Product Image - Fixed with proper image handling */}
                                   <div className="w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                                     {imageUrl ? (
                                       <img 

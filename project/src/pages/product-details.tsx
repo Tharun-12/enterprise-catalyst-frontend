@@ -1,9 +1,8 @@
-// product-details.tsx - Fixed with variant pricing and color selection
-// product-details.tsx - Updated with Datasheet link after Specifications
+// product-details.tsx - Fixed with proper image handling
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
-  Heart, Star, ChevronRight,
+  Heart, ChevronRight,
   ZoomIn, Share2, ShieldCheck, Package, ArrowLeft,
   BadgeCheck, Truck, Wrench, FileSpreadsheet, FileText, ExternalLink
 } from 'lucide-react';
@@ -11,13 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
 import { ProductCard } from '@/components/product-card';
 import { EmptyState } from '@/components/shared';
 import { useApp } from '@/hooks/use-app';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { PageBreadcrumb as Breadcrumb } from '@/layouts/customer-layout-wrapper';
+import { PageBreadcrumb } from '@/layouts/customer-layout-wrapper';
 import { baseurl } from '@/Baseurl/baseurl';
 import type { Product } from '@/types';
 
@@ -118,6 +116,44 @@ const parseOptionalNumber = (value: string | number | null | undefined): number 
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
+/**
+ * Helper function to extract image URL from variant image_url field
+ * Handles both JSON array format and direct string format
+ */
+const extractImageUrl = (imageUrl: string | undefined | null): string | null => {
+  if (!imageUrl) return null;
+
+  try {
+    // Try to parse as JSON array (format: "[\"/uploads/products/image.jpg\"]")
+    const parsed = JSON.parse(imageUrl);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed[0];
+    }
+    return imageUrl;
+  } catch {
+    // If not JSON, treat as direct URL string
+    return imageUrl;
+  }
+};
+
+/**
+ * Helper function to get full image URL with base URL
+ */
+const getFullImageUrl = (imagePath: string | null): string => {
+  if (!imagePath) {
+    return 'https://via.placeholder.com/400x400?text=No+Image';
+  }
+
+  // If it's already a full URL, return as is
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+
+  // Ensure path starts with '/'
+  const normalizedPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+  return `${baseurl}${normalizedPath}`;
+};
+
 // Get color hex for dots
 const getColorHex = (colorName: string): string => {
   const colorMap: Record<string, string> = {
@@ -147,12 +183,14 @@ const transformProduct = (
   const category = categories.find(c => c.id === product.product_category_id);
   const brand = brands.find(b => b.brand_name === product.product_brand);
 
-  // Get images from variants or use default
-  const galleryImages = product.variants?.map(v =>
-    v.image_url ? `${baseurl}${v.image_url}` : null
-  ).filter(Boolean) as string[] || [];
+  // Extract images from variants - handle both JSON array and string formats
+  const galleryImages = product.variants?.map(v => {
+    const extracted = extractImageUrl(v.image_url);
+    return extracted ? getFullImageUrl(extracted) : null;
+  }).filter(Boolean) as string[] || [];
 
-  const defaultImage = 'https://via.placeholder.com/400x400';
+  // If no gallery images, use placeholder
+  const defaultImage = 'https://via.placeholder.com/400x400?text=No+Image';
   const gallery = galleryImages.length > 0 ? galleryImages : [defaultImage];
 
   const discountNum = parseFloat(product.discount || '0');
@@ -233,25 +271,31 @@ const transformProduct = (
     addSpecField('brand', 'Brand', variant.brand);
   }
 
-  // Transform variants with full data
-  const transformedVariants = product.variants?.map((v) => ({
-    id: v.id,
-    color_name: v.color_name || v.color || 'Default',
-    color: v.color || v.color_name || 'Default',
-    color_hex: v.color_hex || '#CCCCCC',
-    min_price: v.min_price ?? undefined,
-    max_price: v.max_price ?? undefined,
-    price: v.price ?? undefined,
-    stock: v.stock || 0,
-    image_url: v.image_url,
-    variant_name: v.variant_name,
-    part_code: v.part_code,
-    spec_type: v.spec_type,
-    size: v.size,
-    availability: v.availability,
-    datasheet_url: v.datasheet_url,
-    description: v.description,
-  })) || [];
+  // Transform variants with full data and proper image URLs
+  const transformedVariants = product.variants?.map((v) => {
+    const extractedImage = extractImageUrl(v.image_url);
+    const fullImageUrl = extractedImage ? getFullImageUrl(extractedImage) : '';
+
+    return {
+      id: v.id,
+      color_name: v.color_name || v.color || 'Default',
+      color: v.color || v.color_name || 'Default',
+      color_hex: v.color_hex || '#CCCCCC',
+      min_price: v.min_price ?? undefined,
+      max_price: v.max_price ?? undefined,
+      price: v.price ?? undefined,
+      stock: v.stock || 0,
+      image_url: v.image_url,
+      full_image_url: fullImageUrl,
+      variant_name: v.variant_name,
+      part_code: v.part_code,
+      spec_type: v.spec_type,
+      size: v.size,
+      availability: v.availability,
+      datasheet_url: v.datasheet_url,
+      description: v.description,
+    };
+  }) || [];
 
   let features: string[] = [];
   if (product.specifications) {
@@ -267,47 +311,47 @@ const transformProduct = (
   const hasPdf = product.product_details_pdf && product.product_details_pdf.trim() !== '';
 
   return {
-    id: String(product.id),
-    name: product.product_name,
-    slug: product.product_name.toLowerCase().replace(/\s+/g, '-'),
-    sku: product.product_code,
-    brandId: String(brand?.id ?? 'unknown'),
-    brandName: brand?.brand_name || product.product_brand || 'Unknown',
-    categoryId: String(product.product_category_id ?? ''),
-    categoryName: category?.category_name || product.category_name || 'Uncategorized',
-    shortDescription: product.product_description?.substring(0, 150) || '',
-    description: product.product_description || '',
-    gallery,
-    features: features,
-    specifications: typeof product.specifications === 'object' ? product.specifications : {},
-    currency: 'INR',
-    relatedProductIds: [],
-    specGroups: [
-      {
-        groupName: 'Specifications',
-        fields: specFields.length > 0 ? specFields : [
-          { key: 'no_specs', label: 'No Specifications', value: 'No specifications available' }
-        ]
-      }
-    ],
-    price: priceNum,
-    minPrice: minPrice,
-    maxPrice: maxPrice,
-    originalPrice: priceNum * (1 + discountNum / 100),
-    discountPercentage: discountNum,
-    status: 'active',
-    isPopular: false,
-    isNew: false,
-    // rating: 4.5,
-    // reviewCount: 0,
-    downloads: hasPdf ? [{ name: 'Product Details', type: 'pdf' as const, size: 'PDF', url: product.product_details_pdf }] : [],
-    createdAt: product.created_at,
-    warranty: product.warranty || 'Standard warranty',
-    variants: transformedVariants as any[],
-    hasVariants: (product.variants?.length || 0) > 0,
-    stock: product.variants?.reduce((sum, v) => sum + v.stock, 0) || 0,
-    productType: product.product_type || '',
-  };
+  id: String(product.id),
+  name: product.product_name,
+  slug: product.product_name.toLowerCase().replace(/\s+/g, '-'),
+  sku: product.product_code,
+  brandId: String(brand?.id ?? 'unknown'),
+  brandName: brand?.brand_name || product.product_brand || 'Unknown',
+  categoryId: String(product.product_category_id ?? ''),
+  categoryName: category?.category_name || product.category_name || 'Uncategorized',
+  shortDescription: product.product_description?.substring(0, 150) || '',
+  description: product.product_description || '',
+  gallery,
+  features: features,
+  specifications: typeof product.specifications === 'object' ? product.specifications : {},
+  currency: 'INR',
+  relatedProductIds: [],
+  specGroups: [
+    {
+      groupName: 'Specifications',
+      fields: specFields.length > 0 ? specFields : [
+        { key: 'no_specs', label: 'No Specifications', value: 'No specifications available' }
+      ]
+    }
+  ],
+  price: priceNum,
+  minPrice: minPrice,
+  maxPrice: maxPrice,
+  originalPrice: priceNum * (1 + discountNum / 100),
+  discountPercentage: discountNum,
+  status: 'active',
+  isPopular: false,
+  isNew: false,
+  rating: 0, // Added
+  reviewCount: 0, // Added
+  downloads: hasPdf ? [{ name: 'Product Details', type: 'pdf' as const, size: 'PDF', url: product.product_details_pdf }] : [],
+  createdAt: product.created_at,
+  warranty: product.warranty || 'Standard warranty',
+  variants: transformedVariants as any[],
+  hasVariants: (product.variants?.length || 0) > 0,
+  stock: product.variants?.reduce((sum, v) => sum + v.stock, 0) || 0,
+  productType: product.product_type || '',
+};
 };
 
 export function ProductDetailsPage() {
@@ -376,11 +420,15 @@ export function ProductDetailsPage() {
   const handleVariantSelect = (variantId: number) => {
     setSelectedVariantId(variantId);
     const variant = detailVariants.find(v => v.id === variantId);
-    if (variant && variant.image_url) {
-      const imageUrl = `${baseurl}${variant.image_url}`;
+    if (variant && variant.full_image_url) {
+      // Find the image in the gallery or use the variant's image
+      const imageUrl = variant.full_image_url;
       const galleryIndex = product?.gallery.findIndex(img => img === imageUrl);
       if (galleryIndex !== undefined && galleryIndex >= 0) {
         setActiveImage(galleryIndex);
+      } else {
+        // If not found in gallery, add it temporarily or use first image
+        setActiveImage(0);
       }
     }
   };
@@ -459,16 +507,16 @@ export function ProductDetailsPage() {
 
     const currentSubCategoryName = productData.subcategory_name;
     const currentCategoryId = productData.product_category_id;
-    
+
     if (!currentSubCategoryName) {
       const sameCategoryProducts = allProducts.filter(p => {
         if (currentCategoryId === null || p.product_category_id === null) return false;
         return String(p.product_category_id) === String(currentCategoryId) &&
           String(p.id) !== String(productData.id);
       });
-      
+
       if (sameCategoryProducts.length === 0) return [];
-      
+
       const topRelated = sameCategoryProducts.slice(0, 4);
       return topRelated.map(p => transformProduct(p, categories, brands));
     }
@@ -485,9 +533,9 @@ export function ProductDetailsPage() {
         return String(p.product_category_id) === String(currentCategoryId) &&
           String(p.id) !== String(productData.id);
       });
-      
+
       if (sameCategoryProducts.length === 0) return [];
-      
+
       const topRelated = sameCategoryProducts.slice(0, 4);
       return topRelated.map(p => transformProduct(p, categories, brands));
     }
@@ -652,10 +700,12 @@ export function ProductDetailsPage() {
 
       let variantImage = null;
       let variantDetails = null;
-      
+
       if (selectedVariant) {
         if (selectedVariant.image_url) {
-          variantImage = selectedVariant.image_url;
+          // Extract image URL properly
+          const extracted = extractImageUrl(selectedVariant.image_url);
+          variantImage = extracted || selectedVariant.image_url;
         }
         variantDetails = JSON.stringify(detailVariants.map((v: any) => ({
           id: v.id,
@@ -802,19 +852,19 @@ export function ProductDetailsPage() {
       const minPrice = Number(selectedVariant.min_price);
       const maxPrice = Number(selectedVariant.max_price);
       const price = Number(selectedVariant.price);
-      
+
       if (Number.isFinite(minPrice) && Number.isFinite(maxPrice) && minPrice > 0 && maxPrice > 0) {
         if (minPrice === maxPrice) {
           return `₹${minPrice.toLocaleString()}`;
         }
         return `₹${minPrice.toLocaleString()} - ₹${maxPrice.toLocaleString()}`;
       }
-      
+
       if (Number.isFinite(price) && price > 0) {
         return `₹${price.toLocaleString()}`;
       }
     }
-    
+
     if (extendedProduct.minPrice !== undefined && extendedProduct.maxPrice !== undefined) {
       const min = extendedProduct.minPrice;
       const max = extendedProduct.maxPrice;
@@ -837,7 +887,7 @@ export function ProductDetailsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <Breadcrumb items={[
+      <PageBreadcrumb items={[
         { label: 'Home', path: '/' },
         { label: 'Products', path: '/products' },
         { label: product.categoryName, path: `/products?category=${product.categoryName.toLowerCase().replace(/\s+/g, '-').replace(/&/g, '')}` },
@@ -854,10 +904,13 @@ export function ProductDetailsPage() {
             onMouseMove={handleMouseMove}
           >
             <img
-              src={product.gallery[activeImage] || 'https://via.placeholder.com/400x400'}
+              src={product.gallery[activeImage] || 'https://via.placeholder.com/400x400?text=No+Image'}
               alt={product.name}
               className="w-full h-full object-cover transition-transform duration-300"
               style={zoomed ? { transform: `scale(2)`, transformOrigin: `${zoomPos.x}% ${zoomPos.y}%` } : undefined}
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x400?text=No+Image';
+              }}
             />
             {!zoomed && (
               <div className="absolute top-4 right-4 bg-black/60 text-white rounded-lg px-3 py-1.5 text-xs flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -884,7 +937,14 @@ export function ProductDetailsPage() {
                   activeImage === idx ? 'border-primary ring-2 ring-primary/20' : 'border-border hover:border-primary/50'
                 )}
               >
-                <img src={img} alt={`${product.name} ${idx + 1}`} className="w-full h-full object-cover" />
+                <img
+                  src={img}
+                  alt={`${product.name} ${idx + 1}`}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x400?text=No+Image';
+                  }}
+                />
               </button>
             ))}
           </div>
@@ -910,14 +970,6 @@ export function ProductDetailsPage() {
           <h1 className="text-2xl lg:text-3xl font-bold mb-3">{product.name}</h1>
 
           <div className="flex items-center gap-4 mb-5">
-            {/* <div className="flex items-center gap-1.5">
-              {[1, 2, 3, 4, 5].map((s) => (
-                <Star key={s} className={cn('w-4 h-4', s <= Math.floor(product.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30')} />
-              ))}
-              <span className="text-sm font-medium ml-1">{product.rating.toFixed(1)}</span>
-            </div>
-            <span className="text-sm text-muted-foreground">{product.reviewCount} reviews</span> */}
-            {/* <Separator orientation="vertical" className="h-4" /> */}
             <span className="text-sm text-muted-foreground">SKU: {product.sku}</span>
           </div>
 
@@ -1050,7 +1102,7 @@ export function ProductDetailsPage() {
           <Card className="p-6">
             <h2 className="text-xl font-bold mb-4">Product Description</h2>
             <p className="text-muted-foreground leading-relaxed mb-4">{product.description}</p>
-            
+
             {productData?.extra_information && (
               <div className="mt-4 p-4 bg-muted/30 rounded-lg">
                 <h3 className="text-sm font-semibold mb-2">Additional Information</h3>
@@ -1094,8 +1146,8 @@ export function ProductDetailsPage() {
                   {selectedVariant?.variant_name && ` (Variant: ${selectedVariant.variant_name})`}
                 </p>
                 <div className="flex gap-3 mt-2">
-                  <Button 
-                    size="lg" 
+                  <Button
+                    size="lg"
                     onClick={() => handleDatasheetClick(datasheetUrl)}
                     className="gap-2"
                   >
