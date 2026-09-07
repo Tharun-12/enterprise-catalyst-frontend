@@ -85,6 +85,7 @@ interface VariantFieldErrors {
     part_code?: string;
     min_price?: string;
     max_price?: string;
+    images?: string; // NEW: image is mandatory per variant
 }
 
 const EMPTY_VARIANT: Variant = {
@@ -157,6 +158,9 @@ const ProductForm = () => {
     const [showVariantForm, setShowVariantForm] = useState<boolean>(false);
     const [hasSpecifications, setHasSpecifications] = useState<boolean>(false);
 
+    // NEW: surfaces the "at least one variant is required" error under the Variants section
+    const [variantsSectionError, setVariantsSectionError] = useState<string>('');
+
     // Local object-URL previews for images picked but not yet uploaded
     const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
 
@@ -168,8 +172,9 @@ const ProductForm = () => {
 
     const isSubmittingRef = useRef<boolean>(false);
     const errorAlertRef = useRef<HTMLDivElement | null>(null);
+    const variantsSectionRef = useRef<HTMLDivElement | null>(null);
     const variantsRef = useRef<Variant[]>(variants);
-    
+
     useEffect(() => {
         variantsRef.current = variants;
     }, [variants]);
@@ -518,7 +523,7 @@ const ProductForm = () => {
         }
     };
 
-    // FIX #7: Build live previews for every selected file
+    // Build live previews for every selected file
     const handleVariantImages = (e: React.ChangeEvent<HTMLInputElement>): void => {
         const files = Array.from(e.target.files || []);
 
@@ -531,6 +536,15 @@ const ProductForm = () => {
             setSelectedFileNames(files.map(f => f.name).join(', '));
             const previews = files.map(f => URL.createObjectURL(f));
             setNewImagePreviews(previews);
+
+            // NEW: clear the image error the moment a file is chosen
+            if (variantFieldErrors.images) {
+                setVariantFieldErrors(prev => {
+                    const updated = { ...prev };
+                    delete updated.images;
+                    return updated;
+                });
+            }
         } else {
             setSelectedFileNames('');
             setNewImagePreviews([]);
@@ -545,6 +559,7 @@ const ProductForm = () => {
         setVariantFieldErrors({});
     };
 
+    // NEW: image is now a mandatory field, validated alongside the rest
     const validateVariant = (): VariantFieldErrors => {
         const errors: VariantFieldErrors = {};
 
@@ -566,6 +581,14 @@ const ProductForm = () => {
             parseFloat(currentVariant.min_price) > parseFloat(currentVariant.max_price)
         ) {
             errors.max_price = 'Max price must be greater than or equal to min price';
+        }
+
+        // At least one image is required — either a newly picked file,
+        // or (when editing) an image the variant already has.
+        const hasNewImages = currentVariant.images && currentVariant.images.length > 0;
+        const hasExistingImages = currentVariant.existingImages && currentVariant.existingImages.length > 0;
+        if (!hasNewImages && !hasExistingImages) {
+            errors.images = 'At least one image is required';
         }
 
         return errors;
@@ -625,6 +648,7 @@ const ProductForm = () => {
         setVariantFieldErrors({});
         setNewImagePreviews([]);
         setError('');
+        setVariantsSectionError(''); // NEW: clear "at least one variant" error once one exists
         setShowVariantForm(false);
         setTimeout(() => setSuccess(''), 3000);
     };
@@ -712,11 +736,36 @@ const ProductForm = () => {
         e.preventDefault();
 
         if (isSubmittingRef.current) return;
+
+        // NEW: at least ONE variant is mandatory before the product can be submitted
+        if (variants.length === 0) {
+            const msg = 'Please add at least one product variant before submitting.';
+            setError(msg);
+            setVariantsSectionError(msg);
+            errorAlertRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            variantsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
+
+        // NEW: defensive re-check — every variant currently staged must have an image.
+        // (validateVariant() already enforces this when a variant is added/updated,
+        // this is just a safety net in case state was mutated some other way.)
+        const variantMissingImage = variants.find(
+            v => !(v.images && v.images.length > 0) && !(v.existingImages && v.existingImages.length > 0)
+        );
+        if (variantMissingImage) {
+            const msg = `Variant "${variantMissingImage.variant_name || 'Unnamed'}" needs at least one image before you can submit.`;
+            setError(msg);
+            errorAlertRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
+
         isSubmittingRef.current = true;
 
         setLoading(true);
         setError("");
         setSuccess("");
+        setVariantsSectionError("");
 
         try {
             let productId: number;
@@ -1184,9 +1233,9 @@ const ProductForm = () => {
                 {/* ============================================
                     VARIANTS SECTION
                     ============================================ */}
-                <div className="form-section">
+                <div className="form-section" ref={variantsSectionRef}>
                     <div className="section-header">
-                        <h3>Product Variants</h3>
+                        <h3>Product Variants *</h3>
                         <button
                             type="button"
                             onClick={() => setShowVariantForm(!showVariantForm)}
@@ -1195,6 +1244,20 @@ const ProductForm = () => {
                             {showVariantForm ? 'Cancel' : '+ Add Variant'}
                         </button>
                     </div>
+
+                    {/* NEW: "at least one variant" hint / error */}
+                    {variants.length === 0 && (
+                        <p
+                            className={variantsSectionError ? 'text-error' : 'text-muted'}
+                            style={{
+                                margin: '4px 0 12px',
+                                color: variantsSectionError ? '#dc2626' : '#666',
+                                fontSize: '14px'
+                            }}
+                        >
+                            {variantsSectionError || 'At least one variant (with an image) is required before you can save this product.'}
+                        </p>
+                    )}
 
                     {showVariantForm && (
                         <div className="variant-form">
@@ -1336,14 +1399,20 @@ const ProductForm = () => {
                                 </div>
 
                                 <div className="form-group full-width">
-                                    <label>Variant Images</label>
+                                    <label>Variant Images *</label>
                                     <input
                                         type="file"
                                         name="images"
                                         onChange={handleVariantImages}
                                         accept="image/*"
                                         multiple
+                                        style={variantFieldErrors.images ? { borderColor: '#dc2626' } : undefined}
                                     />
+                                    {variantFieldErrors.images && (
+                                        <small style={{ color: '#dc2626', display: 'block', marginTop: '4px' }}>
+                                            {variantFieldErrors.images}
+                                        </small>
+                                    )}
                                     {selectedFileNames && (
                                         <small className="file-selected">{selectedFileNames}</small>
                                     )}
@@ -1384,6 +1453,14 @@ const ProductForm = () => {
                                             </div>
                                         </div>
                                     )}
+
+                                    {!variantFieldErrors.images &&
+                                        newImagePreviews.length === 0 &&
+                                        (!currentVariant.existingImages || currentVariant.existingImages.length === 0) && (
+                                            <small className="text-muted" style={{ display: 'block', marginTop: '4px' }}>
+                                                At least one image is required for this variant.
+                                            </small>
+                                        )}
                                 </div>
                             </div>
 
@@ -1453,28 +1530,34 @@ const ProductForm = () => {
                                                         )}
                                                     </div>
                                                 </div>
-                                            ) : (
-                                                variant.existingImages && variant.existingImages.length > 0 && (
-                                                    <div className="variant-images-preview">
-                                                        <span className="image-count">Images: {variant.existingImages.length}</span>
-                                                        <div className="mini-images">
-                                                            {variant.existingImages.slice(0, 2).map((img, idx) => (
-                                                                <img
-                                                                    key={idx}
-                                                                    src={getImageUrl(img)}
-                                                                    alt={`${variant.variant_name} ${idx + 1}`}
-                                                                    className="mini-image"
-                                                                    onError={(e) => {
-                                                                        (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
-                                                                    }}
-                                                                />
-                                                            ))}
-                                                            {variant.existingImages.length > 2 && (
-                                                                <span className="more-images">+{variant.existingImages.length - 2}</span>
-                                                            )}
-                                                        </div>
+                                            ) : variant.existingImages && variant.existingImages.length > 0 ? (
+                                                <div className="variant-images-preview">
+                                                    <span className="image-count">Images: {variant.existingImages.length}</span>
+                                                    <div className="mini-images">
+                                                        {variant.existingImages.slice(0, 2).map((img, idx) => (
+                                                            <img
+                                                                key={idx}
+                                                                src={getImageUrl(img)}
+                                                                alt={`${variant.variant_name} ${idx + 1}`}
+                                                                className="mini-image"
+                                                                onError={(e) => {
+                                                                    (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
+                                                                }}
+                                                            />
+                                                        ))}
+                                                        {variant.existingImages.length > 2 && (
+                                                            <span className="more-images">+{variant.existingImages.length - 2}</span>
+                                                        )}
                                                     </div>
-                                                )
+                                                </div>
+                                            ) : (
+                                                // NEW: flag any variant that somehow has no image at all
+                                                <span
+                                                    className="image-count"
+                                                    style={{ color: '#dc2626', fontWeight: 600 }}
+                                                >
+                                                    ⚠ No image — edit this variant to add one
+                                                </span>
                                             )}
                                             {variant._isNew && (
                                                 <span className="badge-new">New</span>
