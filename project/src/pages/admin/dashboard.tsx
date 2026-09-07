@@ -27,6 +27,29 @@ interface Brand {
   updated_at: string;
 }
 
+interface Variant {
+  id: number;
+  product_id: number;
+  variant_name?: string;
+  part_code?: string;
+  brand?: string;
+  description?: string;
+  spec_type?: string;
+  color?: string;
+  size?: string;
+  price: string;
+  min_price?: string;
+  max_price?: string;
+  availability?: string;
+  datasheet_url?: string;
+  image_url: string;
+  stock: number;
+  created_at: string;
+  updated_at: string;
+  category_id?: number;
+  sub_category_id?: number;
+}
+
 interface Product {
   id: number;
   product_name: string;
@@ -43,11 +66,13 @@ interface Product {
   warranty: string;
   created_at: string;
   updated_at: string;
+  category_name?: string;
+  subcategory_name?: string;
+  variants?: Variant[];
 }
 
 interface Wishlist {
   id: number;
-  // Add other wishlist fields as needed
 }
 
 interface Inquiry {
@@ -76,6 +101,7 @@ interface CategoryDistribution {
   name: string;
   value: number;
   color: string;
+  count?: number;
 }
 
 interface LeadGraphData {
@@ -85,7 +111,7 @@ interface LeadGraphData {
 }
 
 interface CategoryMap {
-  [key: number]: {
+  [key: string]: {
     name: string;
     count: number;
     color: string;
@@ -95,6 +121,20 @@ interface CategoryMap {
 interface CategoryColors {
   [key: string]: string;
 }
+
+// Chart colors for different categories
+const CHART_COLORS = [
+  '#0F4C81', // Navy Blue
+  '#1E88E5', // Blue
+  '#42A5F5', // Light Blue
+  '#64B5F6', // Lighter Blue
+  '#90CAF9', // Very Light Blue
+  '#1565C0', // Dark Blue
+  '#0D47A1', // Darker Blue
+  '#1976D2', // Medium Blue
+  '#2196F3', // Material Blue
+  '#3F51B5', // Indigo
+];
 
 export function AdminDashboard() {
   const [dashboardData, setDashboardData] = useState<DashboardData>({
@@ -121,34 +161,47 @@ export function AdminDashboard() {
 
   // Process category distribution for pie chart
   const processCategoryDistribution = (categories: Category[], products: Product[]) => {
-    const categoryColors: CategoryColors = {
-      'Artifical Intelligence': '#0F4C81',
-      'Data Cabling': '#1E88E5',
-      'Data Infrastructure': '#42A5F5',
-      'Data Physical Security': '#64B5F6',
-      'Data Security': '#90CAF9',
-    };
+    // Create a map for category counts
+    const categoryCounts: { [key: string]: number } = {};
+    const categoryNames: { [key: string]: string } = {};
 
-    const categoryMap: CategoryMap = {};
-    categories.forEach((cat: Category) => {
-      categoryMap[cat.id] = {
-        name: cat.category_name,
-        count: 0,
-        color: categoryColors[cat.category_name] || '#0F4C81'
-      };
+    // Initialize all categories with 0
+    categories.forEach((cat: Category, index: number) => {
+      categoryCounts[cat.id] = 0;
+      categoryNames[cat.id] = cat.category_name;
     });
 
+    // Count products by category
     products.forEach((product: Product) => {
-      if (product.product_category_id && categoryMap[product.product_category_id]) {
-        categoryMap[product.product_category_id].count++;
+      // Try to use category_name from the product
+      if (product.category_name) {
+        // Find category by name
+        const foundCategory = categories.find((cat: Category) => 
+          cat.category_name.toLowerCase() === product.category_name?.toLowerCase()
+        );
+        if (foundCategory) {
+          categoryCounts[foundCategory.id] = (categoryCounts[foundCategory.id] || 0) + 1;
+        }
+      } 
+      // Fallback: use product_category_id
+      else if (product.product_category_id) {
+        categoryCounts[product.product_category_id] = (categoryCounts[product.product_category_id] || 0) + 1;
       }
     });
 
-    const distribution: CategoryDistribution[] = Object.values(categoryMap).map((item) => ({
-      name: item.name,
-      value: item.count,
-      color: item.color
+    // Convert to array for chart - include ALL categories (even with 0)
+    const distribution: CategoryDistribution[] = Object.keys(categoryCounts).map((categoryId, index) => ({
+      name: categoryNames[categoryId] || `Category ${categoryId}`,
+      value: categoryCounts[categoryId],
+      color: CHART_COLORS[index % CHART_COLORS.length],
+      count: categoryCounts[categoryId]
     }));
+
+    // Sort by count (descending) - categories with products first
+    distribution.sort((a, b) => b.value - a.value);
+
+    // Log for debugging
+    console.log('Category Distribution:', distribution);
 
     setCategoryDistribution(distribution);
   };
@@ -181,7 +234,7 @@ export function AdminDashboard() {
       }
     });
 
-    // Add leads data based on inquiries (you can modify this logic)
+    // Add leads data based on inquiries (simulate leads)
     monthlyData.forEach((data) => {
       data.leads = data.inquiries + Math.floor(Math.random() * 5) + 2;
     });
@@ -206,6 +259,10 @@ export function AdminDashboard() {
         const brands = brandsRes.data?.data || [];
         const wishlist = wishlistRes.data?.data || [];
         const inquiries = inquiriesRes.data?.data || [];
+
+        // Log for debugging
+        console.log('Products:', products);
+        console.log('Categories:', categories);
 
         setDashboardData({
           products,
@@ -334,6 +391,12 @@ export function AdminDashboard() {
     );
   }
 
+  // Filter categories that have products for the pie chart
+  const categoriesWithProducts = categoryDistribution.filter(c => c.value > 0);
+  
+  // Get categories with 0 products for display
+  const categoriesWithNoProducts = categoryDistribution.filter(c => c.value === 0);
+
   return (
     <div className="space-y-6">
       {/* Stats cards */}
@@ -395,27 +458,67 @@ export function AdminDashboard() {
         <Card className="p-6">
           <h3 className="font-semibold mb-1">Category Distribution</h3>
           <p className="text-xs text-muted-foreground mb-4">Products per category</p>
-          <ResponsiveContainer width="100%" height={240}>
-            <PieChart>
-              <Pie data={categoryDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} innerRadius={40}>
-                {categoryDistribution.map((entry: CategoryDistribution, index: number) => (
-                  <Cell key={index} fill={entry.color} />
+          
+          {categoriesWithProducts.length > 0 ? (
+            <>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie 
+                    data={categoriesWithProducts} 
+                    dataKey="value" 
+                    nameKey="name" 
+                    cx="50%" 
+                    cy="50%" 
+                    outerRadius={70} 
+                    innerRadius={40}
+                    label={({ name, percent }) => `${percent > 0.05 ? `${(percent * 100).toFixed(0)}%` : ''}`}
+                    labelLine={false}
+                  >
+                    {categoriesWithProducts.map((entry: CategoryDistribution, index: number) => (
+                      <Cell key={index} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px' }} 
+                    formatter={(value, name) => [`${value} products`, name]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              
+              <div className="space-y-1.5 mt-2">
+                {/* Show categories with products */}
+                {categoriesWithProducts.map((c: CategoryDistribution) => (
+                  <div key={c.name} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c.color }} />
+                      <span className="text-muted-foreground">{c.name}</span>
+                    </div>
+                    <span className="font-medium">{c.value}</span>
+                  </div>
                 ))}
-              </Pie>
-              <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px' }} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="space-y-1.5 mt-2">
-            {categoryDistribution.slice(0, 4).map((c: CategoryDistribution) => (
-              <div key={c.name} className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c.color }} />
-                  <span className="text-muted-foreground">{c.name}</span>
-                </div>
-                <span className="font-medium">{c.value}</span>
+                
+                {/* Show categories with 0 products (greyed out) */}
+                {categoriesWithNoProducts.length > 0 && (
+                  <>
+                    <div className="border-t border-gray-200 my-2"></div>
+                    {categoriesWithNoProducts.map((c: CategoryDistribution) => (
+                      <div key={c.name} className="flex items-center justify-between text-xs opacity-50">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#e0e0e0' }} />
+                          <span className="text-muted-foreground">{c.name}</span>
+                        </div>
+                        <span className="font-medium text-muted-foreground">{c.value}</span>
+                      </div>
+                    ))}
+                  </>
+                )}
               </div>
-            ))}
-          </div>
+            </>
+          ) : (
+            <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+              <p className="text-sm">No category data available</p>
+            </div>
+          )}
         </Card>
       </div>
 
