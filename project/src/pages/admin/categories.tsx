@@ -329,10 +329,12 @@ export function AdminCategories() {
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-gray-900">Delete Category</DialogTitle>
-            <DialogDescription className="text-gray-600">
-              Are you sure you want to delete "<span className="font-semibold text-gray-900">{deleteTarget?.category_name}</span>"? 
-              This action cannot be undone.
-            </DialogDescription>
+              <DialogDescription className="text-gray-600">
+                Are you sure you want to delete "<span className="font-semibold text-gray-900">{deleteTarget?.category_name}</span>"?
+                This will also permanently delete all brands, specifications, and products
+                under this category, including their variants and images.
+                This action cannot be undone.
+              </DialogDescription>
           </DialogHeader>
           <div className="flex gap-3 pt-4">
             <Button 
