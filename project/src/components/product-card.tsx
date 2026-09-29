@@ -651,8 +651,9 @@
 // product-card.tsx - Updated with compare subcategory fix
 
 // product-card.tsx
+// product-card.tsx
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, Eye, BadgeCheck, FileSpreadsheet } from 'lucide-react';
+import { Heart, Eye, BadgeCheck, FileSpreadsheet, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -667,7 +668,6 @@ interface ProductCardProps {
   product: Product;
 }
 
-// Define the variant type locally to avoid any
 interface VariantWithDetails {
   id: number;
   color_name?: string;
@@ -677,7 +677,7 @@ interface VariantWithDetails {
   min_price?: string | number;
   max_price?: string | number;
   stock: number;
-  image_url?: string;
+  image_url?: string | string[];
   variant_name?: string;
   part_code?: string;
   spec_type?: string;
@@ -692,6 +692,62 @@ interface VariantColor {
   color: string;
   variantId: number;
 }
+
+// ─────────────────────────────────────────────────────────────
+// Image helpers
+// Handles all of these shapes:
+//   "/uploads/a.jpg"                      (plain path)
+//   "[\"/uploads/a.jpg\",\"/uploads/b.jpg\"]"  (JSON string array, e.g. OPPO id 36)
+//   ["/uploads/a.jpg", "/uploads/b.jpg"]  (real array)
+//   "https://..." / "data:..."            (absolute)
+// ─────────────────────────────────────────────────────────────
+const PLACEHOLDER_IMG = '/placeholder.png'; // put any image in /public
+
+const toAbsoluteUrl = (value: string): string => {
+  const v = value.trim();
+  if (!v) return '';
+  if (/^(https?:)?\/\//i.test(v) || v.startsWith('data:')) return v;
+  const base = String(baseurl).replace(/\/+$/, '');
+  return `${base}${v.startsWith('/') ? v : `/${v}`}`;
+};
+
+const parseImages = (raw: unknown): string[] => {
+  if (!raw) return [];
+
+  let value: unknown = raw;
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed.startsWith('[') || trimmed.startsWith('"')) {
+      try {
+        value = JSON.parse(trimmed);
+      } catch {
+        value = trimmed;
+      }
+    } else {
+      value = trimmed;
+    }
+  }
+
+  const list = Array.isArray(value) ? value : [value];
+
+  return list
+    .filter((item): item is string => typeof item === 'string' && item.trim() !== '')
+    .map(toAbsoluteUrl)
+    .filter(Boolean);
+};
+
+const toastStyle = (background: string) => ({
+  background,
+  color: 'white',
+  border: 'none',
+  padding: '12px 24px',
+  borderRadius: '8px',
+  fontSize: '14px',
+  fontWeight: '500',
+  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+  marginTop: '70px',
+});
 
 export function ProductCard({ product }: ProductCardProps) {
   const {
@@ -712,14 +768,12 @@ export function ProductCard({ product }: ProductCardProps) {
   const [isCompareLoading, setIsCompareLoading] = useState(false);
   const [isQuotationLoading, setIsQuotationLoading] = useState(false);
   const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
+  const [imageIndex, setImageIndex] = useState(0);
 
-  const BRAND_GRADIENT =
-  'bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500';
+  const BRAND_GRADIENT = 'bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500';
+  const BRAND_GRADIENT_HOVER =
+    'hover:bg-gradient-to-r hover:from-pink-500 hover:via-orange-500 hover:to-yellow-500';
 
-const BRAND_GRADIENT_HOVER =
-  'hover:bg-gradient-to-r hover:from-pink-500 hover:via-orange-500 hover:to-yellow-500';
-
-  // Quantity is always 1 - no state needed
   const quantity = 1;
 
   const inWishlist = localWishlistState !== null ? localWishlistState : isInWishlist(product.id);
@@ -749,16 +803,38 @@ const BRAND_GRADIENT_HOVER =
           email: user.email || '',
           mobile: user.mobile || ''
         };
-      } catch (e) {
+      } catch {
         return null;
       }
     }
     return null;
   };
 
-  // Get variants with full data
   const variants = (product.variants || []) as VariantWithDetails[];
   const selectedVariant = variants.find(v => v.id === selectedVariantId) || variants[0] || null;
+
+  // All images for the selected variant, falling back to product gallery
+  const images = useMemo<string[]>(() => {
+    const fromVariant = parseImages(selectedVariant?.image_url);
+    if (fromVariant.length > 0) return fromVariant;
+    return parseImages((product as any).gallery);
+  }, [selectedVariant, product]);
+
+  const safeIndex = images.length > 0 ? Math.min(imageIndex, images.length - 1) : 0;
+  const displayImage = images[safeIndex] || PLACEHOLDER_IMG;
+  const hasMultipleImages = images.length > 1;
+
+  const showPrevImage = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setImageIndex((safeIndex - 1 + images.length) % images.length);
+  };
+
+  const showNextImage = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setImageIndex((safeIndex + 1) % images.length);
+  };
 
   const handleWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -768,23 +844,13 @@ const BRAND_GRADIENT_HOVER =
       toast.error('Please login to sync wishlist', {
         duration: 3000,
         position: 'top-right',
-        style: {
-          background: '#EF4444',
-          color: 'white',
-          border: 'none',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '500',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          marginTop: '70px',
-        },
+        style: toastStyle('#EF4444'),
         action: {
           label: 'Login',
-          onClick: () => window.location.href = '/login'
+          onClick: () => (window.location.href = '/login')
         }
       });
-      setTimeout(() => window.location.href = '/login', 1500);
+      setTimeout(() => (window.location.href = '/login'), 1500);
       return;
     }
     setIsLoading(true);
@@ -803,43 +869,20 @@ const BRAND_GRADIENT_HOVER =
       toast.error('Failed to update wishlist', {
         duration: 2000,
         position: 'top-right',
-        style: {
-          background: '#EF4444',
-          color: 'white',
-          border: 'none',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '500',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          marginTop: '70px',
-        },
+        style: toastStyle('#EF4444'),
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ═══════════════════════════════════════════════════════════════
-  // FIXED: toggleCompare - Now passes subcategoryName for guest validation
-  // ═══════════════════════════════════════════════════════════════
   const toggleCompare = async (): Promise<boolean> => {
     if (isCompareLoading) return false;
     if (!inCompare && compareFull) {
       toast.warning('You can compare up to 4 products', {
         duration: 3000,
         position: 'top-right',
-        style: {
-          background: '#F59E0B',
-          color: 'white',
-          border: 'none',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '500',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          marginTop: '70px',
-        },
+        style: toastStyle('#F59E0B'),
       });
       return false;
     }
@@ -850,8 +893,6 @@ const BRAND_GRADIENT_HOVER =
         await removeFromCompare(product.id, uid);
       } else {
         const variantId = selectedVariant?.id;
-        // IMPORTANT: Pass subcategory name for guest validation
-        // Use subcategoryName if available, otherwise fallback to categoryName
         const subCategoryName = (product as any).subcategoryName || product.categoryName || undefined;
         await addToCompare(product.id, uid, variantId, subCategoryName);
       }
@@ -878,23 +919,13 @@ const BRAND_GRADIENT_HOVER =
       toast.error('Please login to request a quotation', {
         duration: 800,
         position: 'top-right',
-        style: {
-          background: '#EF4444',
-          color: 'white',
-          border: 'none',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '500',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          marginTop: '70px',
-        },
+        style: toastStyle('#EF4444'),
         action: {
           label: 'Login',
-          onClick: () => window.location.href = '/login'
+          onClick: () => (window.location.href = '/login')
         }
       });
-      setTimeout(() => window.location.href = '/login', 1500);
+      setTimeout(() => (window.location.href = '/login'), 1500);
       return;
     }
 
@@ -903,17 +934,7 @@ const BRAND_GRADIENT_HOVER =
       toast.error('Please login to request a quotation', {
         duration: 3000,
         position: 'top-right',
-        style: {
-          background: '#EF4444',
-          color: 'white',
-          border: 'none',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '500',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          marginTop: '70px',
-        },
+        style: toastStyle('#EF4444'),
       });
       return;
     }
@@ -944,22 +965,29 @@ const BRAND_GRADIENT_HOVER =
         maxPrice = Number.isFinite(selectedMax) ? selectedMax : maxPrice;
       }
 
-      let variantImage = null;
-      let variantDetails = null;
+      let variantImage: string | null = null;
+      let variantDetails: string | null = null;
 
       if (selectedVariant) {
-        if (selectedVariant.image_url) variantImage = selectedVariant.image_url;
-        variantDetails = JSON.stringify(variants.map((v: VariantWithDetails) => ({
-          id: v.id,
-          variant_name: v.variant_name || v.color_name || 'Default',
-          part_code: v.part_code || '',
-          spec_type: v.spec_type || '',
-          color: v.color || v.color_name || '',
-          size: v.size || '',
-          price: v.price,
-          image_url: v.image_url,
-          stock: v.stock
-        })));
+        // First image of the selected variant (clean URL, not the raw JSON string)
+        variantImage = parseImages(selectedVariant.image_url)[0] || null;
+        variantDetails = JSON.stringify(
+          variants.map((v: VariantWithDetails) => {
+            const imgs = parseImages(v.image_url);
+            return {
+              id: v.id,
+              variant_name: v.variant_name || v.color_name || 'Default',
+              part_code: v.part_code || '',
+              spec_type: v.spec_type || '',
+              color: v.color || v.color_name || '',
+              size: v.size || '',
+              price: v.price,
+              image_url: imgs[0] || null,
+              images: imgs,
+              stock: v.stock
+            };
+          })
+        );
       }
 
       const actualDiscount = product.discountPercentage || 0;
@@ -993,34 +1021,14 @@ const BRAND_GRADIENT_HOVER =
         toast.success(`Quotation requested for ${quantity} item(s)!`, {
           duration: 3000,
           position: 'top-right',
-          style: {
-            background: '#10B981',
-            color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '500',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            marginTop: '70px',
-          },
+          style: toastStyle('#10B981'),
         });
         navigate('/my-quotations');
       } else {
         toast.error(data.message || 'Failed to submit quotation request', {
           duration: 3000,
           position: 'top-right',
-          style: {
-            background: '#EF4444',
-            color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '500',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            marginTop: '70px',
-          },
+          style: toastStyle('#EF4444'),
         });
       }
     } catch (error) {
@@ -1028,17 +1036,7 @@ const BRAND_GRADIENT_HOVER =
       toast.error('Failed to submit quotation request. Please try again.', {
         duration: 3000,
         position: 'top-right',
-        style: {
-          background: '#EF4444',
-          color: 'white',
-          border: 'none',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '500',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          marginTop: '70px',
-        },
+        style: toastStyle('#EF4444'),
       });
     } finally {
       setIsQuotationLoading(false);
@@ -1055,27 +1053,25 @@ const BRAND_GRADIENT_HOVER =
     }).format(price);
   };
 
-  // Get color for dot
   const getColorHex = (colorName: string): string => {
     const colorMap: Record<string, string> = {
-      'black': '#000000',
-      'white': '#FFFFFF',
-      'blue': '#2563EB',
-      'red': '#DC2626',
-      'green': '#16A34A',
-      'yellow': '#EAB308',
-      'purple': '#9333EA',
-      'pink': '#EC4899',
-      'orange': '#EA580C',
-      'gray': '#6B7280',
-      'brown': '#92400E',
-      'gold': '#D4AF37',
-      'silver': '#C0C0C0'
+      black: '#000000',
+      white: '#FFFFFF',
+      blue: '#2563EB',
+      red: '#DC2626',
+      green: '#16A34A',
+      yellow: '#EAB308',
+      purple: '#9333EA',
+      pink: '#EC4899',
+      orange: '#EA580C',
+      gray: '#6B7280',
+      brown: '#92400E',
+      gold: '#D4AF37',
+      silver: '#C0C0C0'
     };
     return colorMap[colorName.toLowerCase()] || '#CCCCCC';
   };
 
-  // Get unique colors from variants - Only colors, no prices
   const variantColors = useMemo((): VariantColor[] => {
     if (!variants || variants.length === 0) return [];
 
@@ -1083,19 +1079,14 @@ const BRAND_GRADIENT_HOVER =
 
     variants.forEach((variant: VariantWithDetails) => {
       const color = variant.color || variant.color_name || 'Default';
-
       if (!colorMap.has(color)) {
-        colorMap.set(color, {
-          color: color,
-          variantId: variant.id
-        });
+        colorMap.set(color, { color, variantId: variant.id });
       }
     });
 
     return Array.from(colorMap.values());
   }, [variants]);
 
-  // Get display price from selected variant or product
   const getDisplayPrice = (): string => {
     if (selectedVariant) {
       const minPrice = Number(selectedVariant.min_price);
@@ -1103,24 +1094,18 @@ const BRAND_GRADIENT_HOVER =
       const price = Number(selectedVariant.price);
 
       if (Number.isFinite(minPrice) && Number.isFinite(maxPrice) && minPrice > 0 && maxPrice > 0) {
-        if (minPrice === maxPrice) {
-          return formatPrice(minPrice);
-        }
+        if (minPrice === maxPrice) return formatPrice(minPrice);
         return `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`;
       }
 
-      if (Number.isFinite(price) && price > 0) {
-        return formatPrice(price);
-      }
+      if (Number.isFinite(price) && price > 0) return formatPrice(price);
     }
 
     if (product.minPrice !== undefined && product.maxPrice !== undefined) {
       const min = Number(product.minPrice);
       const max = Number(product.maxPrice);
       if (Number.isFinite(min) && Number.isFinite(max) && min > 0 && max > 0) {
-        if (min === max) {
-          return formatPrice(min);
-        }
+        if (min === max) return formatPrice(min);
         return `${formatPrice(min)} - ${formatPrice(max)}`;
       }
     }
@@ -1135,9 +1120,9 @@ const BRAND_GRADIENT_HOVER =
   const hasDiscount = (product.discountPercentage ?? 0) > 0;
   const hasMultipleVariants = variantColors.length > 1;
 
-  // Handle variant selection
   const handleVariantSelect = (variantId: number) => {
     setSelectedVariantId(variantId);
+    setImageIndex(0); // new variant → start from its first image
   };
 
   return (
@@ -1185,13 +1170,23 @@ const BRAND_GRADIENT_HOVER =
         )}
       </button>
 
+      {/* Image area */}
       <Link to={`/products/${product.slug}`} className="block relative aspect-square overflow-hidden bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-t-2xl">
         <img
-          src={selectedVariant?.image_url ? `${baseurl}${selectedVariant.image_url}` : product.gallery[0]}
+          key={displayImage}
+          src={displayImage}
           alt={product.name}
           loading="lazy"
+          onError={(e) => {
+            const img = e.currentTarget;
+            if (!img.dataset.fallback) {
+              img.dataset.fallback = '1';
+              img.src = PLACEHOLDER_IMG;
+            }
+          }}
           className="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500"
         />
+
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
           <div className="flex gap-2">
             <Button size="icon" variant="secondary" className="w-10 h-10 rounded-full shadow-lg hover:scale-110 transition-transform" asChild>
@@ -1201,6 +1196,48 @@ const BRAND_GRADIENT_HOVER =
             </Button>
           </div>
         </div>
+
+        {/* Prev / Next arrows – only when the variant has more than one image */}
+        {hasMultipleImages && (
+          <>
+            <button
+              type="button"
+              onClick={showPrevImage}
+              aria-label="Previous image"
+              className="absolute left-2 top-1/2 -translate-y-1/2 z-10 h-7 w-7 rounded-full bg-white/90 dark:bg-gray-800/90 shadow flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={showNextImage}
+              aria-label="Next image"
+              className="absolute right-2 top-1/2 -translate-y-1/2 z-10 h-7 w-7 rounded-full bg-white/90 dark:bg-gray-800/90 shadow flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+
+            {/* Dots */}
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex gap-1">
+              {images.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  aria-label={`Show image ${i + 1}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setImageIndex(i);
+                  }}
+                  className={cn(
+                    'h-1.5 rounded-full transition-all',
+                    i === safeIndex ? 'w-4 bg-primary' : 'w-1.5 bg-gray-400/70'
+                  )}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </Link>
 
       <div className="p-4 flex flex-col flex-1">
@@ -1217,7 +1254,7 @@ const BRAND_GRADIENT_HOVER =
           </h3>
         </Link>
 
-        {/* Color Dots - Only dots, no prices */}
+        {/* Color dots */}
         {variantColors.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 mb-2">
             {variantColors.map((vc: VariantColor) => (
@@ -1243,19 +1280,9 @@ const BRAND_GRADIENT_HOVER =
           </div>
         )}
 
-        {/* Price Section */}
+        {/* Price */}
         <div className="mb-2 mt-1">
-          {hasDiscount ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-lg font-bold text-primary">
-                {getDisplayPrice()}
-              </span>
-            </div>
-          ) : (
-            <span className="text-lg font-bold text-primary">
-              {getDisplayPrice()}
-            </span>
-          )}
+          <span className="text-lg font-bold text-primary">{getDisplayPrice()}</span>
           {hasMultipleVariants && (
             <p className="text-xs text-gray-400 mt-0.5">Click color dot to see variant price</p>
           )}
@@ -1267,48 +1294,44 @@ const BRAND_GRADIENT_HOVER =
 
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
-              {/* View Details */}
-              <Button
-                asChild
-                size="sm"
-                className={cn(
-                  'flex-1 h-9 text-xs rounded-full',
-                  BRAND_GRADIENT,
-                  'text-white shadow-lg hover:shadow-xl',
-                  'transition-all duration-200'
-                )}
-              >
-                <Link to={`/products/${product.slug}`}>
-                  View Details
-                </Link>
-              </Button>
+            <Button
+              asChild
+              size="sm"
+              className={cn(
+                'flex-1 h-9 text-xs rounded-full',
+                BRAND_GRADIENT,
+                'text-white shadow-lg hover:shadow-xl',
+                'transition-all duration-200'
+              )}
+            >
+              <Link to={`/products/${product.slug}`}>View Details</Link>
+            </Button>
 
-              {/* Quote */}
-              <Button
-                size="sm"
-                variant="outline"
-                className={cn(
-                  'flex-1 h-9 text-xs rounded-full',
-                  'border-orange-400/60 text-orange-600',
-                  'hover:text-white hover:border-transparent',
-                  'transition-all duration-200',
-                  BRAND_GRADIENT_HOVER,
-                  isQuotationLoading && 'opacity-50 cursor-not-allowed'
-                )}
-                onClick={handleQuotationRequest}
-                disabled={isQuotationLoading}
-                title="Request for Quotation"
-              >
-                {isQuotationLoading ? (
-                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mx-auto" />
-                ) : (
-                  <>
-                    <FileSpreadsheet className="w-4 h-4 mr-1.5" />
-                    <span>Quote</span>
-                  </>
-                )}
-              </Button>
-            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className={cn(
+                'flex-1 h-9 text-xs rounded-full',
+                'border-orange-400/60 text-orange-600',
+                'hover:text-white hover:border-transparent',
+                'transition-all duration-200',
+                BRAND_GRADIENT_HOVER,
+                isQuotationLoading && 'opacity-50 cursor-not-allowed'
+              )}
+              onClick={handleQuotationRequest}
+              disabled={isQuotationLoading}
+              title="Request for Quotation"
+            >
+              {isQuotationLoading ? (
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mx-auto" />
+              ) : (
+                <>
+                  <FileSpreadsheet className="w-4 h-4 mr-1.5" />
+                  <span>Quote</span>
+                </>
+              )}
+            </Button>
+          </div>
 
           <label
             className={cn(
@@ -1329,9 +1352,7 @@ const BRAND_GRADIENT_HOVER =
                 'accent-primary cursor-pointer disabled:cursor-not-allowed'
               )}
             />
-            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-              Add to compare
-            </span>
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Add to compare</span>
             {isCompareLoading && (
               <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin text-primary" />
             )}

@@ -18,6 +18,9 @@ export function ForgotPassword() {
     const navigate = useNavigate();
     const { settings } = useSettings();
 
+    const BRAND_GRADIENT =
+    'bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500';
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -107,26 +110,42 @@ export function ForgotPassword() {
                         )}
                     </CardContent>
                     <CardFooter className="flex flex-col space-y-4 px-8 pb-8 pt-2">
-                        <Button 
-                            type="submit" 
-                            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-6 rounded-xl text-base shadow-lg shadow-blue-200 hover:shadow-blue-300 transition-all duration-200"
-                            disabled={loading}
-                        >
-                            {loading ? (
-                                <span className="flex items-center gap-2">
-                                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    Sending OTP...
-                                </span>
-                            ) : (
-                                <>
-                                    <Send className="w-5 h-5 mr-2" />
-                                    Send OTP
-                                </>
-                            )}
-                        </Button>
+                       <Button
+                                type="submit"
+                                className={`${BRAND_GRADIENT} w-full hover:from-pink-600 hover:via-orange-600 hover:to-yellow-600 text-white font-semibold py-6 rounded-xl text-base shadow-lg hover:shadow-xl transition-all duration-200`}
+                                disabled={loading}
+                            >
+                                {loading ? (
+                                    <span className="flex items-center gap-2">
+                                        <svg
+                                            className="animate-spin h-5 w-5 text-white"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <circle
+                                                className="opacity-25"
+                                                cx="12"
+                                                cy="12"
+                                                r="10"
+                                                stroke="currentColor"
+                                                strokeWidth="4"
+                                            />
+                                            <path
+                                                className="opacity-75"
+                                                fill="currentColor"
+                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                            />
+                                        </svg>
+                                        Sending OTP...
+                                    </span>
+                                ) : (
+                                    <>
+                                        <Send className="w-5 h-5 mr-2" />
+                                        Send OTP
+                                    </>
+                                )}
+                            </Button>
                         <Button 
                             variant="ghost" 
                             className="w-full text-gray-600 hover:text-gray-800 hover:bg-gray-100"
