@@ -110,17 +110,17 @@ interface LeadGraphData {
   inquiries: number;
 }
 
-interface CategoryMap {
-  [key: string]: {
-    name: string;
-    count: number;
-    color: string;
-  };
-}
+// interface CategoryMap {
+//   [key: string]: {
+//     name: string;
+//     count: number;
+//     color: string;
+//   };
+// }
 
-interface CategoryColors {
-  [key: string]: string;
-}
+// interface CategoryColors {
+//   [key: string]: string;
+// }
 
 // Chart colors for different categories
 const CHART_COLORS = [
@@ -166,7 +166,7 @@ export function AdminDashboard() {
     const categoryNames: { [key: string]: string } = {};
 
     // Initialize all categories with 0
-    categories.forEach((cat: Category, index: number) => {
+    categories.forEach((cat: Category) => {
       categoryCounts[cat.id] = 0;
       categoryNames[cat.id] = cat.category_name;
     });
@@ -471,7 +471,7 @@ export function AdminDashboard() {
                     cy="50%" 
                     outerRadius={70} 
                     innerRadius={40}
-                    label={({ name, percent }) => `${percent > 0.05 ? `${(percent * 100).toFixed(0)}%` : ''}`}
+                    label={({ percent }) => `${percent > 0.05 ? `${(percent * 100).toFixed(0)}%` : ''}`}
                     labelLine={false}
                   >
                     {categoriesWithProducts.map((entry: CategoryDistribution, index: number) => (

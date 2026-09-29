@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Heart, ChevronRight,
-  ZoomIn, Share2, ShieldCheck, Package, ArrowLeft,
+  ZoomIn, ShieldCheck, Package, ArrowLeft,
   BadgeCheck, Truck, Wrench, FileSpreadsheet, FileText, ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';

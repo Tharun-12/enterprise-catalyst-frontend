@@ -303,7 +303,7 @@ export function ProductView() {
 
   const specifications = getSpecifications(product);
   const heroImage = product.variants?.length ? getImageUrl(product.variants[0].image_url) : '/placeholder-image.jpg';
-  const discountValue = parseFloat(product.discount);
+  // const discountValue = parseFloat(product.discount);
 
   return (
     <div className="min-h-screen bg-slate-50/60">
