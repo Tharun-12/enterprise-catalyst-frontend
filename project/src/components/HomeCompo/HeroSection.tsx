@@ -742,7 +742,7 @@ export function HeroSection() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    <Button asChild size="lg" variant="outline" className="border-blue-500 text-blue-600 hover:bg-blue-50 hover:border-blue-600 transition-all duration-300 px-8">
+                    <Button asChild size="lg" variant="outline" className="border-blue-500 text-blue-600 hover:bg-blue-50 hover:border-blue-600 hover:text-black transition-all duration-300 px-8">
                       <Link to="/contact">{slide.ctaSecondary}</Link>
                     </Button>
                   </motion.div>

@@ -747,7 +747,7 @@
 
 // ComparePage.tsx - Fixed with subcategory-based comparison + DYNAMIC specifications
 
-// ComparePage.tsx - Fixed with proper image handling
+// ComparePage.tsx - Fixed with proper image handling + brand gradient colors
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { X, GitCompare, Plus, ArrowRight, AlertCircle, Loader2, Heart } from 'lucide-react';
@@ -771,6 +771,19 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { WishlistLeadModal } from '@/components/wishlist-modal';
+
+// ─────────────────────────────────────────────────────────────
+// BRAND COLORS
+// ─────────────────────────────────────────────────────────────
+const BRAND_GRADIENT =
+  'bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500';
+
+const BRAND_GRADIENT_HOVER =
+  'hover:bg-gradient-to-r hover:from-pink-500 hover:via-orange-500 hover:to-yellow-500';
+
+// Gradient applied to text (headings, prices)
+const BRAND_GRADIENT_TEXT =
+  'bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 bg-clip-text text-transparent';
 
 // Interface to match API response
 interface Variant {
@@ -1832,7 +1845,7 @@ export function ComparePage() {
       <div className="container mx-auto px-4 py-8">
         <Breadcrumb items={[{ label: 'Home', path: '/' }, { label: 'Compare' }]} />
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
         </div>
       </div>
     );
@@ -1866,10 +1879,12 @@ export function ComparePage() {
     const brandsForSubcategory = filteredBrandsForSubcategory;
 
     return (
-      <Card key={`add-slot-${slotIndex}`} className="p-4 flex flex-col items-center justify-center border-2 border-dashed min-h-[400px] hover:border-primary/50 transition-colors">
+      <Card key={`add-slot-${slotIndex}`} className="p-4 flex flex-col items-center justify-center border-2 border-dashed border-orange-300 bg-gradient-to-br from-pink-50/60 via-orange-50/60 to-yellow-50/60 min-h-[400px] hover:border-orange-500 transition-colors">
         <div className="w-full max-w-xs space-y-4">
           <div className="text-center mb-2">
-            <Plus className="w-12 h-12 text-muted-foreground/30 mx-auto mb-2" />
+            <div className={cn('w-14 h-14 rounded-full mx-auto mb-2 flex items-center justify-center shadow-md', BRAND_GRADIENT)}>
+              <Plus className="w-7 h-7 text-white" />
+            </div>
             <p className="text-sm font-medium text-muted-foreground">Add a product</p>
           </div>
 
@@ -1879,7 +1894,7 @@ export function ComparePage() {
               value={slot.brand}
               onValueChange={(value) => handleSlotBrandChange(slotIndex, value)}
             >
-              <SelectTrigger className="w-full h-10">
+              <SelectTrigger className="w-full h-10 border-orange-200 focus:ring-orange-400">
                 <SelectValue placeholder="All Brands" />
               </SelectTrigger>
               <SelectContent>
@@ -1899,7 +1914,7 @@ export function ComparePage() {
               value={slot.productName}
               onValueChange={(value) => handleSlotProductNameChange(slotIndex, value)}
             >
-              <SelectTrigger className="w-full h-10">
+              <SelectTrigger className="w-full h-10 border-orange-200 focus:ring-orange-400">
                 <SelectValue placeholder="Select Product" />
               </SelectTrigger>
               <SelectContent>
@@ -1914,8 +1929,8 @@ export function ComparePage() {
           </div>
 
           {compareSubCategory && (
-            <div className="text-center text-xs text-muted-foreground pt-2 border-t">
-              Showing products in subcategory: <span className="font-medium text-primary">{compareSubCategory}</span>
+            <div className="text-center text-xs text-muted-foreground pt-2 border-t border-orange-200">
+              Showing products in subcategory: <span className="font-medium text-orange-600">{compareSubCategory}</span>
             </div>
           )}
         </div>
@@ -1929,7 +1944,7 @@ export function ComparePage() {
 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold">Compare Products</h1>
+          <h1 className={cn('text-2xl lg:text-3xl font-bold', BRAND_GRADIENT_TEXT)}>Compare Products</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {compareList.length > 0
               ? `Comparing ${compareList.length} product${compareList.length > 1 ? 's' : ''}`
@@ -1937,7 +1952,7 @@ export function ComparePage() {
           </p>
           {compareSubCategory && compareList.length > 0 && (
             <p className="text-xs text-muted-foreground mt-1">
-              Subcategory: <span className="font-medium text-primary">{compareSubCategory}</span>
+              Subcategory: <span className="font-medium text-orange-600">{compareSubCategory}</span>
             </p>
           )}
         </div>
@@ -1946,19 +1961,32 @@ export function ComparePage() {
             <Button
               variant="outline"
               size="sm"
+              className={cn(
+                'border-orange-300 text-orange-600 hover:text-white hover:border-transparent transition-all',
+                BRAND_GRADIENT_HOVER,
+                showOnlyDifferences && cn(BRAND_GRADIENT, 'text-white border-transparent hover:text-white')
+              )}
               onClick={() => setShowOnlyDifferences(!showOnlyDifferences)}
             >
               {showOnlyDifferences ? 'Show All' : 'Show Differences Only'}
             </Button>
-            <Button variant="outline" size="sm" onClick={async () => {
-              await clearCompare();
-              const resetSlots = slotDropdowns.map(() => ({
-                brand: 'all',
-                productName: 'all'
-              }));
-              setSlotDropdowns(resetSlots);
-              setFilteredBrandsForSubcategory([]);
-            }}>
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(
+                'border-pink-300 text-pink-600 hover:text-white hover:border-transparent transition-all',
+                BRAND_GRADIENT_HOVER
+              )}
+              onClick={async () => {
+                await clearCompare();
+                const resetSlots = slotDropdowns.map(() => ({
+                  brand: 'all',
+                  productName: 'all'
+                }));
+                setSlotDropdowns(resetSlots);
+                setFilteredBrandsForSubcategory([]);
+              }}
+            >
               <X className="w-4 h-4 mr-1.5" /> Clear All
             </Button>
           </div>
@@ -1972,7 +2000,10 @@ export function ComparePage() {
           description="Add products using the dropdown below to start comparing. You can compare up to 4 products from the same subcategory at once."
           action={
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button asChild>
+              <Button
+                asChild
+                className={cn(BRAND_GRADIENT, 'text-white border-0 hover:opacity-90 shadow-md')}
+              >
                 <Link to="/products">Browse Products <ArrowRight className="w-4 h-4 ml-2" /></Link>
               </Button>
             </div>
@@ -1981,8 +2012,8 @@ export function ComparePage() {
       ) : (
         <>
           {compareList.length < 2 && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-accent/10 border border-accent/20 mb-4 text-sm">
-              <AlertCircle className="w-4 h-4 text-accent shrink-0" />
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-orange-50 border border-orange-200 mb-4 text-sm">
+              <AlertCircle className="w-4 h-4 text-orange-500 shrink-0" />
               <span>Add at least 2 products from the same subcategory to see a meaningful comparison.</span>
             </div>
           )}
@@ -1999,8 +2030,11 @@ export function ComparePage() {
               return (
                 <Card
                   key={productId}
-                  className="group relative overflow-hidden border-primary/50 ring-1 ring-primary/20 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col"
+                  className="group relative overflow-hidden border-orange-300/60 ring-1 ring-orange-200/50 hover:border-orange-400 hover:shadow-xl hover:shadow-orange-200/40 transition-all duration-300 hover:-translate-y-1 flex flex-col"
                 >
+                  {/* Brand gradient accent bar */}
+                  <div className={cn('absolute top-0 left-0 right-0 h-1 z-10', BRAND_GRADIENT)} />
+
                   <Button
                     size="icon"
                     variant="ghost"
@@ -2008,8 +2042,8 @@ export function ComparePage() {
                       'absolute top-2 right-2 z-20 w-8 h-8 rounded-full transition-all duration-200',
                       'bg-white/80 hover:bg-white shadow-md backdrop-blur-sm',
                       isWishlisted
-                        ? 'text-red-500 hover:text-red-600 hover:bg-red-50'
-                        : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
+                        ? 'text-pink-500 hover:text-pink-600 hover:bg-pink-50'
+                        : 'text-gray-400 hover:text-pink-500 hover:bg-pink-50'
                     )}
                     onClick={(e) => handleWishlistToggle(product, e)}
                     disabled={isWishlistLoading}
@@ -2022,8 +2056,8 @@ export function ComparePage() {
                     )}
                   </Button>
 
-                  <div className="absolute top-2 left-2 z-10">
-                    <Badge className="bg-primary text-white text-[9px]">Comparing</Badge>
+                  <div className="absolute top-3 left-2 z-10">
+                    <Badge className={cn(BRAND_GRADIENT, 'text-white text-[9px] border-0 hover:opacity-90')}>Comparing</Badge>
                   </div>
 
                   <Button
@@ -2040,7 +2074,7 @@ export function ComparePage() {
                     <X className="w-3.5 h-3.5" />
                   </Button>
 
-                  <Link to={`/products/${getProductSlug(product.product_name)}`} className="block relative aspect-square overflow-hidden bg-muted/30">
+                  <Link to={`/products/${getProductSlug(product.product_name)}`} className="block relative aspect-square overflow-hidden bg-gradient-to-br from-pink-50/50 via-orange-50/40 to-yellow-50/50">
                     <img
                       src={productImage}
                       alt={product.product_name}
@@ -2059,27 +2093,27 @@ export function ComparePage() {
 
                   <div className="p-4 flex flex-col flex-1">
                     <div className="flex items-center gap-1.5 mb-2 flex-wrap">
-                      <Badge className="text-[10px] font-semibold bg-primary/10 text-primary border-0">
+                      <Badge className="text-[10px] font-semibold bg-orange-100 text-orange-700 hover:bg-orange-100 border-0">
                         {product.product_brand || 'N/A'}
                       </Badge>
                       <span className="text-xs text-muted-foreground/50">·</span>
                       <span className="text-xs text-muted-foreground">{product.category_name || 'Uncategorized'}</span>
                       {product.subcategory_name && (
                         <>
-                          <span className="text-xs text-muted-foreground/50">→</span>
+                          <span className="text-xs text-orange-400">→</span>
                           <span className="text-xs text-muted-foreground">{product.subcategory_name}</span>
                         </>
                       )}
                     </div>
 
                     <Link to={`/products/${getProductSlug(product.product_name)}`}>
-                      <h3 className="font-semibold text-sm leading-snug mb-1.5 line-clamp-2 group-hover:text-primary transition-colors">
+                      <h3 className="font-semibold text-sm leading-snug mb-1.5 line-clamp-2 group-hover:text-orange-500 transition-colors">
                         {product.product_name}
                       </h3>
                     </Link>
 
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <span className="text-lg font-bold text-primary">
+                      <span className={cn('text-lg font-bold', BRAND_GRADIENT_TEXT)}>
                         {getDisplayPrice(product)}
                       </span>
                     </div>
@@ -2095,13 +2129,24 @@ export function ComparePage() {
                     </p>
 
                     <div className="mt-3">
-                      <Badge variant={getStockStatus(product) === 'In Stock' ? 'default' : 'destructive'} className="w-fit">
+                      <Badge
+                        variant={getStockStatus(product) === 'In Stock' ? 'default' : 'destructive'}
+                        className={cn(
+                          'w-fit',
+                          getStockStatus(product) === 'In Stock' &&
+                            'bg-green-500 hover:bg-green-600 text-white border-0'
+                        )}
+                      >
                         {getStockStatus(product)}
                       </Badge>
                     </div>
 
                     <div className="flex items-center gap-2 mt-3">
-                      <Button asChild size="sm" className="flex-1">
+                      <Button
+                        asChild
+                        size="sm"
+                        className={cn('flex-1 text-white border-0 hover:opacity-90 shadow-sm', BRAND_GRADIENT)}
+                      >
                         <Link to={`/products/${getProductSlug(product.product_name)}`}>
                           View Details
                         </Link>
@@ -2111,7 +2156,10 @@ export function ComparePage() {
                         variant="outline"
                         onClick={(e) => handleSingleQuotation(product, e)}
                         disabled={isQuotationLoading}
-                        className="flex-shrink-0"
+                        className={cn(
+                          'flex-shrink-0 border-orange-300 text-orange-600 hover:text-white hover:border-transparent transition-all',
+                          BRAND_GRADIENT_HOVER
+                        )}
                       >
                         {isQuotationLoading ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -2131,13 +2179,13 @@ export function ComparePage() {
           {/* General Information Section */}
           {compareList.length >= 2 && generalInfoItems.length > 0 && (
             <div className="mb-6">
-              <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 rounded-t-lg font-semibold text-sm flex items-center justify-between">
+              <div className={cn(BRAND_GRADIENT, 'text-white px-4 py-3 rounded-t-lg font-semibold text-sm flex items-center justify-between shadow-sm')}>
                 <span>General Information</span>
-                <Badge variant="secondary" className="bg-white/20 text-white">
+                <Badge variant="secondary" className="bg-white/20 text-white hover:bg-white/20">
                   {generalInfoItems.length} items
                 </Badge>
               </div>
-              <div className="border border-t-0 rounded-b-lg overflow-hidden">
+              <div className="border border-t-0 border-orange-200 rounded-b-lg overflow-hidden">
                 {generalInfoItems.map((item, index) => {
                   const values = displayProducts.map(p => item.value(p));
                   const isDifferent = isValueDifferent(values);
@@ -2148,14 +2196,14 @@ export function ComparePage() {
                       key={item.label}
                       className={cn(
                         'grid gap-0',
-                        index % 2 === 0 ? 'bg-muted/30' : 'bg-card',
-                        isDifferent && showOnlyDifferences && 'border-l-4 border-primary'
+                        index % 2 === 0 ? 'bg-orange-50/50' : 'bg-card',
+                        isDifferent && showOnlyDifferences && 'border-l-4 border-orange-500'
                       )}
                       style={{ gridTemplateColumns: `200px repeat(${displayProducts.length}, 1fr)` }}
                     >
-                      <div className="p-3 text-sm font-medium text-muted-foreground border-r flex items-center gap-2">
+                      <div className="p-3 text-sm font-medium text-muted-foreground border-r border-orange-100 flex items-center gap-2">
                         {isDifferent && showOnlyDifferences && (
-                          <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                          <div className={cn('w-1.5 h-1.5 rounded-full animate-pulse', BRAND_GRADIENT)} />
                         )}
                         {item.label}
                       </div>
@@ -2164,11 +2212,17 @@ export function ComparePage() {
                         const isBest = bestValue && value === bestValue && isDifferent;
                         return (
                           <div key={product.product_id || product.id} className={cn(
-                            "p-3 text-sm border-l first:border-l-0",
+                            "p-3 text-sm border-l border-orange-100 first:border-l-0",
                             isBest && "bg-green-50 dark:bg-green-950/20"
                           )}>
                             {item.label === 'Stock Status' ? (
-                              <Badge variant={value === 'In Stock' ? 'default' : 'destructive'}>
+                              <Badge
+                                variant={value === 'In Stock' ? 'default' : 'destructive'}
+                                className={cn(
+                                  value === 'In Stock' &&
+                                    'bg-green-500 hover:bg-green-600 text-white border-0'
+                                )}
+                              >
                                 {value}
                               </Badge>
                             ) : (
@@ -2196,13 +2250,13 @@ export function ComparePage() {
           {/* Specifications Section - now fully dynamic */}
           {compareList.length >= 2 && specItems.length > 0 && (
             <div className="mb-6">
-              <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 rounded-t-lg font-semibold text-sm flex items-center justify-between">
+              <div className={cn(BRAND_GRADIENT, 'text-white px-4 py-3 rounded-t-lg font-semibold text-sm flex items-center justify-between shadow-sm')}>
                 <span>Specifications</span>
-                <Badge variant="secondary" className="bg-white/20 text-white">
+                <Badge variant="secondary" className="bg-white/20 text-white hover:bg-white/20">
                   {specItems.length} items
                 </Badge>
               </div>
-              <div className="border border-t-0 rounded-b-lg overflow-hidden">
+              <div className="border border-t-0 border-orange-200 rounded-b-lg overflow-hidden">
                 {specItems.map((item, index) => {
                   const values = displayProducts.map(p => item.value(p));
                   const isDifferent = isValueDifferent(values);
@@ -2213,14 +2267,14 @@ export function ComparePage() {
                       key={item.label}
                       className={cn(
                         'grid gap-0',
-                        index % 2 === 0 ? 'bg-muted/30' : 'bg-card',
-                        isDifferent && showOnlyDifferences && 'border-l-4 border-primary'
+                        index % 2 === 0 ? 'bg-orange-50/50' : 'bg-card',
+                        isDifferent && showOnlyDifferences && 'border-l-4 border-orange-500'
                       )}
                       style={{ gridTemplateColumns: `200px repeat(${displayProducts.length}, 1fr)` }}
                     >
-                      <div className="p-3 text-sm font-medium text-muted-foreground border-r flex items-center gap-2">
+                      <div className="p-3 text-sm font-medium text-muted-foreground border-r border-orange-100 flex items-center gap-2">
                         {isDifferent && showOnlyDifferences && (
-                          <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                          <div className={cn('w-1.5 h-1.5 rounded-full animate-pulse', BRAND_GRADIENT)} />
                         )}
                         {item.label}
                       </div>
@@ -2229,7 +2283,7 @@ export function ComparePage() {
                         const isBest = bestValue && value === bestValue && isDifferent;
                         return (
                           <div key={product.product_id || product.id} className={cn(
-                            "p-3 text-sm border-l first:border-l-0",
+                            "p-3 text-sm border-l border-orange-100 first:border-l-0",
                             isBest && "bg-green-50 dark:bg-green-950/20"
                           )}>
                             <span className={cn(
@@ -2255,23 +2309,23 @@ export function ComparePage() {
           {/* Variants Section */}
           {compareList.length >= 2 && (
             <div className="mb-6">
-              <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-4 py-3 rounded-t-lg font-semibold text-sm">
+              <div className={cn(BRAND_GRADIENT, 'text-white px-4 py-3 rounded-t-lg font-semibold text-sm shadow-sm')}>
                 Available Variants
               </div>
-              <div className="border border-t-0 rounded-b-lg overflow-hidden">
+              <div className="border border-t-0 border-orange-200 rounded-b-lg overflow-hidden">
                 <div
-                  className={cn('grid gap-0', 'bg-muted/30')}
+                  className={cn('grid gap-0', 'bg-orange-50/50')}
                   style={{ gridTemplateColumns: `200px repeat(${displayProducts.length}, 1fr)` }}
                 >
-                  <div className="p-3 text-sm font-medium text-muted-foreground border-r">Variants</div>
+                  <div className="p-3 text-sm font-medium text-muted-foreground border-r border-orange-100">Variants</div>
                   {displayProducts.map((product) => (
-                    <div key={product.product_id || product.id} className="p-3 border-l first:border-l-0">
+                    <div key={product.product_id || product.id} className="p-3 border-l border-orange-100 first:border-l-0">
                       {product.variants && product.variants.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
                           {product.variants.map((variant) => (
                             <div key={variant.id} className={cn(
-                              "flex items-center gap-1.5 bg-card px-2.5 py-1 rounded-full border text-xs",
-                              variant.is_selected && "border-primary bg-primary/10"
+                              "flex items-center gap-1.5 bg-card px-2.5 py-1 rounded-full border border-orange-200 text-xs",
+                              variant.is_selected && "border-orange-500 bg-orange-50"
                             )}>
                               <div
                                 className="w-3.5 h-3.5 rounded-full border"
@@ -2279,7 +2333,7 @@ export function ComparePage() {
                               />
                               <span>{variant.variant_name || variant.color || 'N/A'}</span>
                               {variant.is_selected && (
-                                <Badge className="text-[8px] bg-primary text-white border-0 px-1.5 py-0 h-4">Selected</Badge>
+                                <Badge className={cn(BRAND_GRADIENT, 'text-[8px] text-white border-0 px-1.5 py-0 h-4 hover:opacity-90')}>Selected</Badge>
                               )}
                             </div>
                           ))}
@@ -2298,10 +2352,15 @@ export function ComparePage() {
           {relatedProducts.length > 0 && (
             <div className="mt-12">
               <div className="flex items-center justify-between mb-5">
-                <h2 className="text-xl font-bold">
+                <h2 className={cn('text-xl font-bold', BRAND_GRADIENT_TEXT)}>
                   Related {subCategoryName} Products
                 </h2>
-                <Button asChild variant="ghost" size="sm">
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className={cn('text-orange-600 hover:text-white transition-all', BRAND_GRADIENT_HOVER)}
+                >
                   <Link to={`/products?subcategory=${encodeURIComponent(subCategoryName)}`}>
                     View More <ArrowRight className="w-4 h-4 ml-1" />
                   </Link>

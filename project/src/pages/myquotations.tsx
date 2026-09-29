@@ -97,6 +97,13 @@ export function MyQuotations() {
   const [_updatingQuantity, setUpdatingQuantity] = useState(false);
   const navigate = useNavigate();
 
+
+  // const BRAND_GRADIENT =
+  // 'bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500';
+
+const BRAND_GRADIENT_HOVER =
+  'hover:bg-gradient-to-r hover:from-pink-500 hover:via-orange-500 hover:to-yellow-500';
+
   useEffect(() => {
     fetchQuotations();
   }, []);
@@ -374,7 +381,7 @@ export function MyQuotations() {
                               {formatCurrency(minPrice)}
                             </span>
                             <span className="text-xs text-muted-foreground">to</span>
-                            <span className="text-sm font-semibold text-purple-600">
+                            <span className="text-sm font-semibold text-blue-600">
                               {formatCurrency(maxPrice)}
                             </span>
                           </div>
@@ -490,7 +497,11 @@ export function MyQuotations() {
                                               type="button"
                                               size="icon"
                                               variant="outline"
-                                              className="h-7 w-7 rounded-full border-gray-300 dark:border-gray-600 hover:bg-primary hover:text-white hover:border-primary transition-colors"
+                                             className={cn(
+                                                'h-7 w-7 rounded-full border-gray-300 dark:border-gray-600 transition-colors',
+                                                BRAND_GRADIENT_HOVER,
+                                                'hover:text-white hover:border-transparent'
+                                              )}
                                               onClick={() => updateQuantity(quotation.id, detail.id, detail.quantity - 1)}
                                               disabled={isUpdating || detail.quantity <= 1}
                                             >
@@ -503,7 +514,11 @@ export function MyQuotations() {
                                               type="button"
                                               size="icon"
                                               variant="outline"
-                                              className="h-7 w-7 rounded-full border-gray-300 dark:border-gray-600 hover:bg-primary hover:text-white hover:border-primary transition-colors"
+                                               className={cn(
+                                                'h-7 w-7 rounded-full border-gray-300 dark:border-gray-600 transition-colors',
+                                                BRAND_GRADIENT_HOVER,
+                                                'hover:text-white hover:border-transparent'
+                                              )}
                                               onClick={() => updateQuantity(quotation.id, detail.id, detail.quantity + 1)}
                                               disabled={isUpdating}
                                             >
@@ -526,9 +541,9 @@ export function MyQuotations() {
                                       </div>
                                     )}
                                     {itemMax !== null && (
-                                      <div className="bg-purple-50/50 rounded-lg px-3 py-1.5 text-center border border-purple-100">
+                                      <div className="bg-blue-50/50 rounded-lg px-3 py-1.5 text-center border border-blue-100">
                                         <p className="text-muted-foreground text-[10px] uppercase tracking-wider">Max</p>
-                                        <p className="font-semibold text-purple-700 text-sm">{formatCurrency(itemMax)}</p>
+                                        <p className="font-semibold text-blue-700 text-sm">{formatCurrency(itemMax)}</p>
                                       </div>
                                     )}
                                   </div>

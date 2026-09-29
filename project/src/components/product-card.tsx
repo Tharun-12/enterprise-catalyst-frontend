@@ -713,6 +713,12 @@ export function ProductCard({ product }: ProductCardProps) {
   const [isQuotationLoading, setIsQuotationLoading] = useState(false);
   const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
 
+  const BRAND_GRADIENT =
+  'bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500';
+
+const BRAND_GRADIENT_HOVER =
+  'hover:bg-gradient-to-r hover:from-pink-500 hover:via-orange-500 hover:to-yellow-500';
+
   // Quantity is always 1 - no state needed
   const quantity = 1;
 
@@ -1261,32 +1267,48 @@ export function ProductCard({ product }: ProductCardProps) {
 
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            <Button asChild size="sm" className="flex-1 h-9 text-xs rounded-full bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl transition-all">
-              <Link to={`/products/${product.slug}`}>
-                View Details
-              </Link>
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className={cn(
-                'flex-1 h-9 text-xs rounded-full border-primary/30 text-primary hover:bg-primary hover:text-white transition-all duration-200',
-                isQuotationLoading && 'opacity-50 cursor-not-allowed'
-              )}
-              onClick={handleQuotationRequest}
-              disabled={isQuotationLoading}
-              title="Request for Quotation"
-            >
-              {isQuotationLoading ? (
-                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mx-auto" />
-              ) : (
-                <>
-                  <FileSpreadsheet className="w-4 h-4 mr-1.5" />
-                  <span>Quote</span>
-                </>
-              )}
-            </Button>
-          </div>
+              {/* View Details */}
+              <Button
+                asChild
+                size="sm"
+                className={cn(
+                  'flex-1 h-9 text-xs rounded-full',
+                  BRAND_GRADIENT,
+                  'text-white shadow-lg hover:shadow-xl',
+                  'transition-all duration-200'
+                )}
+              >
+                <Link to={`/products/${product.slug}`}>
+                  View Details
+                </Link>
+              </Button>
+
+              {/* Quote */}
+              <Button
+                size="sm"
+                variant="outline"
+                className={cn(
+                  'flex-1 h-9 text-xs rounded-full',
+                  'border-orange-400/60 text-orange-600',
+                  'hover:text-white hover:border-transparent',
+                  'transition-all duration-200',
+                  BRAND_GRADIENT_HOVER,
+                  isQuotationLoading && 'opacity-50 cursor-not-allowed'
+                )}
+                onClick={handleQuotationRequest}
+                disabled={isQuotationLoading}
+                title="Request for Quotation"
+              >
+                {isQuotationLoading ? (
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mx-auto" />
+                ) : (
+                  <>
+                    <FileSpreadsheet className="w-4 h-4 mr-1.5" />
+                    <span>Quote</span>
+                  </>
+                )}
+              </Button>
+            </div>
 
           <label
             className={cn(

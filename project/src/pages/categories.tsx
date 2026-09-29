@@ -263,7 +263,7 @@ export function CategoriesPage() {
                   {/* Browse Products Button */}
                   <Link to={`/products?category=${encodeURIComponent(categoryName)}`} className="w-full mt-auto">
                     <Button
-                      className="w-full group-hover:shadow-lg transition-all duration-300"
+                      className="w-full bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500  group-hover:shadow-lg transition-all duration-300"
                       style={{
                         backgroundColor: color,
                         color: 'white',
@@ -273,6 +273,8 @@ export function CategoriesPage() {
                       Browse Products
                       <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                     </Button>
+
+
                   </Link>
                 </div>
               </Card>

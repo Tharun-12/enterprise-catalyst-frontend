@@ -515,6 +515,9 @@ export function WishlistPage() {
   const [_isCompareLoading, _setIsCompareLoading] = useState<Record<string, boolean>>({});
   const [_isQuotationLoading, _setIsQuotationLoading] = useState<Record<string, boolean>>({});
 
+  const BRAND_GRADIENT =
+  'bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500';
+
   useEffect(() => {
     const session = localStorage.getItem('userSession');
     if (session) {
@@ -948,19 +951,40 @@ export function WishlistPage() {
     );
   }
 
-  if (displayProducts.length === 0) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <Breadcrumb items={[{ label: 'Home', path: '/' }, { label: 'Wishlist' }]} />
-        <EmptyState
-          icon={<Heart className="w-8 h-8" />}
-          title="Your wishlist is empty"
-          description="Save products to your wishlist and get personalized quotes from our sales team."
-          action={<Button asChild><Link to="/products">Browse Products <ArrowRight className="w-4 h-4 ml-2" /></Link></Button>}
-        />
-      </div>
-    );
-  }
+if (displayProducts.length === 0) {
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <Breadcrumb
+        items={[
+          { label: 'Home', path: '/' },
+          { label: 'Wishlist' },
+        ]}
+      />
+
+      <EmptyState
+        icon={<Heart className="w-8 h-8" />}
+        title="Your wishlist is empty"
+        description="Save products to your wishlist and get personalized quotes from our sales team."
+        action={
+          <Button
+            asChild
+            className={cn(
+              BRAND_GRADIENT,
+              'text-white shadow-lg hover:shadow-xl',
+              'transition-all duration-200',
+              'font-semibold'
+            )}
+          >
+            <Link to="/products">
+              Browse Products
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Link>
+          </Button>
+        }
+      />
+    </div>
+  );
+}
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -982,17 +1006,23 @@ export function WishlistPage() {
           >
             {selectedProducts.size === displayProducts.length ? 'Deselect All' : 'Select All'}
           </Button>
-          <Button 
-            onClick={handleGenerateQuotation}
-            disabled={selectedProducts.size === 0 || isGeneratingQuotation}
-            className="flex items-center gap-2 flex-1 sm:flex-none bg-primary hover:bg-primary/90"
-          >
-            {isGeneratingQuotation ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <FileText className="w-4 h-4" />
-            )}
-            Request Quote ({selectedProducts.size})
+          <Button
+                onClick={handleGenerateQuotation}
+                disabled={selectedProducts.size === 0 || isGeneratingQuotation}
+                className={cn(
+                  'flex items-center gap-2 flex-1 sm:flex-none',
+                  BRAND_GRADIENT,
+                  'text-white shadow-lg hover:shadow-xl',
+                  'transition-all duration-200',
+                  'disabled:opacity-50 disabled:cursor-not-allowed'
+                )}
+              >
+                {isGeneratingQuotation ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <FileText className="w-4 h-4" />
+                )}
+                Request Quote ({selectedProducts.size})
           </Button>
           <Button 
             variant="destructive" 

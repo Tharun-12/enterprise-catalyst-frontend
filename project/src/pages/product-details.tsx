@@ -371,6 +371,12 @@ export function ProductDetailsPage() {
   const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
   const { addToWishlist, removeFromWishlist, isInWishlist, isLoggedIn } = useApp();
 
+  const BRAND_GRADIENT =
+  'bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500';
+
+const BRAND_GRADIENT_HOVER =
+  'hover:bg-gradient-to-r hover:from-pink-500 hover:via-orange-500 hover:to-yellow-500';
+
   // Move product useMemo before any conditional hooks
   const product = useMemo(() => {
     if (!productData) return null;
@@ -1045,40 +1051,64 @@ export function ProductDetailsPage() {
 
           {/* Actions */}
           <div className="flex flex-wrap gap-3 mb-4">
-            <Button
-              size="lg"
-              className="flex-1 min-w-[160px]"
-              onClick={handleSingleQuotation}
-              disabled={submitting || maxStock === 0}
-            >
-              {submitting ? (
-                <>
-                  <span className="animate-spin mr-2">⟳</span> Generating...
-                </>
-              ) : (
-                <>
-                  <FileSpreadsheet className="w-4 h-4 mr-2" /> Request for Quotation
-                </>
-              )}
-            </Button>
-            <Button
-              size="lg"
-              variant={inWishlist ? 'default' : 'outline'}
-              className={cn(inWishlist && 'bg-red-500 hover:bg-red-600 text-white')}
-              onClick={handleWishlist}
-            >
-              <Heart className={cn('w-4 h-4 mr-2', inWishlist && 'fill-current')} />
-              {inWishlist ? 'Wishlisted' : 'Wishlist'}
-            </Button>
-          </div>
+  {/* Request for Quotation */}
+  <Button
+    size="lg"
+    className={cn(
+      'flex-1 min-w-[160px]',
+      BRAND_GRADIENT,
+      'text-white shadow-lg hover:shadow-xl',
+      'transition-all duration-200',
+      submitting && 'opacity-50 cursor-not-allowed'
+    )}
+    onClick={handleSingleQuotation}
+    disabled={submitting || maxStock === 0}
+  >
+    {submitting ? (
+      <>
+        <span className="animate-spin mr-2">⟳</span>
+        Generating...
+      </>
+    ) : (
+      <>
+        <FileSpreadsheet className="w-4 h-4 mr-2" />
+        Request for Quotation
+      </>
+    )}
+  </Button>
+
+  {/* Wishlist */}
+  <Button
+    size="lg"
+    variant="outline"
+    className={cn(
+      'min-w-[140px]',
+      'rounded-md',
+      'border-orange-400/60 text-orange-600',
+      'hover:text-white hover:border-transparent',
+      'transition-all duration-200',
+      BRAND_GRADIENT_HOVER,
+      inWishlist && 'text-white border-transparent bg-red-500 hover:bg-red-600'
+    )}
+    onClick={handleWishlist}
+  >
+    <Heart
+      className={cn(
+        'w-4 h-4 mr-2',
+        inWishlist && 'fill-current'
+      )}
+    />
+    {inWishlist ? 'Wishlisted' : 'Wishlist'}
+  </Button>
+</div>
 
           <div className="flex gap-3">
-            <Button variant="ghost" size="sm" onClick={() => {
+            {/* <Button variant="ghost" size="sm" onClick={() => {
               navigator.clipboard?.writeText(window.location.href);
               toast.success('Link copied to clipboard');
             }}>
               <Share2 className="w-4 h-4 mr-1.5" /> Share
-            </Button>
+            </Button> */}
             <Button asChild variant="ghost" size="sm">
               <Link to="/products">
                 <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Products
@@ -1133,27 +1163,45 @@ export function ProductDetailsPage() {
         </TabsContent>
 
         {/* Datasheet Tab */}
+        {/* Datasheet Tab */}
         {datasheetUrl && (
           <TabsContent value="datasheet" className="mt-6">
             <Card className="p-8 text-center">
               <div className="flex flex-col items-center gap-4">
-                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
-                  <FileText className="w-10 h-10 text-primary" />
+
+                {/* Datasheet Icon */}
+                <div className="w-20 h-20 rounded-full bg-gradient-to-r from-pink-500/10 via-orange-500/10 to-yellow-500/10 flex items-center justify-center">
+                  <FileText className="w-10 h-10 text-orange-500" />
                 </div>
-                <h3 className="text-xl font-semibold">Product Datasheet</h3>
+
+                <h3 className="text-xl font-semibold">
+                  Product Datasheet
+                </h3>
+
                 <p className="text-muted-foreground max-w-md">
                   View the complete technical datasheet for {product.name}.
-                  {selectedVariant?.variant_name && ` (Variant: ${selectedVariant.variant_name})`}
+                  {selectedVariant?.variant_name &&
+                    ` (Variant: ${selectedVariant.variant_name})`}
                 </p>
-                <div className="flex gap-3 mt-2">
+
+                <div className="flex flex-wrap items-center justify-center gap-3 mt-2">
+
+                  {/* Open Datasheet */}
                   <Button
                     size="lg"
                     onClick={() => handleDatasheetClick(datasheetUrl)}
-                    className="gap-2"
+                    className={cn(
+                      'gap-2',
+                      BRAND_GRADIENT,
+                      'text-white shadow-lg hover:shadow-xl',
+                      'transition-all duration-200'
+                    )}
                   >
                     <ExternalLink className="w-4 h-4" />
                     Open Datasheet
                   </Button>
+
+                  {/* Part Code */}
                   {selectedVariant?.part_code && (
                     <div className="text-sm text-muted-foreground flex items-center gap-2">
                       <span className="font-medium">Part Code:</span>
@@ -1161,6 +1209,8 @@ export function ProductDetailsPage() {
                     </div>
                   )}
                 </div>
+
+                {/* Availability */}
                 <div className="text-xs text-muted-foreground mt-2">
                   {selectedVariant?.availability && (
                     <span className="inline-flex items-center gap-1.5">
@@ -1169,6 +1219,7 @@ export function ProductDetailsPage() {
                     </span>
                   )}
                 </div>
+
               </div>
             </Card>
           </TabsContent>

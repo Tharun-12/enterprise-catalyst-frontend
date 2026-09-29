@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Cpu, 
-  Server, 
-  Shield, 
-  Lock, 
+import {
+  Cpu,
+  Server,
+  Shield,
+  Lock,
   Wifi,
   ChevronRight,
   Loader2,
-  // ChevronDown
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import {baseurl} from "@/Baseurl/baseurl"
+import { baseurl } from '@/Baseurl/baseurl';
 
 interface Subcategory {
   id: number;
@@ -33,52 +32,92 @@ interface ApiResponse {
   data: Category[];
 }
 
+const BRAND_GRADIENT =
+  'bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500';
+
+// const _BRAND_GRADIENT_HOVER =
+//   'hover:bg-gradient-to-r hover:from-pink-500 hover:via-orange-500 hover:to-yellow-500';
+
 const FeaturedCategories: React.FC = () => {
   const navigate = useNavigate();
+
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedCategory, _setExpandedCategory] = useState<number | null>(null);
+  const [expandedCategory, _setExpandedCategory] = useState<number | null>(
+    null
+  );
 
-  // Map category names to icons and colors
+  // =========================================================
+  // CATEGORY ICON MAPPING
+  // =========================================================
+
   const getCategoryIcon = (categoryName: string) => {
     const name = categoryName.toLowerCase();
+
     if (name.includes('artificial') || name.includes('ai')) {
-      return { icon: Cpu, color: 'from-purple-500 to-indigo-600' };
+      return {
+        icon: Cpu,
+        color: 'from-violet-500 to-indigo-600',
+      };
     } else if (name.includes('infrastructure')) {
-      return { icon: Server, color: 'from-blue-500 to-cyan-600' };
+      return {
+        icon: Server,
+        color: 'from-blue-500 to-blue-700',
+      };
     } else if (name.includes('security')) {
-      return { icon: Shield, color: 'from-green-500 to-emerald-600' };
+      return {
+        icon: Shield,
+        color: 'from-emerald-500 to-green-600',
+      };
     } else if (name.includes('physical')) {
-      return { icon: Lock, color: 'from-red-500 to-rose-600' };
+      return {
+        icon: Lock,
+        color: 'from-red-500 to-red-700',
+      };
     } else if (name.includes('cabling')) {
-      return { icon: Wifi, color: 'from-orange-500 to-amber-600' };
+      return {
+        icon: Wifi,
+        color: 'from-orange-500 to-amber-600',
+      };
     }
-    // Default icon and color
-    return { icon: Cpu, color: 'from-gray-500 to-gray-600' };
+
+    return {
+      icon: Cpu,
+      color: 'from-slate-500 to-slate-700',
+    };
   };
 
-  // Fetch categories from API
+  // =========================================================
+  // FETCH CATEGORIES
+  // =========================================================
+
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         setLoading(true);
         setError(null);
+
         const response = await fetch(`${baseurl}/api/categories/`);
-        
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const result: ApiResponse = await response.json();
-        
+
         if (result.success) {
           setCategories(result.data);
         } else {
           throw new Error('Failed to fetch categories');
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred while fetching categories');
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'An error occurred while fetching categories'
+        );
+
         console.error('Error fetching categories:', err);
       } finally {
         setLoading(false);
@@ -88,72 +127,101 @@ const FeaturedCategories: React.FC = () => {
     fetchCategories();
   }, []);
 
+  // =========================================================
+  // NAVIGATION
+  // =========================================================
+
   const handleViewAll = () => {
     navigate('/categories');
   };
 
-  // Update the handleCategoryClick function
-const handleCategoryClick = (categoryName: string) => {
-  // Navigate to products with category parameter
-  navigate(`/products?category=${encodeURIComponent(categoryName)}`);
-};
+  const handleCategoryClick = (categoryName: string) => {
+    navigate(`/products?category=${encodeURIComponent(categoryName)}`);
+  };
 
-// Update the handleSubcategoryClick function
-const handleSubcategoryClick = (categoryName: string, _subcategoryName: string) => {
-  // Navigate to products with category parameter (you could also add subcategory)
-  navigate(`/products?category=${encodeURIComponent(categoryName)}`);
-};
+  const handleSubcategoryClick = (
+    categoryName: string,
+    _subcategoryName: string
+  ) => {
+    navigate(`/products?category=${encodeURIComponent(categoryName)}`);
+  };
 
-  // const toggleSubcategories = (categoryId: number, e: React.MouseEvent) => {
-  //   e.stopPropagation(); // Prevent triggering the category click
-  //   setExpandedCategory(expandedCategory === categoryId ? null : categoryId);
-  // };
+  // =========================================================
+  // LOADING STATE
+  // =========================================================
 
-  // Loading state
   if (loading) {
     return (
-      <section className="py-16 px-4 bg-gradient-to-b from-gray-50 to-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col sm:flex-row justify-between items-center mb-14 gap-4">
-            <div className="text-center sm:text-left">
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-800 mb-2">
-                Featured Categories
-              </h2>
-              <p className="text-gray-600 text-lg">
-                Explore our comprehensive range of enterprise product categories.
-              </p>
-            </div>
+      <section className="fc-loading-section bg-white px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-10">
+            <div
+              className={`mb-3 h-1 w-10 rounded-full ${BRAND_GRADIENT}`}
+            />
+
+            <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+              Featured Categories
+            </h2>
+
+            <p className="mt-3 max-w-2xl text-base text-slate-500">
+              Explore our comprehensive range of enterprise product
+              categories.
+            </p>
           </div>
-          <div className="flex justify-center items-center py-20">
-            <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
+
+          <div className="flex min-h-[260px] items-center justify-center rounded-2xl border border-slate-200 bg-slate-50">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="h-9 w-9 animate-spin text-orange-500" />
+
+              <span className="text-sm font-medium text-slate-500">
+                Loading categories...
+              </span>
+            </div>
           </div>
         </div>
       </section>
     );
   }
 
-  // Error state
+  // =========================================================
+  // ERROR STATE
+  // =========================================================
+
   if (error) {
     return (
-      <section className="py-16 px-4 bg-gradient-to-b from-gray-50 to-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col sm:flex-row justify-between items-center mb-14 gap-4">
-            <div className="text-center sm:text-left">
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-800 mb-2">
-                Featured Categories
-              </h2>
-              <p className="text-gray-600 text-lg">
-                Explore our comprehensive range of enterprise product categories.
-              </p>
-            </div>
+      <section className="fc-error-section bg-white px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-10">
+            <div
+              className={`mb-3 h-1 w-10 rounded-full ${BRAND_GRADIENT}`}
+            />
+
+            <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+              Featured Categories
+            </h2>
+
+            <p className="mt-3 text-base text-slate-500">
+              Explore our comprehensive range of enterprise product
+              categories.
+            </p>
           </div>
-          <div className="text-center py-20">
-            <p className="text-red-600 text-lg">Error: {error}</p>
-            <button 
+
+          <div className="rounded-2xl border border-red-200 bg-red-50/50 p-8 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-lg font-bold text-red-600">
+              !
+            </div>
+
+            <h3 className="mt-4 text-lg font-semibold text-slate-900">
+              Unable to load categories
+            </h3>
+
+            <p className="mt-2 text-sm text-red-600">{error}</p>
+
+            <button
               onClick={() => window.location.reload()}
-              className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="mt-5 rounded-lg bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:shadow-md"
             >
-              Retry
+              Try Again
             </button>
           </div>
         </div>
@@ -161,102 +229,187 @@ const handleSubcategoryClick = (categoryName: string, _subcategoryName: string) 
     );
   }
 
+  // =========================================================
+  // MAIN COMPONENT
+  // =========================================================
+
   return (
-    <section className="py-16 px-4 bg-gradient-to-b from-gray-50 to-white">
-      <div className="max-w-7xl mx-auto">
-        {/* Header with View All button */}
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-14 gap-4">
-          <div className="text-center sm:text-left">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-800 mb-2">
-              Featured Categories
+    <section className="fc-section bg-white px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+      <div className="mx-auto max-w-7xl">
+
+        {/* =====================================================
+            SECTION HEADER
+        ===================================================== */}
+
+        <div className="mb-10 flex flex-col gap-6 border-b border-slate-200 pb-8 sm:flex-row sm:items-end sm:justify-between">
+          <div className="max-w-3xl">
+
+            {/* Brand heading */}
+            <div className="mb-3 flex items-center gap-2">
+              <span
+                className={`h-1 w-8 rounded-full ${BRAND_GRADIENT}`}
+              />
+
+              <span className="bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 bg-clip-text text-xs font-semibold uppercase tracking-[0.16em] text-transparent">
+                Product Categories
+              </span>
+            </div>
+
+            {/* Main heading */}
+            <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+              Featured{' '}
+              <span className="bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 bg-clip-text text-transparent">
+                Categories
+              </span>
             </h2>
-            <p className="text-gray-600 text-lg">
-              Explore our comprehensive range of enterprise product categories.
+
+            {/* Description */}
+            <p className="mt-3 max-w-2xl text-base leading-7 text-slate-500">
+              Explore our comprehensive range of enterprise infrastructure,
+              security, networking and technology solutions.
             </p>
           </div>
-          
-          {/* View All Button with navigation */}
-          <button 
+
+          {/* View All */}
+          <button
             onClick={handleViewAll}
-            className="group flex items-center gap-2 px-6 py-3 bg-transparent hover:bg-blue-50 text-blue-600 font-semibold rounded-lg border-2 border-blue-600 hover:border-blue-700 transition-all duration-300 whitespace-nowrap cursor-pointer"
+            className="fc-view-all-button group inline-flex w-fit shrink-0 items-center gap-2 rounded-lg border border-orange-400 bg-white px-5 py-2.5 text-sm font-semibold text-orange-600 transition-all duration-200 hover:border-transparent hover:bg-gradient-to-r hover:from-pink-500 hover:via-orange-500 hover:to-yellow-500 hover:text-white"
           >
             <span>View All</span>
-            <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
+
+            <ChevronRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
           </button>
         </div>
 
-        {/* Categories Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-8">
+        {/* =====================================================
+            CATEGORY GRID
+        ===================================================== */}
+
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {categories.map((category) => {
-            const { icon: Icon, color } = getCategoryIcon(category.category_name);
+            const { icon: Icon, color } = getCategoryIcon(
+              category.category_name
+            );
+
             const isExpanded = expandedCategory === category.id;
-            
+
             return (
               <div
                 key={category.id}
-                className="group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-transparent"
+                className="fc-category-card group relative overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all duration-300 hover:-translate-y-1 hover:border-orange-200 hover:shadow-[0_12px_30px_rgba(15,23,42,0.09)]"
               >
-                {/* Main Category Card */}
-                <div 
-                  className="p-8 flex flex-col items-center text-center cursor-pointer hover:-translate-y-1 transition-transform duration-300"
-                  onClick={() => handleCategoryClick(category.category_name)}
+                {/* Brand gradient top line */}
+                <div className="absolute left-0 right-0 top-0 h-[3px] origin-left scale-x-0 bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 transition-transform duration-300 group-hover:scale-x-100" />
+
+                {/* Card */}
+                <div
+                  onClick={() =>
+                    handleCategoryClick(category.category_name)
+                  }
+                  className="relative flex min-h-[290px] cursor-pointer flex-col p-7"
                 >
-                  {/* Gradient Icon Background */}
-                  <div className={`mb-5 p-4 rounded-2xl bg-gradient-to-br ${color} shadow-lg group-hover:shadow-xl transition-all duration-300`}>
-                    <Icon className="w-10 h-10 text-white" strokeWidth={1.5} />
+                  {/* Icon + Arrow row */}
+                  <div className="flex items-start justify-between">
+
+                    {/* Icon */}
+                    <div
+                      className={`flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br ${color} shadow-md transition-transform duration-300 group-hover:-translate-y-1`}
+                    >
+                      <Icon
+                        className="h-7 w-7 text-white"
+                        strokeWidth={1.8}
+                      />
+                    </div>
+
+                    {/* Arrow */}
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-400 transition-all duration-300 group-hover:border-orange-200 group-hover:bg-orange-50 group-hover:text-orange-500">
+                      <ChevronRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+                    </div>
                   </div>
 
-                  {/* Category Name */}
-                  <h3 className="text-xl font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
-                    {category.category_name}
-                  </h3>
+                  {/* Category information */}
+                  <div className="mt-7">
+                    <h3 className="text-xl font-semibold text-slate-900 transition-colors duration-200 group-hover:bg-gradient-to-r group-hover:from-pink-500 group-hover:via-orange-500 group-hover:to-yellow-500 group-hover:bg-clip-text group-hover:text-transparent">
+                      {category.category_name}
+                    </h3>
 
-                  {/* Description (truncated) */}
-                  {category.description && (
-                    <p className="text-sm text-gray-600 mt-2 line-clamp-2">
-                      {category.description}
-                    </p>
-                  )}
+                    {category.description && (
+                      <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-500">
+                        {category.description}
+                      </p>
+                    )}
+                  </div>
 
-                  {/* Subcategory toggle button */}
-                  {/* {category.subcategories && category.subcategories.length > 0 && (
-                    <button
-                      onClick={(e) => toggleSubcategories(category.id, e)}
-                      className="mt-4 flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 transition-colors"
-                    >
-                      <span>{isExpanded ? 'Hide' : 'Show'} Subcategories</span>
-                      <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
-                    </button>
-                  )} */}
+                  {/* Bottom */}
+                  <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-5">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 transition-colors duration-200 group-hover:text-orange-500">
+                      Explore Products
+                    </span>
 
-                  {/* Hover Arrow Effect */}
-                  <div className="absolute bottom-4 right-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
+                    <span className="text-xs font-medium text-slate-400">
+                      {category.subcategories?.length || 0}{' '}
+                      {category.subcategories?.length === 1
+                        ? 'Subcategory'
+                        : 'Subcategories'}
+                    </span>
                   </div>
                 </div>
 
-                {/* Subcategories List (expandable) */}
-                {isExpanded && category.subcategories && category.subcategories.length > 0 && (
-                  <div className="border-t border-gray-200 bg-gray-50 px-6 py-4">
-                    <div className="flex flex-wrap gap-2 justify-center">
-                      {category.subcategories.map((sub) => (
-                       <span
+                {/* =================================================
+                    SUBCATEGORIES
+                ================================================= */}
+
+                {isExpanded &&
+                  category.subcategories &&
+                  category.subcategories.length > 0 && (
+                    <div className="border-t border-slate-200 bg-slate-50 px-5 py-4">
+                      <div className="flex flex-wrap gap-2">
+                        {category.subcategories.map((sub) => (
+                          <span
                             key={sub.id}
-                            className="px-3 py-1 bg-white rounded-full text-sm text-gray-700 border border-gray-200 hover:border-blue-400 hover:text-blue-600 transition-colors cursor-pointer"
-                            onClick={() => handleSubcategoryClick(category.category_name, sub.subcategory_name)}
+                            className="cursor-pointer rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition-all duration-200 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600"
+                            onClick={() =>
+                              handleSubcategoryClick(
+                                category.category_name,
+                                sub.subcategory_name
+                              )
+                            }
                           >
                             {sub.subcategory_name}
                           </span>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
               </div>
             );
           })}
         </div>
+
+        {/* =====================================================
+            BOTTOM INFORMATION
+        ===================================================== */}
+
+        {categories.length > 0 && (
+          <div className="mt-8 flex flex-col items-center justify-between gap-3 border-t border-slate-200 pt-6 text-center sm:flex-row sm:text-left">
+            <p className="text-sm text-slate-500">
+              Showing{' '}
+              <span className="font-semibold text-slate-700">
+                {categories.length}
+              </span>{' '}
+              featured categories
+            </p>
+
+            <button
+              onClick={handleViewAll}
+              className="fc-bottom-link group inline-flex items-center gap-1.5 bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 bg-clip-text text-sm font-semibold text-transparent"
+            >
+              Browse all categories
+
+              <ChevronRight className="h-4 w-4 text-orange-500 transition-transform duration-200 group-hover:translate-x-1" />
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );

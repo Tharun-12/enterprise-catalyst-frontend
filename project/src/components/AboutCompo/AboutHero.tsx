@@ -154,7 +154,7 @@ import { Link } from "react-router-dom";
 
 export function AboutHero() {
   return (
-    <section className="relative py-20 lg:py-28 px-4 sm:px-6 lg:px-8">
+    <section className="relative pb-20 lg:pb-28 px-4 sm:px-6 lg:px-8">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-30">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,#3b82f620,transparent_35%),radial-gradient(circle_at_bottom_left,#ec489920,transparent_35%)]" />
@@ -172,7 +172,7 @@ export function AboutHero() {
 
         <div className="max-w-3xl mx-auto">
 
-          <Badge className="mb-6 border border-orange-400/40 bg-orange-500/10 px-6 py-2 uppercase tracking-[0.25em] text-orange-500 backdrop-blur-sm">
+          <Badge className="mb-2 border border-orange-400/40 bg-orange-500/10 px-6 py-2 uppercase tracking-[0.25em] text-orange-500 backdrop-blur-sm hover:bg-orange-500/10 hover:text-orange-500">
             About MVB
           </Badge>
 

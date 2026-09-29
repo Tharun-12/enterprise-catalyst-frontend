@@ -34,6 +34,19 @@ interface FilterPanelProps {
   priceRange?: { min: number; max: number };
 }
 
+// Brand gradient
+const BRAND_GRADIENT = 'bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500';
+const BRAND_GRADIENT_TEXT = `${BRAND_GRADIENT} bg-clip-text text-transparent`;
+
+// Gradient fill for checked checkboxes
+const CHECKBOX_CLASS =
+  'border-pink-300 data-[state=checked]:border-transparent data-[state=checked]:text-white ' +
+  'data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-pink-500 ' +
+  'data-[state=checked]:via-orange-500 data-[state=checked]:to-yellow-500';
+
+// Section header hover
+const TRIGGER_HOVER = 'hover:text-pink-500 transition-colors';
+
 // Variant field labels - ONLY COLOR
 const variantLabels: Record<string, { label: string; icon?: string }> = {
   color: { label: 'Color', icon: '🎨' },
@@ -175,14 +188,24 @@ export function FilterPanel({
 
   return (
     <div className="bg-card border rounded-xl overflow-hidden h-full flex flex-col">
-      <div className="flex items-center justify-between p-4 border-b bg-muted/30 shrink-0">
+      {/* Gradient accent strip */}
+      <div className={cn('h-1 shrink-0', BRAND_GRADIENT)} />
+
+      <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-pink-500/10 via-orange-500/10 to-yellow-500/10 shrink-0">
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-primary" />
-          <h3 className="font-semibold text-sm">Filters</h3>
+          <span className={cn('w-7 h-7 rounded-full flex items-center justify-center shadow-sm', BRAND_GRADIENT)}>
+            <Filter className="w-3.5 h-3.5 text-white" />
+          </span>
+          <h3 className={cn('font-semibold text-sm', BRAND_GRADIENT_TEXT)}>Filters</h3>
           <span className="text-xs text-muted-foreground">({resultCount} results)</span>
         </div>
         {hasActiveFilters && (
-          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={clearAll}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs hover:bg-pink-500/10 hover:text-pink-600"
+            onClick={clearAll}
+          >
             <X className="w-3 h-3 mr-1" /> Clear
           </Button>
         )}
@@ -192,9 +215,9 @@ export function FilterPanel({
         <div className="p-4 space-y-1">
           {/* Price Range Section */}
           <Collapsible open={openSections['price'] ?? true} onOpenChange={() => toggleSection('price')}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full py-2 group">
+            <CollapsibleTrigger className={cn('flex items-center justify-between w-full py-2 group', TRIGGER_HOVER)}>
               <span className="font-medium text-sm">Price Range</span>
-              <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', openSections['price'] ?? true ? '' : 'rotate-[-90deg]')} />
+              <ChevronDown className={cn('w-4 h-4 text-pink-500 transition-transform', openSections['price'] ?? true ? '' : 'rotate-[-90deg]')} />
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="space-y-3 pt-1 pb-3">
@@ -206,7 +229,7 @@ export function FilterPanel({
                       placeholder="Min"
                       value={localMinPrice}
                       onChange={(e) => setLocalMinPrice(e.target.value)}
-                      className="h-8 text-sm"
+                      className="h-8 text-sm focus-visible:ring-pink-500"
                     />
                   </div>
                   <div className="flex-1">
@@ -216,14 +239,14 @@ export function FilterPanel({
                       placeholder="Max"
                       value={localMaxPrice}
                       onChange={(e) => setLocalMaxPrice(e.target.value)}
-                      className="h-8 text-sm"
+                      className="h-8 text-sm focus-visible:ring-pink-500"
                     />
                   </div>
                 </div>
                 <div className="flex gap-2">
                   <Button 
                     size="sm" 
-                    className="h-8 flex-1 text-xs"
+                    className={cn('h-8 flex-1 text-xs text-white border-0 shadow-md hover:opacity-90 hover:shadow-lg transition-all', BRAND_GRADIENT)}
                     onClick={handlePriceChange}
                   >
                     Apply
@@ -232,7 +255,7 @@ export function FilterPanel({
                     <Button 
                       size="sm" 
                       variant="outline" 
-                      className="h-8 text-xs"
+                      className="h-8 text-xs border-pink-300 text-pink-600 hover:bg-pink-500/10 hover:text-pink-600"
                       onClick={clearPriceFilter}
                     >
                       Clear
@@ -252,9 +275,9 @@ export function FilterPanel({
           {categories.length > 0 && (
             <>
               <Collapsible open={openSections['category'] ?? true} onOpenChange={() => toggleSection('category')}>
-                <CollapsibleTrigger className="flex items-center justify-between w-full py-2 group">
+                <CollapsibleTrigger className={cn('flex items-center justify-between w-full py-2 group', TRIGGER_HOVER)}>
                   <span className="font-medium text-sm">Category</span>
-                  <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', openSections['category'] ?? true ? '' : 'rotate-[-90deg]')} />
+                  <ChevronDown className={cn('w-4 h-4 text-pink-500 transition-transform', openSections['category'] ?? true ? '' : 'rotate-[-90deg]')} />
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="space-y-2 pt-1 pb-3">
@@ -262,10 +285,17 @@ export function FilterPanel({
                       <div key={category.id} className="flex items-center space-x-2">
                         <Checkbox
                           id={`category-${category.id}`}
+                          className={CHECKBOX_CLASS}
                           checked={filters.category === category.id}
                           onCheckedChange={() => toggleCategory(category.id)}
                         />
-                        <Label htmlFor={`category-${category.id}`} className="text-sm font-normal cursor-pointer flex-1">
+                        <Label
+                          htmlFor={`category-${category.id}`}
+                          className={cn(
+                            'text-sm font-normal cursor-pointer flex-1 hover:text-pink-500 transition-colors',
+                            filters.category === category.id && 'font-medium text-pink-600'
+                          )}
+                        >
                           {category.name}
                         </Label>
                       </div>
@@ -282,9 +312,9 @@ export function FilterPanel({
           {filters.category && selectedCategorySubcategories.length > 0 && (
             <>
               <Collapsible open={openSections['subcategory'] ?? true} onOpenChange={() => toggleSection('subcategory')}>
-                <CollapsibleTrigger className="flex items-center justify-between w-full py-2 group">
+                <CollapsibleTrigger className={cn('flex items-center justify-between w-full py-2 group', TRIGGER_HOVER)}>
                   <span className="font-medium text-sm">Subcategory</span>
-                  <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', openSections['subcategory'] ?? true ? '' : 'rotate-[-90deg]')} />
+                  <ChevronDown className={cn('w-4 h-4 text-pink-500 transition-transform', openSections['subcategory'] ?? true ? '' : 'rotate-[-90deg]')} />
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="space-y-2 pt-1 pb-3">
@@ -292,10 +322,17 @@ export function FilterPanel({
                       <div key={subcategory.id} className="flex items-center space-x-2">
                         <Checkbox
                           id={`subcategory-${subcategory.id}`}
+                          className={CHECKBOX_CLASS}
                           checked={filters.subcategory === subcategory.id}
                           onCheckedChange={() => toggleSubcategory(subcategory.id)}
                         />
-                        <Label htmlFor={`subcategory-${subcategory.id}`} className="text-sm font-normal cursor-pointer flex-1">
+                        <Label
+                          htmlFor={`subcategory-${subcategory.id}`}
+                          className={cn(
+                            'text-sm font-normal cursor-pointer flex-1 hover:text-pink-500 transition-colors',
+                            filters.subcategory === subcategory.id && 'font-medium text-pink-600'
+                          )}
+                        >
                           {subcategory.name}
                         </Label>
                       </div>
@@ -312,7 +349,7 @@ export function FilterPanel({
           {brands.length > 0 && (
             <>
               <Collapsible open={openSections['brands'] ?? true} onOpenChange={() => toggleSection('brands')}>
-                <CollapsibleTrigger className="flex items-center justify-between w-full py-2 group">
+                <CollapsibleTrigger className={cn('flex items-center justify-between w-full py-2 group', TRIGGER_HOVER)}>
                   <span className="font-medium text-sm">
                     Brands
                     {filters.category && (
@@ -321,7 +358,7 @@ export function FilterPanel({
                       </span>
                     )}
                   </span>
-                  <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', openSections['brands'] ?? true ? '' : 'rotate-[-90deg]')} />
+                  <ChevronDown className={cn('w-4 h-4 text-pink-500 transition-transform', openSections['brands'] ?? true ? '' : 'rotate-[-90deg]')} />
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="space-y-2 pt-1 pb-3">
@@ -334,10 +371,17 @@ export function FilterPanel({
                         <div key={brand.id} className="flex items-center space-x-2">
                           <Checkbox
                             id={`brand-${brand.id}`}
+                            className={CHECKBOX_CLASS}
                             checked={filters.brands.includes(brand.id)}
                             onCheckedChange={() => toggleBrand(brand.id)}
                           />
-                          <Label htmlFor={`brand-${brand.id}`} className="text-sm font-normal cursor-pointer flex-1">
+                          <Label
+                            htmlFor={`brand-${brand.id}`}
+                            className={cn(
+                              'text-sm font-normal cursor-pointer flex-1 hover:text-pink-500 transition-colors',
+                              filters.brands.includes(brand.id) && 'font-medium text-pink-600'
+                            )}
+                          >
                             {brand.name}
                           </Label>
                         </div>
@@ -355,9 +399,9 @@ export function FilterPanel({
           {activeVariantSections.length > 0 && (
             <>
               <Collapsible open={openSections['variants'] ?? true} onOpenChange={() => toggleSection('variants')}>
-                <CollapsibleTrigger className="flex items-center justify-between w-full py-2 group">
+                <CollapsibleTrigger className={cn('flex items-center justify-between w-full py-2 group', TRIGGER_HOVER)}>
                   <span className="font-medium text-sm">Variants</span>
-                  <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', openSections['variants'] ?? true ? '' : 'rotate-[-90deg]')} />
+                  <ChevronDown className={cn('w-4 h-4 text-pink-500 transition-transform', openSections['variants'] ?? true ? '' : 'rotate-[-90deg]')} />
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="space-y-4 pt-1 pb-3">
@@ -372,17 +416,17 @@ export function FilterPanel({
                           open={isOpen} 
                           onOpenChange={() => toggleSection(key)}
                         >
-                          <CollapsibleTrigger className="flex items-center justify-between w-full py-1 text-sm hover:bg-muted/50 px-2 rounded-md">
+                          <CollapsibleTrigger className="flex items-center justify-between w-full py-1 text-sm hover:bg-pink-500/10 px-2 rounded-md transition-colors">
                             <span className="text-sm font-medium">
                               {variantInfo.icon && <span className="mr-2">{variantInfo.icon}</span>}
                               {variantInfo.label}
                               {filters.specs[key]?.length > 0 && (
-                                <span className="ml-2 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                                <span className={cn('ml-2 text-xs text-white px-1.5 py-0.5 rounded-full', BRAND_GRADIENT)}>
                                   {filters.specs[key].length}
                                 </span>
                               )}
                             </span>
-                            <ChevronDown className={cn('w-3 h-3 text-muted-foreground transition-transform', isOpen ? '' : 'rotate-[-90deg]')} />
+                            <ChevronDown className={cn('w-3 h-3 text-pink-500 transition-transform', isOpen ? '' : 'rotate-[-90deg]')} />
                           </CollapsibleTrigger>
                           <CollapsibleContent>
                             <div className="space-y-1.5 pt-2 pl-2">
@@ -390,10 +434,17 @@ export function FilterPanel({
                                 <div key={option} className="flex items-center space-x-2">
                                   <Checkbox
                                     id={`variant-${key}-${option}`}
+                                    className={CHECKBOX_CLASS}
                                     checked={(filters.specs[key] || []).includes(option)}
                                     onCheckedChange={() => toggleSpec(key, option)}
                                   />
-                                  <Label htmlFor={`variant-${key}-${option}`} className="text-sm font-normal cursor-pointer">
+                                  <Label
+                                    htmlFor={`variant-${key}-${option}`}
+                                    className={cn(
+                                      'text-sm font-normal cursor-pointer hover:text-pink-500 transition-colors',
+                                      (filters.specs[key] || []).includes(option) && 'font-medium text-pink-600'
+                                    )}
+                                  >
                                     {option}
                                   </Label>
                                 </div>
