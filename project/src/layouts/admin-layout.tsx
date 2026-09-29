@@ -1,3 +1,200 @@
+// import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+// import { useState } from 'react';
+// import {
+//   LayoutDashboard, Package, FolderTree, Award, Settings2, Heart,
+//   MessageSquare, Settings, Menu, ChevronLeft, Building2, LogOut
+// } from 'lucide-react';
+// import { cn } from '@/lib/utils';
+// import { Button } from '@/components/ui/button';
+
+// // import { Input } from '@/components/ui/input';
+// // import { Badge } from '@/components/ui/badge';
+// // import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+// import { ADMIN_NAV } from '@/constants';
+// import { useSettings } from '@/hooks/use-settings';
+// import { baseurl } from '@/Baseurl/baseurl';
+
+// const iconMap: Record<string, any> = {
+//   LayoutDashboard, Package, FolderTree, Award, Settings2, Heart,
+//   MessageSquare, Settings,
+// };
+
+// export function AdminLayout() {
+//   const [collapsed, setCollapsed] = useState(false);
+//   const [mobileOpen, setMobileOpen] = useState(false);
+//   const location = useLocation();
+//   const navigate = useNavigate();
+//   const { settings } = useSettings();
+
+//  const handleLogout = () => {
+//   // Remove all specific keys
+//   localStorage.removeItem('adminAuth');
+//   localStorage.removeItem('adminData');
+//   localStorage.removeItem('adminId');
+//   localStorage.removeItem('compareList');
+//   localStorage.removeItem('wishlist');
+  
+//   // Navigate to login
+//   navigate('/admin/login');
+// };
+
+//   const SidebarContent = () => (
+//     <div className="flex flex-col h-full">
+//       {/* Logo */}
+//       <div className={cn('flex items-center gap-3 px-4 h-16 border-b border-white/10 shrink-0', collapsed && 'justify-center')}>
+//         {settings?.logo_url ? (
+//           <img 
+//             src={`${baseurl}${settings.logo_url}`} 
+//             alt={settings.short_name || 'Logo'}
+//             className={cn(
+//               'object-contain',
+//               collapsed ? 'w-10 h-10' : 'w-12 h-12'
+//             )}
+//           />
+//         ) : (
+//           <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-primary font-bold text-sm shrink-0">
+//             {settings?.name?.charAt(0) || 'MVB'}
+//           </div>
+//         )}
+//         {!collapsed && (
+//           <div className="overflow-hidden">
+//             <div className="font-bold text-white text-sm leading-tight">
+//               {settings?.name || 'MVB Admin'}
+//             </div>
+//             <div className="text-[10px] text-white/60 leading-tight">
+//               Enterprise Dashboard
+//             </div>
+//           </div>
+//         )}
+//       </div>
+
+//       {/* Nav */}
+//       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
+//         {ADMIN_NAV.map((item) => {
+//           const Icon = iconMap[item.icon] || Package;
+//           const active = location.pathname === item.path;
+//           return (
+//             <Link
+//               key={item.path}
+//               to={item.path}
+//               onClick={() => setMobileOpen(false)}
+//               className={cn(
+//                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
+//                 active
+//                   ? 'bg-primary text-white shadow-sm'
+//                   : 'text-white/70 hover:text-white hover:bg-white/10',
+//                 collapsed && 'justify-center'
+//               )}
+//               title={collapsed ? item.label : undefined}
+//             >
+//               <Icon className="w-5 h-5 shrink-0" />
+//               {!collapsed && <span>{item.label}</span>}
+//             </Link>
+//           );
+//         })}
+//       </nav>
+
+//       {/* Bottom - Updated with Logout button */}
+//       <div className={cn('border-t border-white/10 p-4 space-y-1', collapsed && 'px-2')}>
+//         <Link
+//           to="/"
+//           className={cn(
+//             'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition-all',
+//             collapsed && 'justify-center'
+//           )}
+//         >
+//           <Building2 className="w-5 h-5 shrink-0" />
+//           {!collapsed && <span>Customer Site</span>}
+//         </Link>
+        
+//         {/* Logout Button */}
+//         <button
+//           onClick={handleLogout}
+//           className={cn(
+//             'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition-all w-full',
+//             collapsed && 'justify-center'
+//           )}
+//           title={collapsed ? 'Logout' : undefined}
+//         >
+//           <LogOut className="w-5 h-5 shrink-0" />
+//           {!collapsed && <span>Logout</span>}
+//         </button>
+//       </div>
+//     </div>
+//   );
+
+//   return (
+//     <div className="min-h-screen bg-background flex">
+//       {/* Desktop sidebar */}
+//       <aside
+//         className={cn(
+//           'hidden lg:flex flex-col bg-foreground text-white transition-all duration-300 fixed inset-y-0 left-0 z-40',
+//           collapsed ? 'w-20' : 'w-64'
+//         )}
+//       >
+//         <SidebarContent />
+//       </aside>
+
+//       {/* Mobile sidebar */}
+//       {mobileOpen && (
+//         <>
+//           <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setMobileOpen(false)} />
+//           <aside className="fixed inset-y-0 left-0 w-64 bg-foreground text-white z-50 lg:hidden">
+//             <SidebarContent />
+//           </aside>
+//         </>
+//       )}
+
+//       {/* Main */}
+//       <div className={cn('flex-1 flex flex-col min-w-0 transition-all', collapsed ? 'lg:ml-20' : 'lg:ml-64')}>
+//         {/* Top bar */}
+//         <header className="h-16 bg-card border-b sticky top-0 z-30 flex items-center justify-between px-4 lg:px-6">
+//           <div className="flex items-center gap-3">
+//             <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileOpen(true)}>
+//               <Menu className="w-5 h-5" />
+//             </Button>
+//             <Button variant="ghost" size="icon" className="hidden lg:flex" onClick={() => setCollapsed(!collapsed)}>
+//               <ChevronLeft className={cn('w-5 h-5 transition-transform', collapsed && 'rotate-180')} />
+//             </Button>
+//             <div className="hidden sm:block">
+//               <h1 className="text-lg font-semibold">
+//                 {ADMIN_NAV.find((n) => n.path === location.pathname)?.label || 'Dashboard'}
+//               </h1>
+//             </div>
+//           </div>
+
+//           <div className="flex items-center gap-3">
+//             <div className="hidden md:block w-64">
+//               {/* <div className="relative">
+//                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+//                 <Input placeholder="Search..." className="pl-9 h-9 bg-muted/50 border-transparent" />
+//               </div> */}
+//             </div>
+//             {/* <Button variant="ghost" size="icon" className="relative">
+//               <Bell className="w-5 h-5" />
+//               <Badge className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 flex items-center justify-center text-[10px] bg-accent text-accent-foreground">
+//                 3
+//               </Badge>
+//             </Button> */}
+//             {/* <Avatar className="w-9 h-9">
+//               <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
+//                 AD
+//               </AvatarFallback>
+//             </Avatar> */}
+//           </div>
+//         </header>
+
+//         {/* Content */}
+//         <main className="flex-1 p-4 lg:p-6 overflow-x-hidden">
+//           <Outlet />
+//         </main>
+//       </div>
+//     </div>
+//   );
+// }
+
+
+
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import {
@@ -26,22 +223,22 @@ export function AdminLayout() {
   const navigate = useNavigate();
   const { settings } = useSettings();
 
- const handleLogout = () => {
-  // Remove all specific keys
-  localStorage.removeItem('adminAuth');
-  localStorage.removeItem('adminData');
-  localStorage.removeItem('adminId');
-  localStorage.removeItem('compareList');
-  localStorage.removeItem('wishlist');
-  
-  // Navigate to login
-  navigate('/admin/login');
-};
+  const handleLogout = () => {
+    // Remove all specific keys
+    localStorage.removeItem('adminAuth');
+    localStorage.removeItem('adminData');
+    localStorage.removeItem('adminId');
+    localStorage.removeItem('compareList');
+    localStorage.removeItem('wishlist');
+    
+    // Navigate to login
+    navigate('/admin/login');
+  };
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative z-10">
       {/* Logo */}
-      <div className={cn('flex items-center gap-3 px-4 h-16 border-b border-white/10 shrink-0', collapsed && 'justify-center')}>
+      <div className={cn('flex items-center gap-3 px-4 h-16 border-b border-gray-200/60 shrink-0', collapsed && 'justify-center')}>
         {settings?.logo_url ? (
           <img 
             src={`${baseurl}${settings.logo_url}`} 
@@ -52,16 +249,16 @@ export function AdminLayout() {
             )}
           />
         ) : (
-          <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-primary font-bold text-sm shrink-0">
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-pink-500 to-blue-500 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-md">
             {settings?.name?.charAt(0) || 'MVB'}
           </div>
         )}
         {!collapsed && (
           <div className="overflow-hidden">
-            <div className="font-bold text-white text-sm leading-tight">
+            <div className="font-bold text-gray-900 text-sm leading-tight">
               {settings?.name || 'MVB Admin'}
             </div>
-            <div className="text-[10px] text-white/60 leading-tight">
+            <div className="text-[10px] text-gray-500 leading-tight font-medium">
               Enterprise Dashboard
             </div>
           </div>
@@ -81,13 +278,13 @@ export function AdminLayout() {
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
                 active
-                  ? 'bg-primary text-white shadow-sm'
-                  : 'text-white/70 hover:text-white hover:bg-white/10',
+                  ? 'bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 text-white shadow-md'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-white/50',
                 collapsed && 'justify-center'
               )}
               title={collapsed ? item.label : undefined}
             >
-              <Icon className="w-5 h-5 shrink-0" />
+              <Icon className={cn("w-5 h-5 shrink-0", active ? "text-white" : "text-gray-500")} />
               {!collapsed && <span>{item.label}</span>}
             </Link>
           );
@@ -95,15 +292,15 @@ export function AdminLayout() {
       </nav>
 
       {/* Bottom - Updated with Logout button */}
-      <div className={cn('border-t border-white/10 p-4 space-y-1', collapsed && 'px-2')}>
+      <div className={cn('border-t border-gray-200/60 p-4 space-y-1', collapsed && 'px-2')}>
         <Link
           to="/"
           className={cn(
-            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition-all',
+            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-white/50 transition-all',
             collapsed && 'justify-center'
           )}
         >
-          <Building2 className="w-5 h-5 shrink-0" />
+          <Building2 className="w-5 h-5 shrink-0 text-gray-500" />
           {!collapsed && <span>Customer Site</span>}
         </Link>
         
@@ -111,15 +308,32 @@ export function AdminLayout() {
         <button
           onClick={handleLogout}
           className={cn(
-            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition-all w-full',
+            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:text-red-600 hover:bg-red-50 transition-all w-full',
             collapsed && 'justify-center'
           )}
           title={collapsed ? 'Logout' : undefined}
         >
-          <LogOut className="w-5 h-5 shrink-0" />
+          <LogOut className={cn("w-5 h-5 shrink-0", collapsed ? "text-gray-500" : "text-gray-500 group-hover:text-red-600")} />
           {!collapsed && <span>Logout</span>}
         </button>
       </div>
+    </div>
+  );
+
+  // Shared background component for the HeroSection style color blobs
+  const SidebarBackground = () => (
+    <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+      {/* Base white background */}
+      <div className="absolute inset-0 bg-white" />
+      
+      {/* Color Blobs matching HeroSection */}
+      <div className="absolute -right-32 -top-32 h-96 w-96 rounded-full bg-blue-500/20 blur-3xl" />
+      <div className="absolute left-1/4 -bottom-24 h-80 w-80 rounded-full bg-pink-500/20 blur-3xl" />
+      <div className="absolute top-1/3 left-10 h-72 w-72 rounded-full bg-yellow-400/20 blur-3xl" />
+      <div className="absolute bottom-10 right-20 h-72 w-72 rounded-full bg-green-500/20 blur-3xl" />
+      
+      {/* Subtle grid pattern overlay for texture */}
+      <div className="absolute inset-0 opacity-20 bg-[linear-gradient(rgba(0,0,0,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.03)_1px,transparent_1px)] bg-[size:40px_40px]" />
     </div>
   );
 
@@ -128,18 +342,20 @@ export function AdminLayout() {
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          'hidden lg:flex flex-col bg-foreground text-white transition-all duration-300 fixed inset-y-0 left-0 z-40',
+          'hidden lg:flex flex-col bg-white/80 backdrop-blur-xl border-r border-gray-200/50 text-gray-900 transition-all duration-300 fixed inset-y-0 left-0 z-40',
           collapsed ? 'w-20' : 'w-64'
         )}
       >
+        <SidebarBackground />
         <SidebarContent />
       </aside>
 
       {/* Mobile sidebar */}
       {mobileOpen && (
         <>
-          <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setMobileOpen(false)} />
-          <aside className="fixed inset-y-0 left-0 w-64 bg-foreground text-white z-50 lg:hidden">
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden" onClick={() => setMobileOpen(false)} />
+          <aside className="fixed inset-y-0 left-0 w-64 bg-white/95 backdrop-blur-xl border-r border-gray-200/50 text-gray-900 z-50 lg:hidden shadow-2xl">
+            <SidebarBackground />
             <SidebarContent />
           </aside>
         </>
@@ -148,7 +364,7 @@ export function AdminLayout() {
       {/* Main */}
       <div className={cn('flex-1 flex flex-col min-w-0 transition-all', collapsed ? 'lg:ml-20' : 'lg:ml-64')}>
         {/* Top bar */}
-        <header className="h-16 bg-card border-b sticky top-0 z-30 flex items-center justify-between px-4 lg:px-6">
+        <header className="h-16 bg-white/80 backdrop-blur-md border-b sticky top-0 z-30 flex items-center justify-between px-4 lg:px-6">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileOpen(true)}>
               <Menu className="w-5 h-5" />

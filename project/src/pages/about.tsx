@@ -149,6 +149,7 @@ import { AboutValues } from "@/components/AboutCompo/AboutValues";
 import { PageBreadcrumb as Breadcrumb } from '@/layouts/customer-layout-wrapper';
 import ECatalog from "@/components/AboutCompo/CTAsection";
 
+
 export function AboutPage() {
   return (
     <div className="container mx-auto px-4 py-8">
