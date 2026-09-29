@@ -47,6 +47,8 @@ export function AdminCategories() {
   const [page, setPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
 
+  
+
   useEffect(() => {
     fetchCategories();
   }, [page, pageSize]);
@@ -146,8 +148,12 @@ export function AdminCategories() {
           <h2 className="text-lg font-semibold">Category Management</h2>
           <p className="text-sm text-muted-foreground">Manage your product categories</p>
         </div>
-        <Button onClick={handleNavigateToAdd}>
-          <Plus className="w-4 h-4 mr-1.5" /> Add Category
+        <Button
+          onClick={handleNavigateToAdd}
+          className="bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 text-white shadow-md hover:shadow-lg hover:opacity-95 transition-all duration-300"
+        >
+          <Plus className="w-4 h-4 mr-1.5" />
+          Add Category
         </Button>
       </div>
 

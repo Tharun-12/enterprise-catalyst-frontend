@@ -2056,9 +2056,9 @@ export function ComparePage() {
                     )}
                   </Button>
 
-                  <div className="absolute top-3 left-2 z-10">
+                  {/* <div className="absolute top-3 left-2 z-10">
                     <Badge className={cn(BRAND_GRADIENT, 'text-white text-[9px] border-0 hover:opacity-90')}>Comparing</Badge>
-                  </div>
+                  </div> */}
 
                   <Button
                     size="icon"

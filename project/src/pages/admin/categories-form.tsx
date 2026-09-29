@@ -445,14 +445,14 @@ export function CategoryForm() {
               <X className="h-4 w-4 mr-2" />
               Cancel
             </Button>
-            <Button 
-              type="submit" 
-              className="flex-1"
+            <Button
+              type="submit"
+              className="flex-1 bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 text-white shadow-md hover:shadow-lg hover:opacity-95 transition-all duration-300"
               disabled={isLoading}
             >
               <Save className="h-4 w-4 mr-2" />
-              {isLoading 
-                ? (isEditing ? 'Updating...' : 'Creating...') 
+              {isLoading
+                ? (isEditing ? 'Updating...' : 'Creating...')
                 : (isEditing ? 'Update Category' : 'Create Category')
               }
             </Button>
