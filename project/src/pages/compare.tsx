@@ -1859,7 +1859,14 @@ export function ComparePage() {
 
   const renderAddProductSlot = (slotIndex: number) => {
     const slot = slotDropdowns[slotIndex];
-    const filteredProducts = filteredProductsForSlots[slotIndex] || [];
+    const filteredProducts = allProductsData.filter((p) => {
+    const matchesSubCategory = compareSubCategory
+      ? p.subcategory_name === compareSubCategory
+      : true;
+    const matchesBrand =
+      slot.brand === 'all' ? true : p.product_brand === slot.brand;
+    return matchesSubCategory && matchesBrand;
+  });
 
     const isSlotUsed = compareList.length > slotIndex;
 
@@ -1873,7 +1880,9 @@ export function ComparePage() {
       return null;
     }
 
-    const availableProducts = filteredProducts.filter(p => !compareList.includes(String(p.id)));
+    const availableProducts = filteredProducts.filter(
+  (p) => !compareList.includes(String(p.id))
+);
 
     // Get the brands that have products in this subcategory
     const brandsForSubcategory = filteredBrandsForSubcategory;
