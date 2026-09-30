@@ -179,7 +179,7 @@ export function CategoriesPage() {
           // Get category color or default
           const color = categoryColors[categoryName] || categoryColors.Default;
           // Get icon component or default
-          const Icon = categoryIcons[categoryName] || categoryIcons.Default;
+          // const Icon = categoryIcons[categoryName] || categoryIcons.Default;
           // Use actual category image from API
           const imageUrl = cat.category_image
             ? `${baseurl}/uploads/categories/${cat.category_image}`
@@ -215,9 +215,9 @@ export function CategoriesPage() {
                   />
 
                   {/* Icon Overlay */}
-                  <div className="absolute inset-0 flex items-center justify-center">
+                  {/* <div className="absolute inset-0 flex items-center justify-center">
                     <Icon className="w-20 h-20 text-white drop-shadow-lg opacity-90 group-hover:scale-110 transition-transform duration-300" />
-                  </div>
+                  </div> */}
 
                   {/* Subcategories Badge */}
                   {subcategoryNames.length > 0 && (
@@ -238,7 +238,7 @@ export function CategoriesPage() {
 
                   {/* Use actual description from API */}
                   <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-4 flex-1 line-clamp-3">
-                    {cat.description || `Explore our comprehensive range of ${categoryName.toLowerCase()} solutions designed for enterprise needs.`}
+                    {cat.description }
                   </p>
 
                   {/* Subcategories Tags */}
