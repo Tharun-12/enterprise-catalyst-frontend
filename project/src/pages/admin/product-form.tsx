@@ -1236,11 +1236,15 @@ const ProductForm = () => {
                 <div className="form-section" ref={variantsSectionRef}>
                     <div className="section-header">
                         <h3>Product Variants *</h3>
-                        <button
+                       <button
                             type="button"
                             onClick={() => setShowVariantForm(!showVariantForm)}
-                            className="btn btn-secondary btn-sm"
-                        >
+                            className={`btn btn-sm ${
+                                showVariantForm
+                                ? 'btn-outline'
+                                : 'bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 text-white shadow-md hover:shadow-lg hover:opacity-95 transition-all duration-300'
+                            }`}
+                            >
                             {showVariantForm ? 'Cancel' : '+ Add Variant'}
                         </button>
                     </div>
@@ -1465,30 +1469,31 @@ const ProductForm = () => {
                             </div>
 
                             <div className="variant-actions">
-                                <button
-                                    type="button"
-                                    onClick={handleAddOrUpdateVariant}
-                                    className="btn btn-primary"
-                                >
-                                    {editingVariantIndex !== null ? (
-                                        <>
-                                            <Pencil className="icon-sm" /> Update Variant
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Plus className="icon-sm" /> Add Variant
-                                        </>
-                                    )}
-                                </button>
-                                {editingVariantIndex !== null && (
-                                    <button
-                                        type="button"
-                                        onClick={cancelEdit}
-                                        className="btn btn-outline"
-                                    >
-                                        <X className="icon-sm" /> Cancel
-                                    </button>
+                            <button
+                                type="button"
+                                onClick={handleAddOrUpdateVariant}
+                                className="btn btn-primary bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 text-white shadow-md hover:shadow-lg hover:opacity-95 transition-all duration-300"
+                            >
+                                {editingVariantIndex !== null ? (
+                                <>
+                                    <Pencil className="icon-sm" /> Update Variant
+                                </>
+                                ) : (
+                                <>
+                                    <Plus className="icon-sm" /> Add Variant
+                                </>
                                 )}
+                            </button>
+
+                            {editingVariantIndex !== null && (
+                                <button
+                                type="button"
+                                onClick={cancelEdit}
+                                className="btn btn-outline"
+                                >
+                                <X className="icon-sm" /> Cancel
+                                </button>
+                            )}
                             </div>
                         </div>
                     )}
@@ -1591,11 +1596,13 @@ const ProductForm = () => {
                 <div className="form-actions">
                     <button
                         type="submit"
-                        className="btn btn-primary"
+                        className="btn btn-primary bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 text-white shadow-md hover:shadow-lg hover:opacity-95 transition-all duration-300"
                         disabled={loading}
-                    >
-                        {loading ? (isEditMode ? 'Updating Product...' : 'Adding Product...') : (isEditMode ? 'Update Product' : 'Add Product')}
-                    </button>
+                        >
+                        {loading
+                            ? (isEditMode ? 'Updating Product...' : 'Adding Product...')
+                            : (isEditMode ? 'Update Product' : 'Add Product')}
+                     </button>
                     <button
                         type="button"
                         onClick={() => navigate('/admin/products')}

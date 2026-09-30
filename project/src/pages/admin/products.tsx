@@ -320,9 +320,13 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
           <h2 className="text-lg font-semibold">Product Management</h2>
           <p className="text-sm text-muted-foreground">Manage your product inventory</p>
         </div>
-        <Button onClick={() => navigate('/admin/products/add')}>
-          <Plus className="w-4 h-4 mr-1.5" /> Add Product
-        </Button>
+          <Button
+            onClick={() => navigate('/admin/products/add')}
+            className="bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 text-white shadow-md hover:shadow-lg hover:opacity-95 transition-all duration-300"
+          >
+            <Plus className="w-4 h-4 mr-1.5" />
+            Add Product
+          </Button>
       </div>
 
       {/* Toolbar */}

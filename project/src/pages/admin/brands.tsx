@@ -327,8 +327,12 @@ export function AdminBrands() {
           <h2 className="text-lg font-semibold">Brand Management</h2>
           <p className="text-sm text-muted-foreground">Manage brands, categories, and subcategories</p>
         </div>
-        <Button onClick={handleAddBrand}>
-          <Plus className="w-4 h-4 mr-1.5" /> Add Brand
+        <Button
+          onClick={handleAddBrand}
+          className="bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 text-white shadow-md hover:shadow-lg hover:opacity-95 transition-all duration-300"
+        >
+          <Plus className="w-4 h-4 mr-1.5" />
+          Add Brand
         </Button>
       </div>
 
@@ -563,17 +567,17 @@ export function AdminBrands() {
                 <X className="h-4 w-4 mr-2" />
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
-                className="w-full sm:w-auto sm:flex-1 order-1 sm:order-2"
-                disabled={isSubmitting}
-              >
-                <Save className="h-4 w-4 mr-2" />
-                {isSubmitting 
-                  ? (editingBrand ? 'Updating...' : 'Creating...') 
-                  : (editingBrand ? 'Update Brand' : 'Create Brand')
-                }
-              </Button>
+              <Button
+                  type="submit"
+                  className="w-full sm:w-auto sm:flex-1 order-1 sm:order-2 bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 text-white shadow-md hover:shadow-lg hover:opacity-95 transition-all duration-300"
+                  disabled={isSubmitting}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {isSubmitting
+                    ? (editingBrand ? 'Updating...' : 'Creating...')
+                    : (editingBrand ? 'Update Brand' : 'Create Brand')
+                  }
+                </Button>
             </div>
           </form>
         </DialogContent>

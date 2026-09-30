@@ -175,9 +175,13 @@ export function AdminSpecifications() {
           <h2 className="text-lg font-semibold">Specifications Management</h2>
           <p className="text-sm text-muted-foreground">Manage product specifications and their values</p>
         </div>
-        <Button onClick={handleAddSpec}>
-          <Plus className="w-4 h-4 mr-1.5" /> Add Specification
-        </Button>
+        <Button
+            onClick={handleAddSpec}
+            className="bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 text-white shadow-md hover:shadow-lg hover:opacity-95 transition-all duration-300"
+          >
+            <Plus className="w-4 h-4 mr-1.5" />
+            Add Specification
+         </Button>
       </div>
 
       {/* Toolbar */}

@@ -1186,21 +1186,21 @@ export function SpecificationsForm() {
               Cancel
             </Button>
 
-            <Button
-              type="submit"
-              className="flex-1 h-11 bg-blue-600 hover:bg-blue-700 text-white"
-              disabled={isLoading}
-            >
-              <Save className="h-4 w-4 mr-2" />
+           <Button
+                type="submit"
+                className="flex-1 h-11 bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 text-white shadow-md hover:shadow-lg hover:opacity-95 transition-all duration-300"
+                disabled={isLoading}
+              >
+                <Save className="h-4 w-4 mr-2" />
 
-              {isLoading
-                ? isEditing
-                  ? 'Updating...'
-                  : 'Creating...'
-                : isEditing
-                  ? 'Update Specification'
-                  : 'Create Specification'}
-            </Button>
+                {isLoading
+                  ? isEditing
+                    ? 'Updating...'
+                    : 'Creating...'
+                  : isEditing
+                    ? 'Update Specification'
+                    : 'Create Specification'}
+              </Button>
 
           </div>
 
