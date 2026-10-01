@@ -13,6 +13,18 @@ import { baseurl } from '@/Baseurl/baseurl';
 
 const API_URL = `${baseurl}/api`;
 
+// Logo gradient (pink -> orange -> yellow)
+const brandGradient =
+  'bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 text-white shadow-md hover:shadow-lg hover:opacity-95 transition-all duration-300';
+
+// Outline-style buttons that pick up the gradient on hover
+const brandOutline =
+  'border-orange-200 text-orange-600 hover:text-white hover:border-transparent hover:bg-gradient-to-r hover:from-pink-500 hover:via-orange-500 hover:to-yellow-500 transition-all duration-300 disabled:opacity-40';
+
+// Ghost icon buttons (edit) that fill with the gradient on hover
+const brandIconGhost =
+  'h-8 w-8 text-orange-600 hover:text-white hover:bg-gradient-to-r hover:from-pink-500 hover:via-orange-500 hover:to-yellow-500 transition-all duration-300';
+
 // Define types
 interface Category {
   id: number;
@@ -312,7 +324,7 @@ export function AdminBrands() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+          <Loader2 className="h-12 w-12 animate-spin text-pink-500 mx-auto" />
           <p className="mt-4 text-muted-foreground">Loading brands...</p>
         </div>
       </div>
@@ -329,7 +341,7 @@ export function AdminBrands() {
         </div>
         <Button
           onClick={handleAddBrand}
-          className="bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 text-white shadow-md hover:shadow-lg hover:opacity-95 transition-all duration-300"
+          className={brandGradient}
         >
           <Plus className="w-4 h-4 mr-1.5" />
           Add Brand
@@ -342,7 +354,7 @@ export function AdminBrands() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input 
             placeholder="Search brands..." 
-            className="pl-9 h-9" 
+            className="pl-9 h-9 focus-visible:ring-orange-400 focus-visible:border-orange-400" 
             value={search} 
             onChange={(e: ChangeEvent<HTMLInputElement>) => {
               setSearch(e.target.value);
@@ -351,15 +363,15 @@ export function AdminBrands() {
           />
         </div>
         <div className="text-sm text-muted-foreground">
-          {filteredBrands.length} brands found
+          <span className="font-semibold text-orange-600">{filteredBrands.length}</span> brands found
         </div>
       </div>
 
       {/* Table */}
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden border-orange-100">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-muted/50 border-b">
+            <thead className="bg-gradient-to-r from-pink-50 via-orange-50 to-yellow-50 border-b border-orange-100">
               <tr>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">#</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Brand Name</th>
@@ -377,7 +389,7 @@ export function AdminBrands() {
                 </tr>
               ) : (
                 paginatedBrands.map((brand, index) => (
-                  <tr key={brand.id} className="border-b hover:bg-muted/30 transition-colors">
+                  <tr key={brand.id} className="border-b hover:bg-orange-50/50 transition-colors">
                     <td className="p-3 text-sm">
                       {(page - 1) * pageSize + index + 1}
                     </td>
@@ -395,7 +407,7 @@ export function AdminBrands() {
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="h-8 w-8" 
+                          className={brandIconGhost}
                           onClick={() => handleEditBrand(brand)}
                           aria-label={`Edit ${brand.brand_name}`}
                         >
@@ -404,7 +416,7 @@ export function AdminBrands() {
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="h-8 w-8 text-destructive hover:text-destructive" 
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-red-50" 
                           onClick={() => setDeleteTarget(brand)}
                           aria-label={`Delete ${brand.brand_name}`}
                         >
@@ -421,7 +433,7 @@ export function AdminBrands() {
 
         {/* Pagination */}
         {filteredBrands.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-orange-100">
             <div className="flex items-center gap-4">
               <div className="text-sm text-muted-foreground">
                 Showing {((page - 1) * pageSize) + 1} - {Math.min(page * pageSize, filteredBrands.length)} of {filteredBrands.length} brands
@@ -429,7 +441,7 @@ export function AdminBrands() {
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Show</span>
                 <Select value={String(pageSize)} onValueChange={handlePageSizeChange}>
-                  <SelectTrigger className="w-[70px] h-8">
+                  <SelectTrigger className="w-[70px] h-8 focus:ring-orange-400">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -445,15 +457,19 @@ export function AdminBrands() {
               <Button 
                 variant="outline" 
                 size="sm" 
+                className={brandOutline}
                 disabled={page === 1} 
                 onClick={() => setPage(page - 1)}
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <span className="text-sm">Page {page} of {totalPages || 1}</span>
+              <span className="text-sm">
+                Page <span className="font-semibold text-orange-600">{page}</span> of {totalPages || 1}
+              </span>
               <Button 
                 variant="outline" 
                 size="sm" 
+                className={brandOutline}
                 disabled={page === totalPages || totalPages === 0} 
                 onClick={() => setPage(page + 1)}
               >
@@ -466,8 +482,10 @@ export function AdminBrands() {
 
       {/* Add/Edit Brand Modal */}
       <Dialog open={isModalOpen} onOpenChange={(v: boolean) => !v && handleCloseModal()}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[500px] p-0 gap-0 overflow-hidden border-orange-100">
+          {/* Brand strip */}
+          <div className="h-1.5 w-full bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500" />
+          <DialogHeader className="px-6 pt-5 pb-4 bg-gradient-to-r from-pink-50 via-orange-50 to-yellow-50 border-b border-orange-100">
             <DialogTitle className="text-xl font-semibold text-gray-900">
               {editingBrand ? 'Edit Brand' : 'Add New Brand'}
             </DialogTitle>
@@ -476,7 +494,7 @@ export function AdminBrands() {
             </DialogDescription>
           </DialogHeader>
           
-          <form onSubmit={handleFormSubmit} className="space-y-6 py-4">
+          <form onSubmit={handleFormSubmit} className="space-y-6 px-6 py-5">
             <div className="space-y-4">
               {/* Category - First */}
               <div className="space-y-2">
@@ -489,7 +507,7 @@ export function AdminBrands() {
                   disabled={isSubmitting}
                   required
                 >
-                  <SelectTrigger id="category_id" className="w-full">
+                  <SelectTrigger id="category_id" className="w-full focus:ring-orange-400">
                     <SelectValue placeholder="Select a category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -513,7 +531,7 @@ export function AdminBrands() {
                   disabled={isSubmitting || !formData.category_id || subcategories.length === 0}
                   required
                 >
-                  <SelectTrigger id="sub_category_id" className="w-full">
+                  <SelectTrigger id="sub_category_id" className="w-full focus:ring-orange-400">
                     <SelectValue placeholder={
                       !formData.category_id 
                         ? 'Select a category first' 
@@ -548,7 +566,7 @@ export function AdminBrands() {
                   value={formData.brand_name}
                   onChange={handleFormChange}
                   placeholder="e.g., Hikvision"
-                  className="w-full"
+                  className="w-full focus-visible:ring-orange-400 focus-visible:border-orange-400"
                   required
                   disabled={isSubmitting}
                 />
@@ -556,28 +574,28 @@ export function AdminBrands() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+            <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-orange-100">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleCloseModal}
-                className="w-full sm:w-auto sm:flex-1 order-2 sm:order-1"
+                className={`w-full sm:w-auto sm:flex-1 order-2 sm:order-1 ${brandOutline}`}
                 disabled={isSubmitting}
               >
                 <X className="h-4 w-4 mr-2" />
                 Cancel
               </Button>
               <Button
-                  type="submit"
-                  className="w-full sm:w-auto sm:flex-1 order-1 sm:order-2 bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 text-white shadow-md hover:shadow-lg hover:opacity-95 transition-all duration-300"
-                  disabled={isSubmitting}
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  {isSubmitting
-                    ? (editingBrand ? 'Updating...' : 'Creating...')
-                    : (editingBrand ? 'Update Brand' : 'Create Brand')
-                  }
-                </Button>
+                type="submit"
+                className={`w-full sm:w-auto sm:flex-1 order-1 sm:order-2 ${brandGradient}`}
+                disabled={isSubmitting}
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {isSubmitting
+                  ? (editingBrand ? 'Updating...' : 'Creating...')
+                  : (editingBrand ? 'Update Brand' : 'Create Brand')
+                }
+              </Button>
             </div>
           </form>
         </DialogContent>
@@ -585,19 +603,21 @@ export function AdminBrands() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!deleteTarget} onOpenChange={(v: boolean) => !v && setDeleteTarget(null)}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[400px] p-0 gap-0 overflow-hidden border-orange-100">
+          {/* Brand strip */}
+          <div className="h-1.5 w-full bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500" />
+          <DialogHeader className="px-6 pt-5 pb-4 bg-gradient-to-r from-pink-50 via-orange-50 to-yellow-50 border-b border-orange-100">
             <DialogTitle className="text-xl font-semibold text-gray-900">Delete Brand</DialogTitle>
-             <DialogDescription className="text-gray-600">
-                Are you sure you want to delete "<span className="font-semibold text-gray-900">{deleteTarget?.brand_name}</span>"?
-                This will also permanently delete all products using this brand, including their variants and images.
-                This action cannot be undone.
-              </DialogDescription>
+            <DialogDescription className="text-gray-600">
+              Are you sure you want to delete "<span className="font-semibold text-gray-900">{deleteTarget?.brand_name}</span>"?
+              This will also permanently delete all products using this brand, including their variants and images.
+              This action cannot be undone.
+            </DialogDescription>
           </DialogHeader>
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-3 px-6 py-5">
             <Button 
               variant="outline" 
-              className="flex-1 border-gray-300 hover:bg-gray-50" 
+              className={`flex-1 ${brandOutline}`}
               onClick={() => setDeleteTarget(null)}
               disabled={isDeleting}
             >

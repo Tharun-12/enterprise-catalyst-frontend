@@ -27,7 +27,7 @@ interface QuotationItem {
   discountAmount: number;
   finalPrice: number;
   subtotal: number;
-  variantImage: string | null;
+  variantImage: string | null; // normalized single image path
   variantDetails: any | null;
 }
 
@@ -63,8 +63,10 @@ interface ApiQuotationDetail {
   discount_amount: string;
   final_price: string;
   subtotal: string;
-  variant_image: string | null;
-  variant_details: string | null;
+  // Old format: "/uploads/..."  |  New format: '["/uploads/..."]' (string) or a real array
+  variant_image: string | string[] | null;
+  // JSON string (or already-parsed array/object)
+  variant_details: string | any[] | null;
   created_at: string;
 }
 
@@ -73,6 +75,122 @@ const statusBadgeStyles: Record<QuotationStatus, string> = {
   Approved: 'bg-green-100 text-green-700 border-green-200',
   Rejected: 'bg-red-100 text-red-700 border-red-200',
 };
+
+/* -------------------------------------------------------------------------- */
+/*                               Helper functions                             */
+/* -------------------------------------------------------------------------- */
+
+/** Safe JSON.parse that returns the fallback instead of throwing. */
+const safeParse = <T,>(value: unknown, fallback: T): T => {
+  if (value === null || value === undefined || value === '') return fallback;
+  if (typeof value !== 'string') return value as T; // already parsed
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+};
+
+/**
+ * Normalizes ANY supported image format into a single image path/URL string.
+ *
+ * Handles:
+ *  - "/uploads/products/a.jpg"               (old format)
+ *  - '["/uploads/products/a.jpg"]'           (JSON string array)
+ *  - ["/uploads/products/a.jpg"]             (real array)
+ *  - '"/uploads/products/a.jpg"'             (JSON-encoded string)
+ *  - "a.jpg"                                 (bare filename)
+ *  - "https://cdn.example.com/a.jpg"         (full URL)
+ *  - null / "" / "[]"                        (-> null)
+ */
+const extractImagePath = (raw: unknown, depth = 0): string | null => {
+  if (raw === null || raw === undefined || depth > 3) return null;
+
+  // Real array -> first usable entry
+  if (Array.isArray(raw)) {
+    for (const entry of raw) {
+      const found = extractImagePath(entry, depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  if (typeof raw !== 'string') return null;
+
+  const value = raw.trim();
+  if (!value || value === '[]' || value === 'null') return null;
+
+  // JSON string array or JSON-encoded string: '["..."]' or '"..."'
+  if (value.startsWith('[') || value.startsWith('"')) {
+    try {
+      return extractImagePath(JSON.parse(value), depth + 1);
+    } catch {
+      // Malformed JSON: strip brackets/quotes manually as a last resort
+      const cleaned = value.replace(/^[\[\s"']+|[\]\s"']+$/g, '').trim();
+      return cleaned || null;
+    }
+  }
+
+  // Plain path or URL
+  return value;
+};
+
+/** Builds a full image URL from a normalized path. */
+const buildImageUrl = (imagePath: string | null): string | null => {
+  if (!imagePath) return null;
+
+  // Already a full URL
+  if (/^https?:\/\//i.test(imagePath)) return imagePath;
+
+  const base = String(baseurl).replace(/\/+$/, '');
+  const path = imagePath.replace(/\\/g, '/'); // Windows-style slashes
+
+  if (path.startsWith('/')) return `${base}${path}`;
+  if (path.startsWith('uploads/')) return `${base}/${path}`;
+  return `${base}/uploads/products/${path}`;
+};
+
+/* -------------------------------------------------------------------------- */
+/*                               Product image                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Product image with a safe, local fallback (no external placeholder requests).
+ * If the image fails to load, it switches once to the icon placeholder.
+ */
+function ProductImage({ src, alt }: { src: string | null; alt: string }) {
+  const [failed, setFailed] = useState(false);
+
+  // Reset the failed state whenever the source changes
+  useEffect(() => {
+    setFailed(false);
+  }, [src]);
+
+  if (!src || failed) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-gray-200">
+        <ImageIcon className="w-8 h-8 text-gray-400" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="w-full h-full object-cover"
+      loading="lazy"
+      onError={() => {
+        console.warn('Image failed to load:', src);
+        setFailed(true);
+      }}
+    />
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                 Component                                  */
+/* -------------------------------------------------------------------------- */
 
 export function QuotationView() {
   const { id } = useParams<{ id: string }>();
@@ -96,26 +214,17 @@ export function QuotationView() {
     return statusMap[apiStatus] || 'Pending';
   };
 
-  const getImageUrl = (imagePath: string | null) => {
-    if (!imagePath) return null;
-    if (imagePath.startsWith('http')) return imagePath;
-    if (imagePath.startsWith('/')) {
-      return `${baseurl}${imagePath}`;
-    }
-    return `${baseurl}/uploads/products/${imagePath}`;
-  };
-
   const fetchQuotationDetails = async (quotationId: string) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await axios.get(`${baseurl}/api/quotations/${quotationId}`);
-      
+
       if (response.data && response.data.success) {
         const apiQuotation = response.data.quotation;
         const apiItems = response.data.items || [];
-        
+
         const transformedData: Quotation = {
           id: apiQuotation.id.toString(),
           quotationNumber: apiQuotation.quotation_no,
@@ -123,22 +232,33 @@ export function QuotationView() {
           customerEmail: apiQuotation.customer_email,
           customerPhone: apiQuotation.customer_mobile,
           status: mapStatus(apiQuotation.status),
-          items: apiItems.map((item: ApiQuotationDetail) => ({
-            id: item.id,
-            productName: item.product_name,
-            productCode: item.product_code,
-            brand: item.brand || 'N/A',
-            quantity: item.quantity,
-            price: parseFloat(item.price) || 0,
-            minPrice: item.min_price ? parseFloat(item.min_price) : null,
-            maxPrice: item.max_price ? parseFloat(item.max_price) : null,
-            discount: parseFloat(item.discount) || 0,
-            discountAmount: parseFloat(item.discount_amount) || 0,
-            finalPrice: parseFloat(item.final_price) || 0,
-            subtotal: parseFloat(item.subtotal) || 0,
-            variantImage: item.variant_image || null,
-            variantDetails: item.variant_details ? JSON.parse(item.variant_details) : null,
-          })),
+          items: apiItems.map((item: ApiQuotationDetail): QuotationItem => {
+            // Parse variant details safely (string, array, or null)
+            const parsedDetails = safeParse<any>(item.variant_details, null);
+            const firstVariant = Array.isArray(parsedDetails) ? parsedDetails[0] : parsedDetails;
+
+            // Prefer variant_image; fall back to image_url inside variant_details
+            const imagePath =
+              extractImagePath(item.variant_image) ??
+              extractImagePath(firstVariant?.image_url);
+
+            return {
+              id: item.id,
+              productName: item.product_name,
+              productCode: item.product_code,
+              brand: item.brand || 'N/A',
+              quantity: item.quantity,
+              price: parseFloat(item.price) || 0,
+              minPrice: item.min_price ? parseFloat(item.min_price) : null,
+              maxPrice: item.max_price ? parseFloat(item.max_price) : null,
+              discount: parseFloat(item.discount) || 0,
+              discountAmount: parseFloat(item.discount_amount) || 0,
+              finalPrice: parseFloat(item.final_price) || 0,
+              subtotal: parseFloat(item.subtotal) || 0,
+              variantImage: imagePath,
+              variantDetails: parsedDetails,
+            };
+          }),
           totalItems: apiQuotation.total_items || apiItems.length || 0,
           totalAmount: parseFloat(apiQuotation.total_amount) || 0,
           totalDiscount: parseFloat(apiQuotation.total_discount) || 0,
@@ -148,7 +268,7 @@ export function QuotationView() {
           validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           notes: apiQuotation.remarks || '',
         };
-        
+
         setQuotation(transformedData);
       } else {
         throw new Error('Invalid API response structure');
@@ -174,9 +294,9 @@ export function QuotationView() {
   };
 
   const formatCurrency = (amount: number): string => {
-    return `₹${amount.toLocaleString('en-IN', { 
-      minimumFractionDigits: 2, 
-      maximumFractionDigits: 2 
+    return `₹${amount.toLocaleString('en-IN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     })}`;
   };
 
@@ -209,11 +329,7 @@ export function QuotationView() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/admin/quotations')}
-          >
+          <Button variant="ghost" size="sm" onClick={() => navigate('/admin/quotations')}>
             <ArrowLeft className="w-4 h-4 mr-2" /> Back
           </Button>
           <div>
@@ -221,9 +337,9 @@ export function QuotationView() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Badge 
+          <Badge
             className={cn(
-              "text-sm px-4 py-1 border-2 font-medium",
+              'text-sm px-4 py-1 border-2 font-medium',
               statusBadgeStyles[quotation.status]
             )}
           >
@@ -275,8 +391,8 @@ export function QuotationView() {
             {quotation.items.length > 0 ? (
               <>
                 {quotation.items.map((item, index) => {
-                  const imageUrl = getImageUrl(item.variantImage);
-                  
+                  const imageUrl = buildImageUrl(item.variantImage);
+
                   return (
                     <div key={item.id}>
                       {index > 0 && <Separator className="my-4" />}
@@ -284,22 +400,9 @@ export function QuotationView() {
                         <div className="flex items-start gap-4">
                           {/* Product Image */}
                           <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 border">
-                            {imageUrl ? (
-                              <img 
-                                src={imageUrl} 
-                                alt={item.productName}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = 'https://via.placeholder.com/80x80?text=No+Image';
-                                }}
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                                <ImageIcon className="w-8 h-8 text-gray-400" />
-                              </div>
-                            )}
+                            <ProductImage src={imageUrl} alt={item.productName} />
                           </div>
-                          
+
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
                               <h4 className="font-semibold text-base">{item.productName}</h4>
@@ -313,7 +416,7 @@ export function QuotationView() {
                             </div>
                           </div>
                         </div>
-                        
+
                         {/* Price Information with Min/Max */}
                         <div className="grid grid-cols-2 md:grid-cols-2 gap-3">
                           {/* Min Price */}
@@ -325,7 +428,7 @@ export function QuotationView() {
                               </p>
                             </div>
                           )}
-                          
+
                           {/* Max Price */}
                           {item.maxPrice !== null && (
                             <div className="bg-purple-50/50 rounded-lg px-3 py-5 text-center border border-purple-100">
@@ -335,22 +438,6 @@ export function QuotationView() {
                               </p>
                             </div>
                           )}
-                          
-                          {/* Final Price */}
-                          {/* <div className="bg-primary/5 rounded-lg px-3 py-2 text-center border border-primary/20">
-                            <p className="text-xs text-muted-foreground">Final Price</p>
-                            <p className="font-semibold text-primary text-sm">
-                              {formatCurrency(item.finalPrice)}
-                            </p>
-                          </div> */}
-                          
-                          {/* Subtotal */}
-                          {/* <div className="bg-gray-50 rounded-lg px-3 py-2 text-center border">
-                            <p className="text-xs text-muted-foreground">Subtotal</p>
-                            <p className="font-semibold text-sm">
-                              {formatCurrency(item.subtotal)}
-                            </p>
-                          </div> */}
                         </div>
                       </div>
                     </div>
@@ -363,40 +450,6 @@ export function QuotationView() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Summary */}
-      {/* <div className="flex justify-end">
-        <Card className="w-full max-w-sm">
-          <CardHeader>
-            <CardTitle>Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Total Items</span>
-                <span className="text-lg font-semibold">{quotation.totalItems}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between items-center bg-primary/5 p-3 rounded-lg border-2 border-primary/20">
-                <span className="text-sm font-medium">Grand Total</span>
-                <span className="text-2xl font-bold text-primary">{formatCurrency(quotation.grandTotal)}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div> */}
-
-      {/* Notes */}
-      {/* {quotation.notes && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Notes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm whitespace-pre-wrap">{quotation.notes}</p>
-          </CardContent>
-        </Card>
-      )} */}
     </div>
   );
 }

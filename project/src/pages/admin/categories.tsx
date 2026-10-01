@@ -13,6 +13,18 @@ import { baseurl } from '@/Baseurl/baseurl';
 
 const API_URL = `${baseurl}/api`;
 
+// Logo gradient (pink -> orange -> yellow)
+const brandGradient =
+  'bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 text-white shadow-md hover:shadow-lg hover:opacity-95 transition-all duration-300';
+
+// Outline-style buttons that pick up the gradient on hover
+const brandOutline =
+  'border-orange-200 text-orange-600 hover:text-white hover:border-transparent hover:bg-gradient-to-r hover:from-pink-500 hover:via-orange-500 hover:to-yellow-500 transition-all duration-300 disabled:opacity-40';
+
+// Ghost icon buttons (edit) that fill with the gradient on hover
+const brandIconGhost =
+  'h-8 w-8 text-orange-600 hover:text-white hover:bg-gradient-to-r hover:from-pink-500 hover:via-orange-500 hover:to-yellow-500 transition-all duration-300';
+
 interface Subcategory {
   id: number;
   subcategory_name: string;
@@ -134,7 +146,7 @@ export function AdminCategories() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+          <Loader2 className="h-12 w-12 animate-spin text-pink-500 mx-auto" />
           <p className="mt-4 text-muted-foreground">Loading categories...</p>
         </div>
       </div>
@@ -150,7 +162,7 @@ export function AdminCategories() {
         </div>
         <Button
           onClick={handleNavigateToAdd}
-          className="bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 text-white shadow-md hover:shadow-lg hover:opacity-95 transition-all duration-300"
+          className={brandGradient}
         >
           <Plus className="w-4 h-4 mr-1.5" />
           Add Category
@@ -162,7 +174,7 @@ export function AdminCategories() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input 
             placeholder="Search categories..." 
-            className="pl-9 h-9" 
+            className="pl-9 h-9 focus-visible:ring-orange-400 focus-visible:border-orange-400" 
             value={search} 
             onChange={(e: ChangeEvent<HTMLInputElement>) => {
               setSearch(e.target.value);
@@ -171,14 +183,14 @@ export function AdminCategories() {
           />
         </div>
         <div className="text-sm text-muted-foreground">
-          {filteredCategories.length} categories found
+          <span className="font-semibold text-orange-600">{filteredCategories.length}</span> categories found
         </div>
       </div>
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden border-orange-100">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-muted/50 border-b">
+            <thead className="bg-gradient-to-r from-pink-50 via-orange-50 to-yellow-50 border-b border-orange-100">
               <tr>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">#</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Category</th>
@@ -199,7 +211,7 @@ export function AdminCategories() {
                   const isExpanded = expandedCategories.includes(cat.id);
                   
                   return (
-                    <tr key={cat.id} className="border-b hover:bg-muted/30 transition-colors">
+                    <tr key={cat.id} className="border-b hover:bg-orange-50/50 transition-colors">
                       <td className="p-3 text-sm">
                         {(page - 1) * pageSize + index + 1}
                       </td>
@@ -209,7 +221,7 @@ export function AdminCategories() {
                             <img 
                               src={`${baseurl}/uploads/categories/${cat.category_image}`}
                               alt={cat.category_name}
-                              className="w-10 h-10 object-cover rounded"
+                              className="w-10 h-10 object-cover rounded ring-1 ring-orange-100"
                             />
                           )}
                           <div>
@@ -227,7 +239,7 @@ export function AdminCategories() {
                           <div>
                             <button
                               onClick={() => toggleExpand(cat.id)}
-                              className="flex items-center gap-1 text-sm text-primary hover:underline"
+                              className="flex items-center gap-1 text-sm font-medium text-orange-600 hover:text-pink-600 hover:underline transition-colors"
                             >
                               {cat.subcategories.length} subcategories
                               {isExpanded ? 
@@ -236,7 +248,7 @@ export function AdminCategories() {
                               }
                             </button>
                             {isExpanded && (
-                              <div className="mt-2 space-y-1">
+                              <div className="mt-2 space-y-1 pl-3 border-l-2 border-orange-300">
                                 {cat.subcategories.map((sub) => (
                                   <div key={sub.id} className="text-sm text-muted-foreground">
                                     • {sub.subcategory_name}
@@ -261,7 +273,7 @@ export function AdminCategories() {
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-8 w-8" 
+                            className={brandIconGhost}
                             onClick={() => handleNavigateToEdit(cat.id)}
                             aria-label={`Edit ${cat.category_name}`}
                           >
@@ -270,7 +282,7 @@ export function AdminCategories() {
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-8 w-8 text-destructive hover:text-destructive" 
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-red-50" 
                             onClick={() => setDeleteTarget(cat)}
                             aria-label={`Delete ${cat.category_name}`}
                           >
@@ -287,7 +299,7 @@ export function AdminCategories() {
         </div>
 
         {filteredCategories.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-orange-100">
             <div className="flex items-center gap-4">
               <div className="text-sm text-muted-foreground">
                 Showing {((page - 1) * pageSize) + 1} - {Math.min(page * pageSize, filteredCategories.length)} of {filteredCategories.length} categories
@@ -295,7 +307,7 @@ export function AdminCategories() {
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Show</span>
                 <Select value={String(pageSize)} onValueChange={handlePageSizeChange}>
-                  <SelectTrigger className="w-[70px] h-8">
+                  <SelectTrigger className="w-[70px] h-8 focus:ring-orange-400">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -311,15 +323,19 @@ export function AdminCategories() {
               <Button 
                 variant="outline" 
                 size="sm" 
+                className={brandOutline}
                 disabled={page === 1} 
                 onClick={() => setPage(page - 1)}
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <span className="text-sm">Page {page} of {totalPages || 1}</span>
+              <span className="text-sm">
+                Page <span className="font-semibold text-orange-600">{page}</span> of {totalPages || 1}
+              </span>
               <Button 
                 variant="outline" 
                 size="sm" 
+                className={brandOutline}
                 disabled={page === totalPages || totalPages === 0} 
                 onClick={() => setPage(page + 1)}
               >
@@ -332,8 +348,10 @@ export function AdminCategories() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!deleteTarget} onOpenChange={(open: boolean) => !open && handleCancelDelete()}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[400px] p-0 gap-0 overflow-hidden border-orange-100">
+          {/* Brand strip */}
+          <div className="h-1.5 w-full bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500" />
+          <DialogHeader className="px-6 pt-5 pb-4 bg-gradient-to-r from-pink-50 via-orange-50 to-yellow-50 border-b border-orange-100">
             <DialogTitle className="text-xl font-semibold text-gray-900">Delete Category</DialogTitle>
               <DialogDescription className="text-gray-600">
                 Are you sure you want to delete "<span className="font-semibold text-gray-900">{deleteTarget?.category_name}</span>"?
@@ -342,10 +360,10 @@ export function AdminCategories() {
                 This action cannot be undone.
               </DialogDescription>
           </DialogHeader>
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-3 px-6 py-5">
             <Button 
               variant="outline" 
-              className="flex-1 border-gray-300 hover:bg-gray-50" 
+              className={`flex-1 ${brandOutline}`}
               onClick={handleCancelDelete}
               disabled={isDeleting}
             >

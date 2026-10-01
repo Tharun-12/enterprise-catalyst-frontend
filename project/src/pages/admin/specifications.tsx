@@ -13,6 +13,18 @@ import { baseurl } from '@/Baseurl/baseurl';
 
 const API_URL = `${baseurl}/api`;
 
+// Logo gradient (pink -> orange -> yellow)
+const brandGradient =
+  'bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 text-white shadow-md hover:shadow-lg hover:opacity-95 transition-all duration-300';
+
+// Outline-style buttons that pick up the gradient on hover
+const brandOutline =
+  'border-orange-200 text-orange-600 hover:text-white hover:border-transparent hover:bg-gradient-to-r hover:from-pink-500 hover:via-orange-500 hover:to-yellow-500 transition-all duration-300 disabled:opacity-40';
+
+// Ghost icon buttons that fill with the gradient on hover
+const brandIconGhost =
+  'h-8 w-8 text-orange-600 hover:text-white hover:bg-gradient-to-r hover:from-pink-500 hover:via-orange-500 hover:to-yellow-500 transition-all duration-300';
+
 // Define types based on actual API response
 interface ProductSpecification {
   id: string;
@@ -160,7 +172,7 @@ export function AdminSpecifications() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+          <Loader2 className="h-12 w-12 animate-spin text-pink-500 mx-auto" />
           <p className="mt-4 text-muted-foreground">Loading specifications...</p>
         </div>
       </div>
@@ -176,12 +188,12 @@ export function AdminSpecifications() {
           <p className="text-sm text-muted-foreground">Manage product specifications and their values</p>
         </div>
         <Button
-            onClick={handleAddSpec}
-            className="bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 text-white shadow-md hover:shadow-lg hover:opacity-95 transition-all duration-300"
-          >
-            <Plus className="w-4 h-4 mr-1.5" />
-            Add Specification
-         </Button>
+          onClick={handleAddSpec}
+          className={brandGradient}
+        >
+          <Plus className="w-4 h-4 mr-1.5" />
+          Add Specification
+        </Button>
       </div>
 
       {/* Toolbar */}
@@ -190,7 +202,7 @@ export function AdminSpecifications() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search specifications..."
-            className="pl-9 h-9"
+            className="pl-9 h-9 focus-visible:ring-orange-400 focus-visible:border-orange-400"
             value={search}
             onChange={(e: ChangeEvent<HTMLInputElement>) => {
               setSearch(e.target.value);
@@ -199,15 +211,15 @@ export function AdminSpecifications() {
           />
         </div>
         <div className="text-sm text-muted-foreground">
-          {filteredSpecs.length} specifications found
+          <span className="font-semibold text-orange-600">{filteredSpecs.length}</span> specifications found
         </div>
       </div>
 
       {/* Table */}
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden border-orange-100">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-muted/50 border-b">
+            <thead className="bg-gradient-to-r from-pink-50 via-orange-50 to-yellow-50 border-b border-orange-100">
               <tr>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">#</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Category</th>
@@ -225,7 +237,7 @@ export function AdminSpecifications() {
                 </tr>
               ) : (
                 paginatedSpecs.map((spec, index) => (
-                  <tr key={spec.id} className="border-b hover:bg-muted/30 transition-colors">
+                  <tr key={spec.id} className="border-b hover:bg-orange-50/50 transition-colors">
                     <td className="p-3 text-sm">
                       {(page - 1) * pageSize + index + 1}
                     </td>
@@ -243,7 +255,7 @@ export function AdminSpecifications() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className={brandIconGhost}
                           onClick={() => handleViewSpec(spec)}
                           aria-label={`View ${spec.spec_name}`}
                         >
@@ -252,7 +264,7 @@ export function AdminSpecifications() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className={brandIconGhost}
                           onClick={() => handleEditSpec(spec)}
                           aria-label={`Edit ${spec.spec_name}`}
                         >
@@ -261,7 +273,7 @@ export function AdminSpecifications() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-red-50"
                           onClick={() => setDeleteTarget(spec)}
                           aria-label={`Delete ${spec.spec_name}`}
                         >
@@ -278,7 +290,7 @@ export function AdminSpecifications() {
 
         {/* Pagination */}
         {filteredSpecs.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-orange-100">
             <div className="flex items-center gap-4">
               <div className="text-sm text-muted-foreground">
                 Showing {((page - 1) * pageSize) + 1} - {Math.min(page * pageSize, filteredSpecs.length)} of {filteredSpecs.length} specifications
@@ -286,7 +298,7 @@ export function AdminSpecifications() {
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Show</span>
                 <Select value={String(pageSize)} onValueChange={handlePageSizeChange}>
-                  <SelectTrigger className="w-[70px] h-8">
+                  <SelectTrigger className="w-[70px] h-8 focus:ring-orange-400">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -304,15 +316,19 @@ export function AdminSpecifications() {
               <Button
                 variant="outline"
                 size="sm"
+                className={brandOutline}
                 disabled={page === 1}
                 onClick={() => setPage(page - 1)}
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <span className="text-sm">Page {page} of {totalPages || 1}</span>
+              <span className="text-sm">
+                Page <span className="font-semibold text-orange-600">{page}</span> of {totalPages || 1}
+              </span>
               <Button
                 variant="outline"
                 size="sm"
+                className={brandOutline}
                 disabled={page === totalPages || totalPages === 0}
                 onClick={() => setPage(page + 1)}
               >
@@ -325,19 +341,21 @@ export function AdminSpecifications() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!deleteTarget} onOpenChange={(v: boolean) => !v && setDeleteTarget(null)}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[400px] p-0 gap-0 overflow-hidden border-orange-100">
+          {/* Brand strip */}
+          <div className="h-1.5 w-full bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500" />
+          <DialogHeader className="px-6 pt-5 pb-4 bg-gradient-to-r from-pink-50 via-orange-50 to-yellow-50 border-b border-orange-100">
             <DialogTitle className="text-xl font-semibold text-gray-900">Delete Specification</DialogTitle>
-              <DialogDescription className="text-gray-600">
-                Are you sure you want to delete "<span className="font-semibold text-gray-900">{deleteTarget?.spec_name}</span>"?
-                This will also permanently delete all products in this category and subcategory, including their variants and images.
-                This action cannot be undone.
-              </DialogDescription>
+            <DialogDescription className="text-gray-600">
+              Are you sure you want to delete "<span className="font-semibold text-gray-900">{deleteTarget?.spec_name}</span>"?
+              This will also permanently delete all products in this category and subcategory, including their variants and images.
+              This action cannot be undone.
+            </DialogDescription>
           </DialogHeader>
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-3 px-6 py-5">
             <Button
               variant="outline"
-              className="flex-1 border-gray-300 hover:bg-gray-50"
+              className={`flex-1 ${brandOutline}`}
               onClick={() => setDeleteTarget(null)}
               disabled={isDeleting}
             >
@@ -364,11 +382,14 @@ export function AdminSpecifications() {
 
       {/* View Specification Dialog */}
       <Dialog open={!!viewingSpec} onOpenChange={(v: boolean) => !v && setViewingSpec(null)}>
-        <DialogContent className="sm:max-w-[640px] p-0 gap-0 overflow-hidden max-h-[85vh] flex flex-col">
+        <DialogContent className="sm:max-w-[640px] p-0 gap-0 overflow-hidden max-h-[85vh] flex flex-col border-orange-100">
+          {/* Brand strip */}
+          <div className="h-1.5 w-full bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 shrink-0" />
+
           {/* Header */}
-          <DialogHeader className="px-6 py-5 border-b bg-gradient-to-br from-blue-50 to-white shrink-0">
+          <DialogHeader className="px-6 py-5 border-b border-orange-100 bg-gradient-to-r from-pink-50 via-orange-50 to-yellow-50 shrink-0">
             <div className="flex items-start gap-3">
-              <div className="h-10 w-10 rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
+              <div className="h-10 w-10 rounded-lg bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 flex items-center justify-center shrink-0">
                 <Layers className="w-5 h-5 text-white" />
               </div>
               <div className="min-w-0">
@@ -386,15 +407,15 @@ export function AdminSpecifications() {
           <div className="overflow-y-auto px-6 py-5 space-y-5">
             {/* Meta info */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
-                <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 mb-1">
+              <div className="rounded-lg border border-orange-100 bg-orange-50/50 px-3 py-2.5">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-orange-600 mb-1">
                   <FolderTree className="w-3.5 h-3.5" />
                   Category
                 </div>
                 <p className="text-sm font-semibold text-gray-900 truncate">{viewingSpec?.category_name || '—'}</p>
               </div>
-              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
-                <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 mb-1">
+              <div className="rounded-lg border border-orange-100 bg-orange-50/50 px-3 py-2.5">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-orange-600 mb-1">
                   <Tag className="w-3.5 h-3.5" />
                   Sub Category
                 </div>
@@ -407,34 +428,34 @@ export function AdminSpecifications() {
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm font-semibold text-gray-800">Product Specifications</p>
                 {viewingSpec?.product_specifications && viewingSpec.product_specifications.length > 0 && (
-                  <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
+                  <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-700">
                     {viewingSpec.product_specifications.length}
                   </span>
                 )}
               </div>
 
               {viewingSpec?.product_specifications && viewingSpec.product_specifications.length > 0 ? (
-                <div className="rounded-lg border border-gray-200 overflow-hidden">
+                <div className="rounded-lg border border-orange-100 overflow-hidden">
                   {/* Column headers */}
-                  <div className="grid grid-cols-2 bg-gray-100">
-                    <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  <div className="grid grid-cols-2 bg-gradient-to-r from-pink-50 via-orange-50 to-yellow-50">
+                    <div className="px-4 py-2 text-xs font-semibold text-orange-600 uppercase tracking-wide">
                       Specification
                     </div>
-                    <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide border-l border-gray-200">
+                    <div className="px-4 py-2 text-xs font-semibold text-orange-600 uppercase tracking-wide border-l border-orange-100">
                       Value
                     </div>
                   </div>
                   {/* Rows */}
-                  <div className="divide-y divide-gray-200">
+                  <div className="divide-y divide-orange-100">
                     {viewingSpec.product_specifications.map((ps, idx) => (
                       <div
                         key={ps.id || idx}
-                        className={`grid grid-cols-2 ${idx % 2 === 1 ? 'bg-gray-50/60' : 'bg-white'} hover:bg-blue-50/40 transition-colors`}
+                        className={`grid grid-cols-2 ${idx % 2 === 1 ? 'bg-orange-50/40' : 'bg-white'} hover:bg-orange-50/70 transition-colors`}
                       >
                         <div className="px-4 py-2.5 text-sm font-medium text-gray-700 break-words">
                           {ps.spec_name}
                         </div>
-                        <div className="px-4 py-2.5 text-sm text-gray-600 break-words border-l border-gray-200">
+                        <div className="px-4 py-2.5 text-sm text-gray-600 break-words border-l border-orange-100">
                           {ps.value}
                         </div>
                       </div>
@@ -442,14 +463,14 @@ export function AdminSpecifications() {
                   </div>
                 </div>
               ) : (
-                <div className="text-sm text-gray-400 bg-gray-50 rounded-lg p-4 border border-dashed border-gray-200 text-center">
+                <div className="text-sm text-gray-400 bg-orange-50/50 rounded-lg p-4 border border-dashed border-orange-200 text-center">
                   No product specifications configured
                 </div>
               )}
             </div>
 
             {/* Timestamps */}
-            <div className="grid grid-cols-2 gap-4 pt-3 border-t border-gray-100">
+            <div className="grid grid-cols-2 gap-4 pt-3 border-t border-orange-100">
               <div>
                 <p className="text-xs font-medium text-gray-400">Created At</p>
                 <p className="text-xs text-gray-600 mt-0.5">
@@ -466,8 +487,8 @@ export function AdminSpecifications() {
           </div>
 
           {/* Footer */}
-          <div className="flex justify-end px-6 py-4 border-t bg-white shrink-0">
-            <Button onClick={() => setViewingSpec(null)}>
+          <div className="flex justify-end px-6 py-4 border-t border-orange-100 bg-white shrink-0">
+            <Button onClick={() => setViewingSpec(null)} className={brandGradient}>
               Close
             </Button>
           </div>

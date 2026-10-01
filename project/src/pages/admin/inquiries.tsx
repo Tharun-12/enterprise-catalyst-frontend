@@ -11,6 +11,18 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { baseurl } from '@/Baseurl/baseurl';
 
+// Logo gradient (pink -> orange -> yellow)
+const brandGradient =
+  'bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 text-white shadow-md hover:shadow-lg hover:opacity-95 transition-all duration-300';
+
+// Outline-style buttons that pick up the gradient on hover
+const brandOutline =
+  'border-orange-200 text-orange-600 hover:text-white hover:border-transparent hover:bg-gradient-to-r hover:from-pink-500 hover:via-orange-500 hover:to-yellow-500 transition-all duration-300 disabled:opacity-40';
+
+// Ghost icon buttons that fill with the gradient on hover
+const brandIconGhost =
+  'h-8 w-8 text-orange-600 hover:text-white hover:bg-gradient-to-r hover:from-pink-500 hover:via-orange-500 hover:to-yellow-500 transition-all duration-300';
+
 // Types matching backend API
 interface Inquiry {
   id: number;
@@ -152,6 +164,7 @@ export function AdminInquiries() {
         <Button 
           variant="outline" 
           size="sm" 
+          className={brandOutline}
           onClick={fetchInquiries}
           disabled={loading}
         >
@@ -170,7 +183,7 @@ export function AdminInquiries() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input 
               placeholder="Search by name, email, product..." 
-              className="pl-9 h-9" 
+              className="pl-9 h-9 focus-visible:ring-orange-400 focus-visible:border-orange-400" 
               value={search} 
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 setSearch(e.target.value);
@@ -179,26 +192,26 @@ export function AdminInquiries() {
           </div>
         </div>
         <div className="text-sm text-muted-foreground whitespace-nowrap">
-          {inquiries.length} inquiries found
+          <span className="font-semibold text-orange-600">{inquiries.length}</span> inquiries found
         </div>
       </div>
 
       {/* Table */}
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden border-orange-100">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12">
-            <Mail className="w-12 h-12 text-muted-foreground/50 mb-3" />
+            <Mail className="w-12 h-12 text-orange-300 mb-3" />
             <p className="text-muted-foreground">No inquiries found</p>
             {search && <p className="text-sm text-muted-foreground">Try adjusting your search</p>}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-muted/50 border-b">
+              <thead className="bg-gradient-to-r from-pink-50 via-orange-50 to-yellow-50 border-b border-orange-100">
                 <tr>
                   <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">#</th>
                   <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Customer</th>
@@ -213,7 +226,7 @@ export function AdminInquiries() {
                 {filtered.map((inquiry, index) => (
                   <tr 
                     key={inquiry.id} 
-                    className="border-b hover:bg-muted/30 transition-colors cursor-pointer" 
+                    className="border-b hover:bg-orange-50/50 transition-colors cursor-pointer" 
                     onClick={() => setSelected(inquiry)}
                   >
                     <td className="p-3 text-sm">{index + 1}</td>
@@ -240,7 +253,7 @@ export function AdminInquiries() {
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-8 w-8" 
+                        className={brandIconGhost}
                         onClick={(e: React.MouseEvent) => { 
                           e.stopPropagation(); 
                           setSelected(inquiry); 
@@ -259,14 +272,17 @@ export function AdminInquiries() {
 
       {/* Detail Modal */}
       <Dialog open={!!selected} onOpenChange={(v: boolean) => !v && setSelected(null)}>
-        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto p-0">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto p-0 gap-0 border-orange-100">
           {selected && (
             <>
+              {/* Brand strip */}
+              <div className="h-1.5 w-full bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500" />
+
               {/* Header with gradient */}
-              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5 rounded-t-lg">
+              <div className="bg-gradient-to-r from-pink-50 via-orange-50 to-yellow-50 px-6 py-5 border-b border-orange-100">
                 <DialogHeader className="space-y-1">
-                  <DialogTitle className="text-xl font-semibold text-white">Inquiry Details</DialogTitle>
-                  <DialogDescription className="text-blue-100">
+                  <DialogTitle className="text-xl font-semibold text-gray-900">Inquiry Details</DialogTitle>
+                  <DialogDescription className="text-gray-600">
                     Customer inquiry information
                   </DialogDescription>
                 </DialogHeader>
@@ -279,9 +295,9 @@ export function AdminInquiries() {
               {/* Content */}
               <div className="px-6 pb-6 pt-4 space-y-4">
                 {/* Customer Info Card */}
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <div className="bg-orange-50/50 rounded-lg p-4 border border-orange-100">
                   <div className="flex items-center gap-2 mb-3">
-                    <User className="w-4 h-4 text-blue-600" />
+                    <User className="w-4 h-4 text-orange-600" />
                     <span className="text-sm font-medium text-gray-700">Customer Information</span>
                   </div>
                   <div className="space-y-2.5">
@@ -296,7 +312,7 @@ export function AdminInquiries() {
                       <Mail className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
                       <div>
                         <div className="text-xs text-gray-500">Email</div>
-                        <a href={`mailto:${selected.email}`} className="text-sm font-medium text-blue-600 hover:underline">
+                        <a href={`mailto:${selected.email}`} className="text-sm font-medium text-orange-600 hover:underline">
                           {selected.email}
                         </a>
                       </div>
@@ -305,7 +321,7 @@ export function AdminInquiries() {
                       <Phone className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
                       <div>
                         <div className="text-xs text-gray-500">Phone</div>
-                        <a href={`tel:${selected.phone_number}`} className="text-sm font-medium text-blue-600 hover:underline">
+                        <a href={`tel:${selected.phone_number}`} className="text-sm font-medium text-orange-600 hover:underline">
                           {selected.phone_number}
                         </a>
                       </div>
@@ -314,23 +330,23 @@ export function AdminInquiries() {
                 </div>
 
                 {/* Product Interest Card */}
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <div className="bg-orange-50/50 rounded-lg p-4 border border-orange-100">
                   <div className="flex items-center gap-2 mb-2">
-                    <Tag className="w-4 h-4 text-blue-600" />
+                    <Tag className="w-4 h-4 text-orange-600" />
                     <span className="text-sm font-medium text-gray-700">Product Interest</span>
                   </div>
-                  <div className="bg-white rounded-md p-3 border border-gray-100">
+                  <div className="bg-white rounded-md p-3 border border-orange-100">
                     <div className="text-sm font-semibold text-gray-900">{selected.product_interest}</div>
                   </div>
                 </div>
 
                 {/* Message Card */}
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <div className="bg-orange-50/50 rounded-lg p-4 border border-orange-100">
                   <div className="flex items-center gap-2 mb-2">
-                    <MessageSquare className="w-4 h-4 text-blue-600" />
+                    <MessageSquare className="w-4 h-4 text-orange-600" />
                     <span className="text-sm font-medium text-gray-700">Message</span>
                   </div>
-                  <div className="bg-white rounded-md p-3 border border-gray-100">
+                  <div className="bg-white rounded-md p-3 border border-orange-100">
                     <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
                       {selected.message}
                     </div>
@@ -338,7 +354,7 @@ export function AdminInquiries() {
                 </div>
 
                 {/* Timestamp */}
-                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                <div className="bg-orange-50/50 rounded-lg p-3 border border-orange-100">
                   <div className="flex items-start gap-3">
                     <Calendar className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
                     <div>

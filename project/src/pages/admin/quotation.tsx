@@ -13,6 +13,14 @@ import axios from 'axios';
 import { baseurl } from '@/Baseurl/baseurl';
 import { cn } from '@/lib/utils';
 
+// Logo gradient (pink -> orange -> yellow)
+const brandGradient =
+  'bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 text-white shadow-md hover:shadow-lg hover:opacity-95 transition-all duration-300';
+
+// Outline-style buttons (pagination) that pick up the gradient on hover
+const brandOutline =
+  'border-orange-200 text-orange-600 hover:text-white hover:border-transparent hover:bg-gradient-to-r hover:from-pink-500 hover:via-orange-500 hover:to-yellow-500 transition-all duration-300 disabled:opacity-40';
+
 type QuotationStatus = 'Pending' | 'Approved' | 'Rejected';
 
 interface QuotationItem {
@@ -213,7 +221,7 @@ export function AdminQuotations() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Loading quotations...</p>
         </div>
       </div>
@@ -232,10 +240,10 @@ export function AdminQuotations() {
         </div>
         <div className="flex gap-2">
           <Button
-            variant="outline"
             size="sm"
             onClick={fetchQuotations}
             disabled={loading}
+            className={brandGradient}
           >
             Refresh
           </Button>
@@ -249,7 +257,7 @@ export function AdminQuotations() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Search by name, email, phone..."
-              className="pl-9 h-9"
+              className="pl-9 h-9 focus-visible:ring-orange-400 focus-visible:border-orange-400"
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -261,7 +269,7 @@ export function AdminQuotations() {
             setStatusFilter(value);
             setPage(1);
           }}>
-            <SelectTrigger className="w-[140px] h-9">
+            <SelectTrigger className="w-[140px] h-9 focus:ring-orange-400">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -273,15 +281,15 @@ export function AdminQuotations() {
           </Select>
         </div>
         <div className="text-sm text-muted-foreground whitespace-nowrap">
-          {filtered.length} quotations found
+          <span className="font-semibold text-orange-600">{filtered.length}</span> quotations found
         </div>
       </div>
 
       {/* Table */}
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden border-orange-100">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-muted/50 border-b">
+            <thead className="bg-gradient-to-r from-pink-50 via-orange-50 to-yellow-50 border-b border-orange-100">
               <tr>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">#</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Customer</th>
@@ -304,7 +312,7 @@ export function AdminQuotations() {
                 paginatedQuotations.map((quotation, index) => (
                   <tr
                     key={quotation.id}
-                    className="border-b hover:bg-muted/30 transition-colors"
+                    className="border-b hover:bg-orange-50/50 transition-colors"
                   >
                     <td className="p-3 text-sm">
                       {(page - 1) * pageSize + index + 1}
@@ -312,7 +320,7 @@ export function AdminQuotations() {
                     <td className="p-3">
                       <div className="flex items-center gap-3">
                         <Avatar className="w-8 h-8">
-                          <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                          <AvatarFallback className="bg-gradient-to-br from-pink-500 via-orange-500 to-yellow-500 text-white text-xs font-semibold">
                             {getInitials(quotation.customerName)}
                           </AvatarFallback>
                         </Avatar>
@@ -333,10 +341,10 @@ export function AdminQuotations() {
                     </td> */}
                     <td className="p-3">
                       <Badge className={cn(
-                        "text-xs font-medium",
-                        quotation.status === 'Pending' && "bg-yellow-100 text-yellow-700",
-                        quotation.status === 'Approved' && "bg-green-100 text-green-700",
-                        quotation.status === 'Rejected' && "bg-red-100 text-red-700"
+                        "text-xs font-medium hover:opacity-90",
+                        quotation.status === 'Pending' && "bg-orange-100 text-orange-700 border border-orange-200",
+                        quotation.status === 'Approved' && "bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 text-white border-transparent",
+                        quotation.status === 'Rejected' && "bg-red-100 text-red-700 border border-red-200"
                       )}>
                         {quotation.status}
                       </Badge>
@@ -349,7 +357,7 @@ export function AdminQuotations() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-8 w-8 text-orange-600 hover:text-white hover:bg-gradient-to-r hover:from-pink-500 hover:via-orange-500 hover:to-yellow-500 transition-all duration-300"
                           onClick={() => handleViewQuotation(quotation)}
                           title="View Details"
                         >
@@ -366,7 +374,7 @@ export function AdminQuotations() {
 
         {/* Pagination */}
         {filtered.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-orange-100">
             <div className="flex items-center gap-4">
               <div className="text-sm text-muted-foreground">
                 Showing {((page - 1) * pageSize) + 1} - {Math.min(page * pageSize, filtered.length)} of {filtered.length} quotations
@@ -374,7 +382,7 @@ export function AdminQuotations() {
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Show</span>
                 <Select value={String(pageSize)} onValueChange={handlePageSizeChange}>
-                  <SelectTrigger className="w-[70px] h-8">
+                  <SelectTrigger className="w-[70px] h-8 focus:ring-orange-400">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -390,15 +398,19 @@ export function AdminQuotations() {
               <Button 
                 variant="outline" 
                 size="sm" 
+                className={brandOutline}
                 disabled={page === 1} 
                 onClick={() => setPage(page - 1)}
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <span className="text-sm">Page {page} of {totalPages || 1}</span>
+              <span className="text-sm">
+                Page <span className="font-semibold text-orange-600">{page}</span> of {totalPages || 1}
+              </span>
               <Button 
                 variant="outline" 
                 size="sm" 
+                className={brandOutline}
                 disabled={page === totalPages || totalPages === 0} 
                 onClick={() => setPage(page + 1)}
               >

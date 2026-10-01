@@ -289,7 +289,7 @@
 
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, Package, Brain, Network, Server, Shield, Lock } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SectionHeader } from '@/components/shared';
@@ -326,15 +326,15 @@ const categoryColors: Record<string, string> = {
 };
 
 // Define icon mapping for categories
-const categoryIcons: Record<string, React.ElementType> = {
-  'Artifical Intelligence': Brain,
-  'Artificial Intelligence': Brain,
-  'Data Cabling': Network,
-  'Data Infrastructure': Server,
-  'Data Physical Security': Shield,
-  'Data Security': Lock,
-  'Default': Package
-};
+// const categoryIcons: Record<string, React.ElementType> = {
+//   'Artifical Intelligence': Brain,
+//   'Artificial Intelligence': Brain,
+//   'Data Cabling': Network,
+//   'Data Infrastructure': Server,
+//   'Data Physical Security': Shield,
+//   'Data Security': Lock,
+//   'Default': Package
+// };
 
 // Skeleton Card Component
 const SkeletonCard = () => (

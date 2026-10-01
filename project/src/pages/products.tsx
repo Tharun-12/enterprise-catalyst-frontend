@@ -1069,8 +1069,9 @@
 //   );
 // }
 
+// products.tsx - Fixed version: 12 cards per page, robust pagination and scroll handling
 
-// products.tsx - Fixed version with proper image handling and separate scroll
+// products.tsx - Fixed version: 12 cards per page, robust pagination and scroll handling
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -1086,6 +1087,12 @@ import { Package } from 'lucide-react';
 import { PageBreadcrumb as Breadcrumb } from '@/layouts/customer-layout-wrapper';
 import { baseurl } from '@/Baseurl/baseurl';
 import type { Product, Category } from '@/types';
+
+// Number of product cards shown per page
+const ITEMS_PER_PAGE = 9;
+
+// Brand (logo) color used for the pagination - replace with your exact logo hex
+const BRAND_COLOR = '#E11D74';
 
 // ---- Raw API response shapes ----
 interface ApiCategory {
@@ -1395,12 +1402,14 @@ export function ProductsPage() {
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  // Pagination: 12 cards per page
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(9);
+  const itemsPerPage = ITEMS_PER_PAGE;
 
   // Refs for scroll containers
   const productsGridRef = useRef<HTMLDivElement>(null);
   const filterPanelRef = useRef<HTMLDivElement>(null);
+  const searchScrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const categorySlug = searchParams.get('category');
   const searchQuery = searchParams.get('search') || '';
@@ -1422,14 +1431,19 @@ export function ProductsPage() {
     maxPrice: undefined,
   });
 
-  // Scroll products container to top (not window)
+  // Scroll to top of the products grid (the page itself scrolls now)
   const scrollToProducts = () => {
     requestAnimationFrame(() => {
-      if (productsGridRef.current) {
-        productsGridRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-      }
+      productsGridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   };
+
+  // Clear pending search-scroll timer on unmount
+  useEffect(() => {
+    return () => {
+      if (searchScrollTimer.current) clearTimeout(searchScrollTimer.current);
+    };
+  }, []);
 
   // Filter change handler with scroll to top
   const handleFilterChange = (newFilters: FilterState) => {
@@ -1441,8 +1455,8 @@ export function ProductsPage() {
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFilters({ ...filters, search: e.target.value });
     setCurrentPage(1);
-    clearTimeout((handleSearchChange as any).timeout);
-    (handleSearchChange as any).timeout = setTimeout(scrollToProducts, 300);
+    if (searchScrollTimer.current) clearTimeout(searchScrollTimer.current);
+    searchScrollTimer.current = setTimeout(scrollToProducts, 300);
   };
 
   const handleSortChange = (value: string) => {
@@ -1890,6 +1904,7 @@ export function ProductsPage() {
     return result;
   }, [filters, transformedProducts, categories, products]);
 
+  // ---- Pagination (12 per page) ----
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -1898,18 +1913,20 @@ export function ProductsPage() {
   useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(totalPages);
-    } else if (currentPage === 0 && totalPages > 0) {
+    } else if (currentPage < 1) {
       setCurrentPage(1);
     }
   }, [totalPages, currentPage]);
 
   const paginate = (pageNumber: number) => {
+    if (pageNumber < 1 || pageNumber > totalPages) return;
     setCurrentPage(pageNumber);
     setTimeout(scrollToProducts, 100);
   };
 
+  // Always shows up to 5 consecutive page numbers, with first/last + ellipsis
   const getPageNumbers = () => {
-    const pageNumbers = [];
+    const pageNumbers: (number | string)[] = [];
     const maxPagesToShow = 5;
 
     if (totalPages <= maxPagesToShow) {
@@ -1917,8 +1934,9 @@ export function ProductsPage() {
         pageNumbers.push(i);
       }
     } else {
-      const startPage = Math.max(1, currentPage - 2);
-      const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+      let startPage = Math.max(1, currentPage - 2);
+      startPage = Math.min(startPage, totalPages - maxPagesToShow + 1);
+      const endPage = startPage + maxPagesToShow - 1;
 
       if (startPage > 1) {
         pageNumbers.push(1);
@@ -1974,12 +1992,12 @@ export function ProductsPage() {
         </p>
       </div>
 
-      {/* Main container with fixed height for desktop, auto height on mobile */}
-      <div className="flex gap-6 lg:h-[calc(100vh-260px)] lg:min-h-[600px] lg:max-h-[900px]">
+      {/* Main container: height follows content, so no gap above the footer */}
+      <div className="flex gap-6 lg:items-start">
         {/* Filter sidebar - separate scroll on desktop */}
         <aside
           ref={filterPanelRef}
-          className="hidden lg:block w-72 shrink-0 lg:h-full lg:overflow-y-auto pr-2 
+          className="hidden lg:block w-72 shrink-0 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto pr-2 
             [&::-webkit-scrollbar]:w-1.5 
             [&::-webkit-scrollbar-track]:bg-transparent 
             [&::-webkit-scrollbar-thumb]:bg-gray-300 
@@ -2002,7 +2020,7 @@ export function ProductsPage() {
         </aside>
 
         {/* Products section - flex column with fixed header and scrollable grid */}
-        <div className="flex-1 min-w-0 lg:h-full lg:flex lg:flex-col">
+        <div className="flex-1 min-w-0">
           {/* Fixed header - search and sort (stays in place) */}
           <div className="flex-shrink-0">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
@@ -2062,14 +2080,7 @@ export function ProductsPage() {
           <div
             id="products-grid"
             ref={productsGridRef}
-            className="flex-1 lg:overflow-y-auto pr-2 pb-4
-              [&::-webkit-scrollbar]:w-1.5 
-              [&::-webkit-scrollbar-track]:bg-transparent 
-              [&::-webkit-scrollbar-thumb]:bg-gray-300 
-              [&::-webkit-scrollbar-thumb]:rounded-full 
-              dark:[&::-webkit-scrollbar-thumb]:bg-gray-600
-              hover:[&::-webkit-scrollbar-thumb]:bg-gray-400
-              dark:hover:[&::-webkit-scrollbar-thumb]:bg-gray-500"
+            className="pb-4 scroll-mt-24"
           >
             {loading ? (
               <ProductGridSkeleton count={itemsPerPage} />
@@ -2114,7 +2125,8 @@ export function ProductsPage() {
                         size="sm"
                         onClick={() => paginate(currentPage - 1)}
                         disabled={currentPage === 1}
-                        className="h-9 px-3 rounded-md"
+                        style={{ '--brand': BRAND_COLOR } as React.CSSProperties}
+                        className="h-9 px-3 rounded-md hover:border-[var(--brand)] hover:text-[var(--brand)] hover:bg-transparent"
                       >
                         <ChevronLeft className="h-4 w-4 mr-1" />
                         Previous
@@ -2129,13 +2141,18 @@ export function ProductsPage() {
                           ) : (
                             <Button
                               key={page}
-                              variant={currentPage === page ? 'default' : 'outline'}
+                              variant="outline"
                               size="sm"
                               onClick={() => paginate(page as number)}
+                              style={
+                                currentPage === page
+                                  ? { backgroundColor: BRAND_COLOR, borderColor: BRAND_COLOR, color: '#fff' }
+                                  : ({ '--brand': BRAND_COLOR } as React.CSSProperties)
+                              }
                               className={`h-9 w-9 p-0 rounded-md ${
                                 currentPage === page
-                                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                                  : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                                  ? 'hover:opacity-90 hover:text-white'
+                                  : 'hover:border-[var(--brand)] hover:text-[var(--brand)] hover:bg-transparent'
                               }`}
                             >
                               {page}
@@ -2149,7 +2166,8 @@ export function ProductsPage() {
                         size="sm"
                         onClick={() => paginate(currentPage + 1)}
                         disabled={currentPage === totalPages}
-                        className="h-9 px-3 rounded-md"
+                        style={{ '--brand': BRAND_COLOR } as React.CSSProperties}
+                        className="h-9 px-3 rounded-md hover:border-[var(--brand)] hover:text-[var(--brand)] hover:bg-transparent"
                       >
                         Next
                         <ChevronRight className="h-4 w-4 ml-1" />

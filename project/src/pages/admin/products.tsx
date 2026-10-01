@@ -11,6 +11,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { toast } from 'sonner';
 import { baseurl } from '@/Baseurl/baseurl';
 
+// Logo gradient (pink -> orange -> yellow)
+const brandGradient =
+  'bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 text-white shadow-md hover:shadow-lg hover:opacity-95 transition-all duration-300';
+
+// Outline-style buttons that pick up the gradient on hover
+const brandOutline =
+  'border-orange-200 text-orange-600 hover:text-white hover:border-transparent hover:bg-gradient-to-r hover:from-pink-500 hover:via-orange-500 hover:to-yellow-500 transition-all duration-300 disabled:opacity-40';
+
+// Ghost icon buttons (view / edit) that fill with the gradient on hover
+const brandIconGhost =
+  'h-8 w-8 text-orange-600 hover:text-white hover:bg-gradient-to-r hover:from-pink-500 hover:via-orange-500 hover:to-yellow-500 transition-all duration-300';
+
 // Updated Product interface with proper variant structure
 interface Product {
   id: number;
@@ -99,15 +111,17 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
 
   useEffect(() => {
     fetchProducts();
-    fetchCategories();
   }, [search, categoryFilter, page, pageSize]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
 
   const fetchCategories = async (): Promise<void> => {
     try {
       const response = await fetch(`${baseurl}/api/categories/`);
       const data: CategoryResponse = await response.json();
       if (data.success) {
-        console.log('Fetched categories:', data.data);
         setCategories(data.data);
       } else {
         console.error('Failed to fetch categories:', data);
@@ -152,28 +166,53 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
     }
   };
 
+  /**
+   * Helper to compare category IDs safely.
+   * API may return product_category_id as number OR string; category filter is a string.
+   */
+  const matchesCategory = (product: Product, filterValue: string): boolean => {
+    if (filterValue === 'all') return true;
+    const filterId = Number(filterValue);
+    if (Number.isNaN(filterId)) return true;
+    
+    // Primary check: product_category_id
+    if (product.product_category_id != null) {
+      if (Number(product.product_category_id) === filterId) return true;
+    }
+    
+    // Fallback: any variant's category_id
+    if (product.variants && product.variants.length > 0) {
+      return product.variants.some(
+        (v) => v.category_id != null && Number(v.category_id) === filterId
+      );
+    }
+    
+    return false;
+  };
+
   const filteredAndSortedProducts = useMemo((): Product[] => {
     let result = [...products];
     
-    if (search && products.length > 0) {
+    // Client-side search fallback (in case API didn't filter)
+    if (search) {
       const q = search.toLowerCase();
       result = result.filter((p) => 
-        p.product_name.toLowerCase().includes(q) || 
+        p.product_name?.toLowerCase().includes(q) || 
         p.product_code?.toLowerCase().includes(q) || 
         p.product_brand?.toLowerCase().includes(q)
       );
     }
     
+    // Client-side category fallback (in case API didn't filter)
+    // Uses safe comparison — only applies if the API returned unfiltered data
     if (categoryFilter !== 'all') {
-      result = result.filter((p) => 
-        p.product_category_id === parseInt(categoryFilter)
-      );
+      result = result.filter((p) => matchesCategory(p, categoryFilter));
     }
     
     result.sort((a, b) => {
       let cmp = 0;
       if (sortField === 'name') {
-        cmp = a.product_name.localeCompare(b.product_name);
+        cmp = (a.product_name || '').localeCompare(b.product_name || '');
       } else {
         cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
       }
@@ -210,10 +249,6 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
     }
   };
 
-  /**
-   * Extract the first variant image URL from a product
-   * Handles both JSON array format and direct string format
-   */
   const getFirstVariantImage = (product: Product): string => {
     if (!product.variants || product.variants.length === 0) {
       return '/placeholder-image.jpg';
@@ -227,43 +262,32 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
     }
 
     try {
-      // Try to parse as JSON array (format: "[\"/uploads/products/image.jpg\"]")
       const parsed = JSON.parse(imageUrl);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed[0]; // Return first image from array
+        return parsed[0];
       }
-      return imageUrl; // If parsed but not an array, return as is
+      return imageUrl;
     } catch {
-      // If not JSON, treat as direct URL string
       return imageUrl;
     }
   };
 
-  /**
-   * Get the full image URL with base URL
-   */
   const getImageUrl = (imagePath: string): string => {
     if (!imagePath || imagePath === '/placeholder-image.jpg') {
       return '/placeholder-image.jpg';
     }
     
-    // If it's already a full URL, return as is
     if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
       return imagePath;
     }
     
-    // Ensure path starts with '/'
     const normalizedPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
     return `${baseurl}${normalizedPath}`;
   };
 
-  /**
-   * Get product display image with error handling
-   */
   const getProductDisplayImage = (product: Product): string => {
     const imageKey = `product-${product.id}`;
     
-    // If we already had an error loading this image, use placeholder
     if (imageErrors[imageKey]) {
       return '/placeholder-image.jpg';
     }
@@ -272,9 +296,6 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
     return getImageUrl(firstVariantImage);
   };
 
-  /**
-   * Handle image load errors
-   */
   const handleImageError = (productId: number): void => {
     const imageKey = `product-${productId}`;
     setImageErrors(prev => ({ ...prev, [imageKey]: true }));
@@ -305,7 +326,7 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+          <Loader2 className="h-12 w-12 animate-spin text-pink-500 mx-auto" />
           <p className="mt-4 text-muted-foreground">Loading products...</p>
         </div>
       </div>
@@ -322,7 +343,7 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
         </div>
           <Button
             onClick={() => navigate('/admin/products/add')}
-            className="bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500 text-white shadow-md hover:shadow-lg hover:opacity-95 transition-all duration-300"
+            className={brandGradient}
           >
             <Plus className="w-4 h-4 mr-1.5" />
             Add Product
@@ -336,7 +357,7 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input 
               placeholder="Search products..." 
-              className="pl-9 h-9" 
+              className="pl-9 h-9 focus-visible:ring-orange-400 focus-visible:border-orange-400" 
               value={search} 
               onChange={(e: ChangeEvent<HTMLInputElement>) => {
                 setSearch(e.target.value);
@@ -348,7 +369,7 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
             setCategoryFilter(value);
             setPage(1);
           }}>
-            <SelectTrigger className="w-[160px] h-9">
+            <SelectTrigger className="w-[160px] h-9 focus:ring-orange-400">
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
@@ -361,7 +382,7 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
             </SelectContent>
           </Select>
           <Select value={sortField} onValueChange={(value: SortField) => setSortField(value)}>
-            <SelectTrigger className="w-[140px] h-9">
+            <SelectTrigger className="w-[140px] h-9 focus:ring-orange-400">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
@@ -372,22 +393,22 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
           <Button 
             variant="outline" 
             size="sm" 
-            className="h-9"
+            className={`h-9 ${brandOutline}`}
             onClick={() => setSortDir(sortDir === 'asc' ? 'desc' : 'asc')}
           >
             {sortDir === 'asc' ? '↑' : '↓'}
           </Button>
         </div>
         <div className="text-sm text-muted-foreground whitespace-nowrap">
-          {totalProducts} products found
+          <span className="font-semibold text-orange-600">{totalProducts}</span> products found
         </div>
       </div>
 
       {/* Table */}
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden border-orange-100">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-muted/50 border-b">
+            <thead className="bg-gradient-to-r from-pink-50 via-orange-50 to-yellow-50 border-b border-orange-100">
               <tr>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">#</th>
                 <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Product</th>
@@ -402,7 +423,9 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
               {paginated.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-8 text-center text-muted-foreground">
-                    No products found. Click "Add Product" to create one.
+                    {categoryFilter !== 'all' || search
+                      ? 'No products match your filters.'
+                      : 'No products found. Click "Add Product" to create one.'}
                   </td>
                 </tr>
               ) : (
@@ -412,13 +435,13 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
                   const hasError = imageErrors[imageKey] || false;
                   
                   return (
-                    <tr key={product.id} className="border-b hover:bg-muted/30 transition-colors">
+                    <tr key={product.id} className="border-b hover:bg-orange-50/50 transition-colors">
                       <td className="p-3 text-sm">
                         {(page - 1) * pageSize + index + 1}
                       </td>
                       <td className="p-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden shrink-0">
+                          <div className="w-10 h-10 rounded-lg bg-orange-50 ring-1 ring-orange-100 flex items-center justify-center overflow-hidden shrink-0">
                             {!hasError ? (
                               <img 
                                 src={displayImage}
@@ -428,7 +451,7 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
                                 loading="lazy"
                               />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400 text-xs">
+                              <div className="w-full h-full flex items-center justify-center bg-orange-100 text-orange-400 text-xs">
                                 No Image
                               </div>
                             )}
@@ -437,7 +460,7 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
                             <div className="font-medium text-sm truncate max-w-[200px]">{product.product_name}</div>
                             <div className="text-xs text-muted-foreground">{product.product_code || 'No SKU'}</div>
                             {product.variants && product.variants.length > 0 && (
-                              <div className="text-xs text-muted-foreground">
+                              <div className="text-xs text-orange-600">
                                 {product.variants.length} variant{product.variants.length > 1 ? 's' : ''}
                               </div>
                             )}
@@ -445,10 +468,12 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
                         </div>
                       </td>
                       <td className="p-3 hidden md:table-cell">
-                        <Badge variant="outline" className="text-xs">{product.category_name || 'N/A'}</Badge>
+                        <Badge variant="outline" className="text-xs bg-pink-50 text-pink-700 border-pink-200">
+                          {product.category_name || 'N/A'}
+                        </Badge>
                       </td>
                       <td className="p-3 hidden md:table-cell">
-                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                        <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-200">
                           {product.subcategory_name || 'N/A'}
                         </Badge>
                       </td>
@@ -461,7 +486,7 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-8 w-8" 
+                            className={brandIconGhost}
                             onClick={() => handleViewClick(product.id)}
                             title="View Product Details"
                           >
@@ -470,7 +495,7 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-8 w-8" 
+                            className={brandIconGhost}
                             onClick={() => handleEditClick(product.id)}
                             title="Edit Product"
                           >
@@ -479,7 +504,7 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-8 w-8 text-destructive hover:text-destructive" 
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-red-50" 
                             onClick={() => setDeleteTarget(product)}
                             title="Delete Product"
                           >
@@ -497,7 +522,7 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
 
         {/* Pagination */}
         {totalProducts > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-orange-100">
             <div className="flex items-center gap-4">
               <div className="text-sm text-muted-foreground">
                 Showing {((page - 1) * pageSize) + 1} - {Math.min(page * pageSize, totalProducts)} of {totalProducts} products
@@ -505,7 +530,7 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Show</span>
                 <Select value={String(pageSize)} onValueChange={handlePageSizeChange}>
-                  <SelectTrigger className="w-[70px] h-8">
+                  <SelectTrigger className="w-[70px] h-8 focus:ring-orange-400">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -521,15 +546,19 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
               <Button 
                 variant="outline" 
                 size="sm" 
+                className={brandOutline}
                 disabled={page === 1} 
                 onClick={() => setPage(page - 1)}
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <span className="text-sm">Page {page} of {totalPages || 1}</span>
+              <span className="text-sm">
+                Page <span className="font-semibold text-orange-600">{page}</span> of {totalPages || 1}
+              </span>
               <Button 
                 variant="outline" 
                 size="sm" 
+                className={brandOutline}
                 disabled={page === totalPages || totalPages === 0} 
                 onClick={() => setPage(page + 1)}
               >
@@ -542,18 +571,20 @@ export function AdminProducts({ onEditProduct, onViewProduct }: AdminProductsPro
 
       {/* Delete confirmation */}
       <Dialog open={!!deleteTarget} onOpenChange={(v: boolean) => !v && setDeleteTarget(null)}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[400px] p-0 gap-0 overflow-hidden border-orange-100">
+          {/* Brand strip */}
+          <div className="h-1.5 w-full bg-gradient-to-r from-pink-500 via-orange-500 to-yellow-500" />
+          <DialogHeader className="px-6 pt-5 pb-4 bg-gradient-to-r from-pink-50 via-orange-50 to-yellow-50 border-b border-orange-100">
             <DialogTitle className="text-xl font-semibold text-gray-900">Delete Product</DialogTitle>
             <DialogDescription className="text-gray-600">
               Are you sure you want to delete "<span className="font-semibold text-gray-900">{deleteTarget?.product_name}</span>"? 
               This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-3 px-6 py-5">
             <Button 
               variant="outline" 
-              className="flex-1 border-gray-300 hover:bg-gray-50" 
+              className={`flex-1 ${brandOutline}`}
               onClick={() => setDeleteTarget(null)}
             >
               Cancel

@@ -2044,7 +2044,7 @@ export function ComparePage() {
                   {/* Brand gradient accent bar */}
                   <div className={cn('absolute top-0 left-0 right-0 h-1 z-10', BRAND_GRADIENT)} />
 
-                  <Button
+                  {/* <Button
                     size="icon"
                     variant="ghost"
                     className={cn(
@@ -2063,25 +2063,26 @@ export function ComparePage() {
                     ) : (
                       <Heart className={cn('w-4 h-4', isWishlisted && 'fill-current')} />
                     )}
-                  </Button>
+                  </Button> */}
 
                   {/* <div className="absolute top-3 left-2 z-10">
                     <Badge className={cn(BRAND_GRADIENT, 'text-white text-[9px] border-0 hover:opacity-90')}>Comparing</Badge>
                   </div> */}
 
                   <Button
-                    size="icon"
-                    variant="ghost"
-                    className="absolute top-2 left-[70px] z-10 w-7 h-7 rounded-full bg-white/80 hover:bg-white shadow-md backdrop-blur-sm hover:bg-destructive hover:text-destructive-foreground transition-colors"
-                    onClick={async (e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      const userId = getUserId();
-                      await removeFromCompare(productId, userId || undefined);
-                    }}
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </Button>
+                      size="icon"
+                      variant="ghost"
+                      className="absolute top-2 right-2 z-20 w-8 h-8 rounded-full bg-white/80 shadow-md backdrop-blur-sm hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const userId = getUserId();
+                        await removeFromCompare(productId, userId || undefined);
+                      }}
+                      title="Remove from compare"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
 
                   <Link to={`/products/${getProductSlug(product.product_name)}`} className="block relative aspect-square overflow-hidden bg-gradient-to-br from-pink-50/50 via-orange-50/40 to-yellow-50/50">
                     <img
@@ -2115,11 +2116,37 @@ export function ComparePage() {
                       )}
                     </div>
 
-                    <Link to={`/products/${getProductSlug(product.product_name)}`}>
-                      <h3 className="font-semibold text-sm leading-snug mb-1.5 line-clamp-2 group-hover:text-orange-500 transition-colors">
-                        {product.product_name}
-                      </h3>
-                    </Link>
+                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <Link
+                        to={`/products/${getProductSlug(product.product_name)}`}
+                        className="flex-1 min-w-0"
+                      >
+                        <h3 className="font-semibold text-sm leading-snug line-clamp-2 group-hover:text-orange-500 transition-colors">
+                          {product.product_name}
+                        </h3>
+                      </Link>
+
+                      {/* Wishlist heart - beside content, right side */}
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className={cn(
+                          'shrink-0 w-8 h-8 rounded-full transition-all duration-200',
+                          isWishlisted
+                            ? 'text-pink-500 hover:text-pink-600 hover:bg-pink-50'
+                            : 'text-gray-400 hover:text-pink-500 hover:bg-pink-50'
+                        )}
+                        onClick={(e) => handleWishlistToggle(product, e)}
+                        disabled={isWishlistLoading}
+                        title={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                      >
+                        {isWishlistLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Heart className={cn('w-4 h-4', isWishlisted && 'fill-current')} />
+                        )}
+                      </Button>
+                    </div>
 
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <span className={cn('text-lg font-bold', BRAND_GRADIENT_TEXT)}>
